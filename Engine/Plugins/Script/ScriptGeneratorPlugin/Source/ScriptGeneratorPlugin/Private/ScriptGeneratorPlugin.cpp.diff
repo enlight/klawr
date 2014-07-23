@@ -1,0 +1,25 @@
+diff --git a/Engine/Plugins/Script/ScriptGeneratorPlugin/Source/ScriptGeneratorPlugin/Private/ScriptGeneratorPlugin.cpp b/Engine/Plugins/Script/ScriptGeneratorPlugin/Source/ScriptGeneratorPlugin/Private/ScriptGeneratorPlugin.cpp
+index 46f6936..344975c 100644
+--- a/Engine/Plugins/Script/ScriptGeneratorPlugin/Source/ScriptGeneratorPlugin/Private/ScriptGeneratorPlugin.cpp
++++ b/Engine/Plugins/Script/ScriptGeneratorPlugin/Source/ScriptGeneratorPlugin/Private/ScriptGeneratorPlugin.cpp
+@@ -4,6 +4,7 @@
+ #include "ScriptCodeGeneratorBase.h"
+ #include "GenericScriptCodeGenerator.h"
+ #include "LuaScriptCodeGenerator.h"
++#include "KlawrCodeGenerator.h"
+ 
+ DEFINE_LOG_CATEGORY(LogScriptGenerator);
+ 
+@@ -43,8 +44,10 @@ void FScriptGeneratorPlugin::Initialize(const FString& RootLocalPath, const FStr
+ 	UE_LOG(LogScriptGenerator, Log, TEXT("Using Lua Script Generator."));
+ 	CodeGenerator = new FLuaScriptCodeGenerator(RootLocalPath, RootBuildPath, OutputDirectory, IncludeBase);
+ #else
+-	UE_LOG(LogScriptGenerator, Log, TEXT("Using Generic Script Generator."));
+-	CodeGenerator = new FGenericScriptCodeGenerator(RootLocalPath, RootBuildPath, OutputDirectory, IncludeBase);
++	//UE_LOG(LogScriptGenerator, Log, TEXT("Using Generic Script Generator."));
++	//CodeGenerator = new FGenericScriptCodeGenerator(RootLocalPath, RootBuildPath, OutputDirectory, IncludeBase);
++	UE_LOG(LogScriptGenerator, Log, TEXT("Using Klawr Script Generator."));
++	CodeGenerator = new FKlawrCodeGenerator(RootLocalPath, RootBuildPath, OutputDirectory, IncludeBase);
+ #endif
+ 	UE_LOG(LogScriptGenerator, Log, TEXT("Output directory: %s"), *OutputDirectory);
+ }
