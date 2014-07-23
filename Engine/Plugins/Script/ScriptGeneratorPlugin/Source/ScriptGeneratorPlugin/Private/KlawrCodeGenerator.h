@@ -154,9 +154,7 @@ private:
 		const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper
 	);
 
-	FString GenerateManagedPropertyWrapper(
-		UClass* Class,  UProperty* Property, UClass* PropertySuper
-	);
+	FString GenerateManagedPropertyWrapper(UClass* Class,  UProperty* Property);
 
 	FString GenerateManagedStaticConstructor(const UClass* Class);
 	FString GenerateNativeGlueCodeHeader(const UClass* Class) const;

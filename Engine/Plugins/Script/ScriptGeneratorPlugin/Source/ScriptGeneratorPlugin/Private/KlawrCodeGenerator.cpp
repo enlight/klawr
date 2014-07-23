@@ -608,7 +608,7 @@ FString FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
 }
 
 FString FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
-	UClass* Class, UProperty* Property, UClass* PropertySuper
+	UClass* Class, UProperty* Property
 )
 {
 	const FString GetterName = FString::Printf(TEXT("Get_%s"), *Property->GetName());
@@ -679,7 +679,10 @@ void FKlawrCodeGenerator::ExportProperty(
 
 	NativeGlueCode += GenerateNativePropertyGetterWrapper(ClassNameCPP, Class, Property, PropertySuper);
 	NativeGlueCode += GenerateNativePropertySetterWrapper(ClassNameCPP, Class, Property, PropertySuper);
-	ManagedGlueCode += GenerateManagedPropertyWrapper(Class, Property, PropertySuper);
+	if (!PropertySuper)
+	{
+		ManagedGlueCode += GenerateManagedPropertyWrapper(Class, Property);
+	}
 }
 
 FString FKlawrCodeGenerator::GenerateNativeGlueCodeHeader(const UClass* Class) const
