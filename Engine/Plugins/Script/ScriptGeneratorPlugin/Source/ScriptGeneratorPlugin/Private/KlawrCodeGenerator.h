@@ -165,6 +165,8 @@ private:
 	FString GenerateManagedGlueCodeFooter(const UClass* Class);
 	FString GenerateDelegateTypeName(const FString& FunctionName, bool bHasReturnValue) const;
 	FString GenerateDelegateName(const FString& FunctionName) const;
+	FString EmitUnmanagedFunctionPointerAttribute() const;
+
 	/** Indents ManagedIndent by 4 spaces. */
 	void IndentManagedCode();
 	/** Unindents ManagedIndent by 4 spaces. */

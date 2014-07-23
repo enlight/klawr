@@ -246,6 +246,7 @@ FString FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 		//        regular function argument names.
 		GeneratedGlue += NativeIndent + TEXT("UObject* Obj = (UObject*)self;\r\n");
 		// FIXME: Super::GenerateFunctionDispatch() doesn't indent code properly, get rid of it!
+		// TODO: Maybe use an initializer list to FDispatchParams struct instead of the current multi-line init
 		GeneratedGlue += Super::GenerateFunctionDispatch(Function);
 
 		if (ReturnValue)
@@ -330,6 +331,11 @@ void FKlawrCodeGenerator::GenerateManagedWrapperArgsAndReturnType(
 	}
 }
 
+FString FKlawrCodeGenerator::EmitUnmanagedFunctionPointerAttribute() const
+{
+	return ManagedIndent + TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl)]\r\n");
+}
+
 FString FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 	const UClass* Class, const UFunction* Function, const UClass* FuncSuper
 )
@@ -342,17 +348,17 @@ FString FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 	);
 	bool bHasReturnValue = (ReturnValueTypeName.Compare(TEXT("void")) != 0);
 	// declare a managed delegate type matching the type of the native wrapper function
-	FString GeneratedGlue = ManagedIndent + TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl)]\r\n");
-	const FString ManagedDelegateTypeName = GenerateDelegateTypeName(Function->GetName(), bHasReturnValue);
+	FString GeneratedGlue = EmitUnmanagedFunctionPointerAttribute();
+	const FString DelegateTypeName = GenerateDelegateTypeName(Function->GetName(), bHasReturnValue);
 	GeneratedGlue += ManagedIndent + FString::Printf(
 		TEXT("private delegate %s %s(%s);\r\n"),
-		*ReturnValueTypeName, *ManagedDelegateTypeName, *FormalInteropArgs
+		*ReturnValueTypeName, *DelegateTypeName, *FormalInteropArgs
 	);
 	// declare a delegate instance that will be bound to the native wrapper function
-	const FString ManagedDelegateName = GenerateDelegateName(Function->GetName());
+	const FString DelegateName = GenerateDelegateName(Function->GetName());
 	GeneratedGlue += ManagedIndent + FString::Printf(
 		TEXT("private static %s %s;\r\n"),
-		*ManagedDelegateTypeName, *ManagedDelegateName
+		*DelegateTypeName, *DelegateName
 	);
 	// define a managed method that calls the native wrapper function through the delegate 
 	// declared above
@@ -368,14 +374,14 @@ FString FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 		if (ReturnValueTypeName.Compare(TEXT("void")) == 0)
 		{
 			GeneratedGlue += ManagedIndent + FString::Printf(
-				TEXT("%s(%s);\r\n"), *ManagedDelegateName, *ActualInteropArgs
+				TEXT("%s(%s);\r\n"), *DelegateName, *ActualInteropArgs
 			);
 		}
 		else // method has a return value
 		{
 			// TODO: convert return type
 			GeneratedGlue += ManagedIndent + FString::Printf(
-				TEXT("return %s(%s);\r\n"), *ManagedDelegateName, *ActualInteropArgs
+				TEXT("return %s(%s);\r\n"), *DelegateName, *ActualInteropArgs
 			);
 		}
 	}
@@ -605,8 +611,54 @@ FString FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 	UClass* Class, UProperty* Property, UClass* PropertySuper
 )
 {
-	FString GeneratedGlue;
-	// TODO
+	const FString GetterName = FString::Printf(TEXT("Get_%s"), *Property->GetName());
+	const FString SetterName = FString::Printf(TEXT("Set_%s"), *Property->GetName());
+	
+	FExportedProperty PropInfo;
+	PropInfo.GetterDelegateName = GenerateDelegateName(GetterName);
+	PropInfo.GetterDelegateTypeName = GenerateDelegateTypeName(GetterName, true);
+	PropInfo.SetterDelegateName = GenerateDelegateName(SetterName);
+	PropInfo.SetterDelegateTypeName = GenerateDelegateTypeName(SetterName, false);
+	ClassExportedProperties.FindOrAdd(Class).Add(PropInfo);
+	
+	FString PropertyTypeName = GetPropertyInteropType(Property);
+	// declare managed delegate types matching the types of the native wrapper functions
+	FString GeneratedGlue = EmitUnmanagedFunctionPointerAttribute();
+	GeneratedGlue += ManagedIndent + FString::Printf(
+		TEXT("private delegate %s %s(IntPtr self);\r\n"),
+		*PropertyTypeName, *PropInfo.GetterDelegateTypeName
+	);
+	GeneratedGlue += EmitUnmanagedFunctionPointerAttribute();
+	GeneratedGlue += ManagedIndent + FString::Printf(
+		TEXT("private delegate void %s(IntPtr self, %s %s);\r\n"),
+		*PropInfo.SetterDelegateTypeName, *PropertyTypeName, *Property->GetName()
+	);
+	// declare delegate instances that will be bound to the native wrapper functions
+	GeneratedGlue += ManagedIndent + FString::Printf(
+		TEXT("private static %s %s;\r\n"),
+		*PropInfo.GetterDelegateTypeName, *PropInfo.GetterDelegateName
+	);
+	GeneratedGlue += ManagedIndent + FString::Printf(
+		TEXT("private static %s %s;\r\n"),
+		*PropInfo.SetterDelegateTypeName, *PropInfo.SetterDelegateName
+	);
+	// define a managed property that calls the native wrapper functions through the delegates 
+	// declared above
+	GeneratedGlue += ManagedIndent + FString::Printf(
+		TEXT("public %s %s\r\n"),
+		*PropertyTypeName, *Property->GetName()
+	);
+	GeneratedGlue += ManagedIndent + TEXT("{\r\n");
+	IndentManagedCode();
+	GeneratedGlue += ManagedIndent + FString::Printf(
+		TEXT("get { return %s(_nativeObject); }\r\n"), *PropInfo.GetterDelegateName
+	);
+	GeneratedGlue += ManagedIndent + FString::Printf(
+		TEXT("set { %s(_nativeObject, value); }\r\n"), *PropInfo.SetterDelegateName
+	);
+	UnindentManagedCode();
+	GeneratedGlue += ManagedIndent + TEXT("}\r\n\r\n");
+	
 	return GeneratedGlue;
 }
 
