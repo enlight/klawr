@@ -103,6 +103,8 @@ private:
 	/** Properties that were exported for each class. */
 	TMap<const UClass*, TArray<FExportedProperty> > ClassExportedProperties;
 
+	/** Generate a .csproj for the C# wrapper classes. */
+	void GenerateManagedWrapperProject();
 	/** Create a 'glue' file that merges all generated script files */
 	void GlueAllGeneratedFiles();
 

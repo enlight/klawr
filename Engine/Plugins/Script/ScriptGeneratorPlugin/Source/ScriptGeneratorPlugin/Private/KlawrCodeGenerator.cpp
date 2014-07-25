@@ -24,6 +24,7 @@
 
 #include "ScriptGeneratorPluginPrivatePCH.h"
 #include "KlawrCodeGenerator.h"
+#include "pugixml.hpp"
 
 // Names of structs that can be used for interop (they have a corresponding struct type in managed code)
 const FName FKlawrCodeGenerator::Name_Vector2D("Vector2D");
@@ -851,10 +852,61 @@ void FKlawrCodeGenerator::ExportClass(
 	Super::SaveHeaderIfChanged(ManagedGlueFilename, ManagedGlueCode);
 }
 
+void FKlawrCodeGenerator::GenerateManagedWrapperProject()
+{
+	const FString ProjectName("UE4Wrapper.csproj");
+	const FString ProjectTemplateFilename = 
+		FPaths::EnginePluginsDir() / TEXT("Script/ScriptGeneratorPlugin/Resources") / ProjectName;
+	const FString ProjectOutputFilename = 
+		FPaths::EngineIntermediateDir() / TEXT("ProjectFiles") / ProjectName;
+
+	// load the template .csproj
+	pugi::xml_document Project;
+	pugi::xml_parse_result result = Project.load_file(
+		*ProjectTemplateFilename, pugi::parse_default | pugi::parse_declaration | pugi::parse_comments
+	);
+
+	if (!result)
+	{
+		FError::Throwf(TEXT("Failed to load %s"), *ProjectTemplateFilename);
+	}
+	else
+	{
+		// add references to all the generated C# wrapper classes to the .csproj
+		auto SourceNode = Project.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
+		if (SourceNode)
+		{
+			FString ManagedGlueFilename;
+			for (const FString& ScriptHeaderFilename : AllScriptHeaders)
+			{
+				ManagedGlueFilename = ScriptHeaderFilename;
+				ManagedGlueFilename.RemoveFromEnd(TEXT(".h"));
+				ManagedGlueFilename.Append(TEXT(".cs"));
+				FPaths::MakePathRelativeTo(ManagedGlueFilename, *ProjectOutputFilename);
+				FPaths::MakePlatformFilename(ManagedGlueFilename);
+				SourceNode
+					.append_child(TEXT("Compile"))
+					.append_attribute(TEXT("Include"))
+					.set_value(*ManagedGlueFilename);
+			}
+		}
+
+		// preserve the BOM and line endings of the template .csproj when writing out the new file
+		unsigned int OutputFlags =
+			pugi::format_default | pugi::format_write_bom | pugi::format_save_file_text;
+
+		if (!Project.save_file(*ProjectOutputFilename, TEXT("  "), OutputFlags))
+		{
+			FError::Throwf(TEXT("Failed to save %s"), *ProjectOutputFilename);
+		}
+	}
+}
+
 void FKlawrCodeGenerator::FinishExport()
 {
 	GlueAllGeneratedFiles();
 	Super::RenameTempFiles();
+	GenerateManagedWrapperProject();
 }
 
 void FKlawrCodeGenerator::GlueAllGeneratedFiles()
