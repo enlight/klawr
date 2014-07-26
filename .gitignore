@@ -19,3 +19,4 @@
 *.exe
 *.out
 *.app
+Engine/Source/ThirdParty/Klawr/ClrHostInterfaces/obj/
