@@ -25,6 +25,8 @@
 
 #include "ScriptCodeGeneratorBase.h"
 
+class FKlawrCodeFormatter;
+
 /**
  * Generates a C# wrapper class for each scriptable UE4 class.
  *
@@ -74,11 +76,7 @@ private:
 	static const FName Name_LinearColor;
 	static const FName Name_Color;
 
-	FString NativeIndent;
-	FString ManagedIndent;
-
-	static const FString NativeTab;
-	static const FString ManagedTab;
+	static const FString UnmanagedFunctionPointerAttribute;
 
 	struct FExportedProperty
 	{
@@ -106,20 +104,22 @@ private:
 	/** Generate a .csproj for the C# wrapper classes. */
 	void GenerateManagedWrapperProject();
 	/** Create a 'glue' file that merges all generated script files */
-	void GlueAllGeneratedFiles();
+	void GlueAllNativeWrapperFiles();
 
 	/** Export native and managed wrappers for the given UFunction. */
 	void ExportFunction(
 		const FString& ClassNameCPP, const UClass* Class, UFunction* Function, 
-		FString& NativeGlueCode, FString& ManagedGlueCode
+		FKlawrCodeFormatter& NativeGlueCode, FKlawrCodeFormatter& ManagedGlueCode
 	);
 	/** Export native and managed wrappers for the given UProperty. */
 	void ExportProperty(
 		const FString& ClassNameCPP, UClass* Class, UProperty* Property,
-		FString& NativeGlueCode, FString& ManagedGlueCode
+		FKlawrCodeFormatter& NativeGlueCode, FKlawrCodeFormatter& ManagedGlueCode
 	);
 	/** Generate a statement returning the given value. */
-	FString GenerateNativeReturnValueHandler(UProperty* ReturnValue, const FString& ReturnValueName);
+	void GenerateNativeReturnValueHandler(
+		UProperty* ReturnValue, const FString& ReturnValueName, FKlawrCodeFormatter& GeneratedGlue
+	);
 	/** Check if a property type is supported */
 	bool IsPropertyTypeSupported(UProperty* Property) const;
 	/** Check if the property type is a pointer. */
@@ -140,39 +140,35 @@ private:
 		FString& OutReturnValueType
 	);
 		
-	FString GenerateNativeWrapperFunction(
-		const UClass* Class, UFunction* Function, const UClass* FuncSuper
+	void GenerateNativeWrapperFunction(
+		const UClass* Class, UFunction* Function, const UClass* FuncSuper, 
+		FKlawrCodeFormatter& GeneratedGlue
 	);
 
-	FString GenerateManagedWrapperFunction(
-		const UClass* Class, const UFunction* Function, const UClass* FuncSuper
+	void GenerateManagedWrapperFunction(
+		const UClass* Class, const UFunction* Function, const UClass* FuncSuper, 
+		FKlawrCodeFormatter& GeneratedGlue
 	);
 
-	FString GenerateNativePropertyGetterWrapper(
-		const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper
+	void GenerateNativePropertyGetterWrapper(
+		const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+		FKlawrCodeFormatter& GeneratedGlue
 	);
 
-	FString GenerateNativePropertySetterWrapper(
-		const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper
+	void GenerateNativePropertySetterWrapper(
+		const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+		FKlawrCodeFormatter& GeneratedGlue
 	);
 
-	FString GenerateManagedPropertyWrapper(UClass* Class,  UProperty* Property);
+	void GenerateManagedPropertyWrapper(
+		UClass* Class, UProperty* Property, FKlawrCodeFormatter& GeneratedGlue
+	);
 
-	FString GenerateManagedStaticConstructor(const UClass* Class);
-	FString GenerateNativeGlueCodeHeader(const UClass* Class) const;
-	FString GenerateNativeGlueCodeFooter(const UClass* Class) const;
-	FString GenerateManagedGlueCodeHeader(const UClass* Class);
-	FString GenerateManagedGlueCodeFooter(const UClass* Class);
+	void GenerateManagedStaticConstructor(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue);
+	static void GenerateNativeGlueCodeHeader(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue);
+	void GenerateNativeGlueCodeFooter(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue) const;
+	void GenerateManagedGlueCodeHeader(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue) const;
+	void GenerateManagedGlueCodeFooter(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue);
 	FString GenerateDelegateTypeName(const FString& FunctionName, bool bHasReturnValue) const;
 	FString GenerateDelegateName(const FString& FunctionName) const;
-	FString EmitUnmanagedFunctionPointerAttribute() const;
-
-	/** Indents ManagedIndent by 4 spaces. */
-	void IndentManagedCode();
-	/** Unindents ManagedIndent by 4 spaces. */
-	void UnindentManagedCode();
-	/** Indents NativeIndent by one tab. */
-	void IndentNativeCode();
-	/** Unindents NativeIndent by one tab. */
-	void UnindentNativeCode();
 };

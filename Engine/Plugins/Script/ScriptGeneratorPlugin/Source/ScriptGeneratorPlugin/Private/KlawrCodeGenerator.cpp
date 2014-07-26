@@ -24,6 +24,7 @@
 
 #include "ScriptGeneratorPluginPrivatePCH.h"
 #include "KlawrCodeGenerator.h"
+#include "KlawrCodeFormatter.h"
 #include "pugixml.hpp"
 
 // Names of structs that can be used for interop (they have a corresponding struct type in managed code)
@@ -35,8 +36,8 @@ const FName FKlawrCodeGenerator::Name_Transform("Transform");
 const FName FKlawrCodeGenerator::Name_LinearColor("LinearColor");
 const FName FKlawrCodeGenerator::Name_Color("Color");
 
-const FString FKlawrCodeGenerator::NativeTab(TEXT("\t"));
-const FString FKlawrCodeGenerator::ManagedTab(TEXT("    "));
+const FString FKlawrCodeGenerator::UnmanagedFunctionPointerAttribute = 
+	TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl)]");
 
 FKlawrCodeGenerator::FKlawrCodeGenerator(
 	const FString& RootLocalPath, const FString& RootBuildPath, const FString& OutputDirectory, 
@@ -99,11 +100,10 @@ FString FKlawrCodeGenerator::InitializeFunctionDispatchParam(UFunction* Function
 	}	
 }
 
-FString FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
-	UProperty* ReturnValue, const FString& ReturnValueName
+void FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
+	UProperty* ReturnValue, const FString& ReturnValueName, FKlawrCodeFormatter& GeneratedGlue
 )
 {
-	FString ReturnHandler = NativeIndent;
 	if (ReturnValue)
 	{
 		if (ReturnValue->IsA(UIntProperty::StaticClass()) || 
@@ -111,22 +111,22 @@ FString FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 			ReturnValue->IsA(UBoolProperty::StaticClass()) ||
 			ReturnValue->IsA(UObjectPropertyBase::StaticClass()))
 		{
-			ReturnHandler += FString::Printf(TEXT("return %s;\r\n"), *ReturnValueName);
+			GeneratedGlue << FString::Printf(TEXT("return %s;"), *ReturnValueName);
 		}
 		else if (ReturnValue->IsA(UStrProperty::StaticClass()))
 		{
-			ReturnHandler += FString::Printf(TEXT("return *%s;\r\n"), *ReturnValueName);
+			GeneratedGlue << FString::Printf(TEXT("return *%s;"), *ReturnValueName);
 		}
 		else if (ReturnValue->IsA(UNameProperty::StaticClass()))
 		{
-			ReturnHandler += FString::Printf(TEXT("return *(%s.ToString());\r\n"), *ReturnValueName);
+			GeneratedGlue << FString::Printf(TEXT("return *(%s.ToString());"), *ReturnValueName);
 		}
 		else if (ReturnValue->IsA(UStructProperty::StaticClass()))
 		{
 			auto StructProp = CastChecked<UStructProperty>(ReturnValue);
 			if (IsStructPropertyTypeSupported(StructProp))
 			{
-				ReturnHandler += FString::Printf(TEXT("return %s;\r\n"), *ReturnValueName);
+				GeneratedGlue << FString::Printf(TEXT("return %s;"), *ReturnValueName);
 			}
 			else
 			{
@@ -143,7 +143,6 @@ FString FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 			);
 		}
 	}
-	return ReturnHandler;
 }
 
 bool FKlawrCodeGenerator::CanExportClass(UClass* Class)
@@ -221,8 +220,8 @@ UProperty* FKlawrCodeGenerator::GetNativeWrapperArgsAndReturnType(
 	return ReturnValue;
 }
 
-FString FKlawrCodeGenerator::GenerateNativeWrapperFunction(
-	const UClass* Class, UFunction* Function, const UClass* FuncSuper
+void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
+	const UClass* Class, UFunction* Function, const UClass* FuncSuper, FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	FString FormalArgs, ActualArgs, ReturnValueType, ReturnValueName;
@@ -235,44 +234,44 @@ FString FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 		ReturnValueTypeName = GetPropertyNativeType(ReturnValue);
 	}
 	// define a native wrapper function that will be bound to a managed delegate
-	FString GeneratedGlue = NativeIndent + FString::Printf(
-		TEXT("%s %s_%s(%s)\r\n{\r\n"),
+	GeneratedGlue << FString::Printf(
+		TEXT("%s %s_%s(%s)"),
 		*ReturnValueTypeName, *Class->GetName(), *Function->GetName(), *FormalArgs
 	);
-	IndentNativeCode();
+	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
+
 	// call the wrapped UFunction
 	if (!FuncSuper)
 	{
 		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
 		//        regular function argument names.
-		GeneratedGlue += NativeIndent + TEXT("UObject* Obj = (UObject*)self;\r\n");
+		GeneratedGlue << TEXT("UObject* Obj = (UObject*)self;");
 		// FIXME: Super::GenerateFunctionDispatch() doesn't indent code properly, get rid of it!
 		// TODO: Maybe use an initializer list to FDispatchParams struct instead of the current multi-line init
-		GeneratedGlue += Super::GenerateFunctionDispatch(Function);
+		GeneratedGlue << Super::GenerateFunctionDispatch(Function);
 
 		if (ReturnValue)
 		{
-			GeneratedGlue += GenerateNativeReturnValueHandler(
-				ReturnValue, FString::Printf(TEXT("Params.%s"), *ReturnValue->GetName())
+			GenerateNativeReturnValueHandler(
+				ReturnValue, FString::Printf(TEXT("Params.%s"), *ReturnValue->GetName()), 
+				GeneratedGlue
 			);
 		}
 	}
 	else // the function is actually implemented in a base class, so call the base class version
 	{
-		GeneratedGlue += FString::Printf(
-			TEXT("return %s_%s(%s);\r\n"),
+		GeneratedGlue << FString::Printf(
+			TEXT("return %s_%s(%s);"),
 			*FuncSuper->GetName(), *Function->GetName(), *ActualArgs
 		);
 	}
-	UnindentNativeCode();
-	GeneratedGlue += TEXT("}\r\n\r\n");
+
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 
 	FExportedFunction FuncInfo;
 	FuncInfo.Function = Function;
 	FuncInfo.bHasReturnValue = (ReturnValue != nullptr);
 	ClassExportedFunctions.FindOrAdd(Class).Add(FuncInfo);
-
-	return GeneratedGlue;
 }
 
 FString FKlawrCodeGenerator::GenerateDelegateTypeName(const FString& FunctionName, bool bHasReturnValue) const
@@ -332,13 +331,9 @@ void FKlawrCodeGenerator::GenerateManagedWrapperArgsAndReturnType(
 	}
 }
 
-FString FKlawrCodeGenerator::EmitUnmanagedFunctionPointerAttribute() const
-{
-	return ManagedIndent + TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl)]\r\n");
-}
-
-FString FKlawrCodeGenerator::GenerateManagedWrapperFunction(
-	const UClass* Class, const UFunction* Function, const UClass* FuncSuper
+void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
+	const UClass* Class, const UFunction* Function, const UClass* FuncSuper, 
+	FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	FString FormalInteropArgs, ActualInteropArgs, FormalManagedArgs, ActualManagedArgs;
@@ -349,58 +344,56 @@ FString FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 	);
 	bool bHasReturnValue = (ReturnValueTypeName.Compare(TEXT("void")) != 0);
 	// declare a managed delegate type matching the type of the native wrapper function
-	FString GeneratedGlue = EmitUnmanagedFunctionPointerAttribute();
+	GeneratedGlue << UnmanagedFunctionPointerAttribute;
 	const FString DelegateTypeName = GenerateDelegateTypeName(Function->GetName(), bHasReturnValue);
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("private delegate %s %s(%s);\r\n"),
+	GeneratedGlue << FString::Printf(
+		TEXT("private delegate %s %s(%s);"),
 		*ReturnValueTypeName, *DelegateTypeName, *FormalInteropArgs
 	);
 	// declare a delegate instance that will be bound to the native wrapper function
 	const FString DelegateName = GenerateDelegateName(Function->GetName());
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("private static %s %s;\r\n"),
+	GeneratedGlue << FString::Printf(
+		TEXT("private static %s %s;"),
 		*DelegateTypeName, *DelegateName
 	);
 	// define a managed method that calls the native wrapper function through the delegate 
 	// declared above
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("public %s %s(%s)\r\n"),
+	GeneratedGlue << FString::Printf(
+		TEXT("public %s %s(%s)"),
 		*ReturnValueTypeName, *Function->GetName(), *FormalManagedArgs
 	);
-	GeneratedGlue += ManagedIndent + TEXT("{\r\n");
-	IndentManagedCode();
+	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
+
 	// call the delegate bound to the native wrapper function
 	if (!FuncSuper)
 	{
 		if (ReturnValueTypeName.Compare(TEXT("void")) == 0)
 		{
-			GeneratedGlue += ManagedIndent + FString::Printf(
-				TEXT("%s(%s);\r\n"), *DelegateName, *ActualInteropArgs
+			GeneratedGlue << FString::Printf(
+				TEXT("%s(%s);"), *DelegateName, *ActualInteropArgs
 			);
 		}
 		else // method has a return value
 		{
 			// TODO: convert return type
-			GeneratedGlue += ManagedIndent + FString::Printf(
-				TEXT("return %s(%s);\r\n"), *DelegateName, *ActualInteropArgs
+			GeneratedGlue << FString::Printf(
+				TEXT("return %s(%s);"), *DelegateName, *ActualInteropArgs
 			);
 		}
 	}
 	else // the function is actually implemented in a base class, so call the base class version
 	{
-		GeneratedGlue += ManagedIndent + FString::Printf(
-			TEXT("return base.%s(%s);\r\n"), *Function->GetName(), *ActualManagedArgs
+		GeneratedGlue << FString::Printf(
+			TEXT("return base.%s(%s);"), *Function->GetName(), *ActualManagedArgs
 		);
 	}
-	UnindentManagedCode();
-	GeneratedGlue += ManagedIndent + TEXT("}\r\n\r\n");
 
-	return GeneratedGlue;
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace() << LINE_TERMINATOR;
 }
 
 void FKlawrCodeGenerator::ExportFunction(
 	const FString& ClassNameCPP, const UClass* Class, UFunction* Function,
-	FString& NativeGlueCode, FString& ManagedGlueCode
+	FKlawrCodeFormatter& NativeGlueCode, FKlawrCodeFormatter& ManagedGlueCode
 )
 {
 	// FIXME: Do we really need to export a wrapper that calls the base class function?
@@ -417,8 +410,8 @@ void FKlawrCodeGenerator::ExportFunction(
 		}
 	}
 
-	NativeGlueCode += GenerateNativeWrapperFunction(Class, Function, FuncSuper);
-	ManagedGlueCode += GenerateManagedWrapperFunction(Class, Function, FuncSuper);
+	GenerateNativeWrapperFunction(Class, Function, FuncSuper, NativeGlueCode);
+	GenerateManagedWrapperFunction(Class, Function, FuncSuper, ManagedGlueCode);
 }
 
 bool FKlawrCodeGenerator::IsPropertyTypeSupported(UProperty* Property) const
@@ -519,8 +512,9 @@ bool FKlawrCodeGenerator::CanExportProperty(const FString& ClassNameCPP, UClass*
 	return IsPropertyTypeSupported(Property);
 }
 
-FString FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
-	const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper
+void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
+	const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+	FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	// define a native getter wrapper function that will be bound to a managed delegate
@@ -528,43 +522,42 @@ FString FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
 	FString GetterName = FString::Printf(
 		TEXT("%s_Get_%s"), *Class->GetName(), *Property->GetName()
 	);
-	FString GeneratedGlue = NativeIndent + FString::Printf(
-		TEXT("%s %s(void* self)\r\n"), *PropertyNativeTypeName, *GetterName
-	);
-	GeneratedGlue += NativeIndent + TEXT("{\r\n");
-	IndentNativeCode();
+	GeneratedGlue << FString::Printf(TEXT("%s %s(void* self)"), *PropertyNativeTypeName, *GetterName);
+	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
+	
 	if (!PropertySuper)
 	{
 		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
 		//        regular function argument names.
-		GeneratedGlue += NativeIndent + TEXT("UObject* Obj = (UObject*)self;\r\n");
-		GeneratedGlue += NativeIndent + FString::Printf(
-			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));\r\n"),
-			*ClassNameCPP, *Property->GetName()
-		);
-		GeneratedGlue += NativeIndent + FString::Printf(
-			TEXT("%s PropertyValue;\r\n"), *GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue)
-		);
-		GeneratedGlue += NativeIndent + TEXT("Property->CopyCompleteValue(&PropertyValue, Property->ContainerPtrToValuePtr<void>(Obj));\r\n");
-		GeneratedGlue += GenerateNativeReturnValueHandler(Property, TEXT("PropertyValue"));
-		
+		GeneratedGlue 
+			<< TEXT("UObject* Obj = (UObject*)self;")
+			<< FString::Printf(
+				TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"),
+				*ClassNameCPP, *Property->GetName()
+			)
+			<< FString::Printf(
+				TEXT("%s PropertyValue;\r\n"), 
+				*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue)
+			)
+			<< TEXT("Property->CopyCompleteValue(&PropertyValue, Property->ContainerPtrToValuePtr<void>(Obj));");
+			
+		GenerateNativeReturnValueHandler(Property, TEXT("PropertyValue"), GeneratedGlue);
 	}
 	else // the property is actually implemented in a base class, so call the base class getter
 	{
 		// FIXME: Do we really need to export a wrapper that calls the base getter/setter?
-		GeneratedGlue += NativeIndent + FString::Printf(
-			TEXT("return %s_Get_%s(self);\r\n"),
+		GeneratedGlue << FString::Printf(
+			TEXT("return %s_Get_%s(self);"),
 			*PropertySuper->GetName(), *Property->GetName()
 		);
 	}
-	UnindentNativeCode();
-	GeneratedGlue += NativeIndent + TEXT("}\r\n\r\n");
-	
-	return GeneratedGlue;
+
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 }
 
-FString FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
-	const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper
+void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
+	const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+	FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	// define a native setter wrapper function that will be bound to a managed delegate
@@ -572,44 +565,44 @@ FString FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
 	FString SetterName = FString::Printf(
 		TEXT("%s_Set_%s"), *Class->GetName(), *Property->GetName()
 	);
-	FString GeneratedGlue = NativeIndent + FString::Printf(
-		TEXT("void %s(void* self, %s %s)\r\n"), 
-		*SetterName, *PropertyNativeTypeName, *Property->GetName()
-	);
-	GeneratedGlue += NativeIndent + TEXT("{\r\n");
-	IndentNativeCode();
+	GeneratedGlue 
+		<< FString::Printf(
+			TEXT("void %s(void* self, %s %s)"), 
+			*SetterName, *PropertyNativeTypeName, *Property->GetName()
+		)
+		<< TEXT("{");
+	++GeneratedGlue.Indent;
 	if (!PropertySuper)
 	{
 		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
 		//        regular function argument names.
-		GeneratedGlue += NativeIndent + TEXT("UObject* Obj = (UObject*)self;\r\n");
-		GeneratedGlue += NativeIndent + FString::Printf(
-			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));\r\n"), 
-			*ClassNameCPP, *Property->GetName()
-		);
-		GeneratedGlue += NativeIndent + FString::Printf(
-			TEXT("%s PropertyValue = %s;\r\n"), 
-			*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue), 
-			*InitializeFunctionDispatchParam(NULL, Property, 0)
-		);
-		GeneratedGlue += NativeIndent + TEXT("Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<void>(Obj), &PropertyValue);\r\n");
+		GeneratedGlue 
+			<< TEXT("UObject* Obj = (UObject*)self;")
+			<< FString::Printf(
+				TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"), 
+				*ClassNameCPP, *Property->GetName()
+			)
+			<< FString::Printf(
+				TEXT("%s PropertyValue = %s;"), 
+				*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue), 
+				*InitializeFunctionDispatchParam(NULL, Property, 0)
+			)
+			<< TEXT("Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<void>(Obj), &PropertyValue);");
 	}
 	else // the property is actually implemented in a base class, so call the base class setter
 	{
 		// FIXME: Do we really need to export a wrapper that calls the base getter/setter?
-		GeneratedGlue += NativeIndent + FString::Printf(
-			TEXT("%s_Set_%s(self, %s);\r\n"),
+		GeneratedGlue << FString::Printf(
+			TEXT("%s_Set_%s(self, %s);"),
 			*PropertySuper->GetName(), *Property->GetName(), *Property->GetName()
 		);
 	}
-	UnindentNativeCode();
-	GeneratedGlue += NativeIndent + TEXT("}\r\n\r\n");
-
-	return GeneratedGlue;
+	
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 }
 
-FString FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
-	UClass* Class, UProperty* Property
+void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
+	UClass* Class, UProperty* Property, FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	const FString GetterName = FString::Printf(TEXT("Get_%s"), *Property->GetName());
@@ -624,48 +617,44 @@ FString FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 	
 	FString PropertyTypeName = GetPropertyInteropType(Property);
 	// declare managed delegate types matching the types of the native wrapper functions
-	FString GeneratedGlue = EmitUnmanagedFunctionPointerAttribute();
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("private delegate %s %s(IntPtr self);\r\n"),
-		*PropertyTypeName, *PropInfo.GetterDelegateTypeName
-	);
-	GeneratedGlue += EmitUnmanagedFunctionPointerAttribute();
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("private delegate void %s(IntPtr self, %s %s);\r\n"),
-		*PropInfo.SetterDelegateTypeName, *PropertyTypeName, *Property->GetName()
-	);
+	GeneratedGlue
+		<< UnmanagedFunctionPointerAttribute
+		<< FString::Printf(
+			TEXT("private delegate %s %s(IntPtr self);"),
+			*PropertyTypeName, *PropInfo.GetterDelegateTypeName
+		)
+		<< UnmanagedFunctionPointerAttribute
+		<< FString::Printf(
+			TEXT("private delegate void %s(IntPtr self, %s %s);"),
+			*PropInfo.SetterDelegateTypeName, *PropertyTypeName, *Property->GetName()
+		);
 	// declare delegate instances that will be bound to the native wrapper functions
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("private static %s %s;\r\n"),
-		*PropInfo.GetterDelegateTypeName, *PropInfo.GetterDelegateName
-	);
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("private static %s %s;\r\n"),
-		*PropInfo.SetterDelegateTypeName, *PropInfo.SetterDelegateName
-	);
+	GeneratedGlue 
+		<< FString::Printf(
+			TEXT("private static %s %s;"),
+			*PropInfo.GetterDelegateTypeName, *PropInfo.GetterDelegateName
+		)
+		<< FString::Printf(
+			TEXT("private static %s %s;"),
+			*PropInfo.SetterDelegateTypeName, *PropInfo.SetterDelegateName
+		);
 	// define a managed property that calls the native wrapper functions through the delegates 
 	// declared above
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("public %s %s\r\n"),
-		*PropertyTypeName, *Property->GetName()
-	);
-	GeneratedGlue += ManagedIndent + TEXT("{\r\n");
-	IndentManagedCode();
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("get { return %s(_nativeObject); }\r\n"), *PropInfo.GetterDelegateName
-	);
-	GeneratedGlue += ManagedIndent + FString::Printf(
-		TEXT("set { %s(_nativeObject, value); }\r\n"), *PropInfo.SetterDelegateName
-	);
-	UnindentManagedCode();
-	GeneratedGlue += ManagedIndent + TEXT("}\r\n\r\n");
-	
-	return GeneratedGlue;
+	GeneratedGlue 
+		<< FString::Printf(TEXT("public %s %s"), *PropertyTypeName, *Property->GetName())
+		<< FKlawrCodeFormatter::OpenBrace()
+		<< FString::Printf(
+			TEXT("get { return %s(_nativeObject); }"), *PropInfo.GetterDelegateName
+		)
+		<< FString::Printf(
+			TEXT("set { %s(_nativeObject, value); }"), *PropInfo.SetterDelegateName
+		)
+		<< FKlawrCodeFormatter::CloseBrace();
 }
 
 void FKlawrCodeGenerator::ExportProperty(
 	const FString& ClassNameCPP, UClass* Class, UProperty* Property,
-	FString& NativeGlueCode, FString& ManagedGlueCode
+	FKlawrCodeFormatter& NativeGlueCode, FKlawrCodeFormatter& ManagedGlueCode
 )
 {
 	UClass* PropertySuper = nullptr;
@@ -678,41 +667,43 @@ void FKlawrCodeGenerator::ExportProperty(
 		}
 	}
 
-	NativeGlueCode += GenerateNativePropertyGetterWrapper(ClassNameCPP, Class, Property, PropertySuper);
-	NativeGlueCode += GenerateNativePropertySetterWrapper(ClassNameCPP, Class, Property, PropertySuper);
+	GenerateNativePropertyGetterWrapper(ClassNameCPP, Class, Property, PropertySuper, NativeGlueCode);
+	GenerateNativePropertySetterWrapper(ClassNameCPP, Class, Property, PropertySuper, NativeGlueCode);
 	if (!PropertySuper)
 	{
-		ManagedGlueCode += GenerateManagedPropertyWrapper(Class, Property);
+		GenerateManagedPropertyWrapper(Class, Property, ManagedGlueCode);
 	}
 }
 
-FString FKlawrCodeGenerator::GenerateNativeGlueCodeHeader(const UClass* Class) const
+void FKlawrCodeGenerator::GenerateNativeGlueCodeHeader(
+	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
+)
 {
-	FString GeneratedGlue(TEXT("#pragma once\r\n\r\n"));
-	GeneratedGlue += TEXT("namespace KlawrNativeGlue {\r\n\r\n");
-
-	return GeneratedGlue;
+	GeneratedGlue << TEXT("#pragma once") LINE_TERMINATOR;
+	GeneratedGlue << TEXT("namespace KlawrNativeGlue {") LINE_TERMINATOR;
 }
 
-FString FKlawrCodeGenerator::GenerateNativeGlueCodeFooter(const UClass* Class) const
+void FKlawrCodeGenerator::GenerateNativeGlueCodeFooter(
+	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
+) const
 {
-	FString GeneratedGlue;
 	// TODO: pass the pointers to all the native wrapper functions to the CLR host
-	GeneratedGlue += TEXT("} // namespace KlawrNativeGlue\r\n");
-
-	return GeneratedGlue;
+	GeneratedGlue << TEXT("} // namespace KlawrNativeGlue");
 }
 
-FString FKlawrCodeGenerator::GenerateManagedStaticConstructor(const UClass* Class)
+void FKlawrCodeGenerator::GenerateManagedStaticConstructor(
+	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
+)
 {
-	FString GeneratedGlue = ManagedIndent + FString::Printf(
-		TEXT("static %s%s()\r\n"), Class->GetPrefixCPP(), *Class->GetName()
+	GeneratedGlue << FString::Printf(
+		TEXT("static %s%s()"), Class->GetPrefixCPP(), *Class->GetName()
 	);
-	GeneratedGlue += ManagedIndent + TEXT("{\r\n");
-	IndentManagedCode();
+	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
+	
 	// bind managed delegates to pointers to native wrapper functions
-	GeneratedGlue += ManagedIndent + TEXT("var manager = AppDomain.CurrentDomain.Manager as ICustomAppDomainManager;\r\n");
-	GeneratedGlue += ManagedIndent + TEXT("var nativeFuncPtrs = manager.GetNativeFunctionPointers();\r\n");
+	GeneratedGlue 
+		<< TEXT("var manager = AppDomain.CurrentDomain.Manager as ICustomAppDomainManager;")
+		<< TEXT("var nativeFuncPtrs = manager.GetNativeFunctionPointers();");
 	
 	int32 FunctionIdx = 0;
 	auto ExportedProperties = ClassExportedProperties.Find(Class);
@@ -720,14 +711,14 @@ FString FKlawrCodeGenerator::GenerateManagedStaticConstructor(const UClass* Clas
 	{
 		for (const FExportedProperty& PropInfo : *ExportedProperties)
 		{
-			GeneratedGlue += ManagedIndent + FString::Printf(
-				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;\r\n"),
+			GeneratedGlue << FString::Printf(
+				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;"),
 				*PropInfo.GetterDelegateName, FunctionIdx, *PropInfo.GetterDelegateTypeName,
 				*PropInfo.GetterDelegateTypeName
 			);
 			++FunctionIdx;
-			GeneratedGlue += ManagedIndent + FString::Printf(
-				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;\r\n"),
+			GeneratedGlue << FString::Printf(
+				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;"),
 				*PropInfo.SetterDelegateName, FunctionIdx, *PropInfo.SetterDelegateTypeName,
 				*PropInfo.SetterDelegateTypeName
 			);
@@ -743,8 +734,8 @@ FString FKlawrCodeGenerator::GenerateManagedStaticConstructor(const UClass* Clas
 			const FString DelegateTypeName = GenerateDelegateTypeName(
 				FuncInfo.Function->GetName(), FuncInfo.bHasReturnValue
 			);
-			GeneratedGlue += ManagedIndent + FString::Printf(
-				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;\r\n"),
+			GeneratedGlue << FString::Printf(
+				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;"),
 				*GenerateDelegateName(FuncInfo.Function->GetName()),
 				FunctionIdx, *DelegateTypeName, *DelegateTypeName
 			);
@@ -752,50 +743,44 @@ FString FKlawrCodeGenerator::GenerateManagedStaticConstructor(const UClass* Clas
 		}
 	}
 	
-	UnindentManagedCode();
-	GeneratedGlue += ManagedIndent + TEXT("}\r\n\r\n");
-
-	return GeneratedGlue;
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 }
 
-FString FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(const UClass* Class)
+void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
+	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
+) const
 {
 	// declare namespace
-	FString GeneratedGlue(TEXT("namespace Klawr.UnrealEngine\r\n{\r\n"));
-	IndentManagedCode();
+	GeneratedGlue << TEXT("namespace Klawr.UnrealEngine") << FKlawrCodeFormatter::OpenBrace();
+
 	// declare class
-	GeneratedGlue += ManagedIndent + FString::Printf(
+	FString ClassDecl = FString::Printf(
 		TEXT("public class %s%s"), Class->GetPrefixCPP(), *Class->GetName()
 	);
 	// if the base class was exported mirror the inheritance in the managed wrapper class
 	UClass* SuperClass = Class->GetSuperClass();
 	if (SuperClass && ExportedClasses.Contains(SuperClass->GetFName()))
 	{
-		GeneratedGlue += FString::Printf(
+		ClassDecl += FString::Printf(
 			TEXT(" : %s%s"), SuperClass->GetPrefixCPP(), *SuperClass->GetName()
 		);
 	}
-	GeneratedGlue += TEXT("\r\n");
-	GeneratedGlue += ManagedIndent + TEXT("{\r\n");
-	IndentManagedCode();
+	GeneratedGlue << ClassDecl << FKlawrCodeFormatter::OpenBrace();
+	
 	// declare the wrapped native object
-	GeneratedGlue += ManagedIndent + TEXT("private IntPtr _nativeObject;\r\n\r\n");
-
-	return GeneratedGlue;
+	GeneratedGlue << TEXT("private IntPtr _nativeObject;") LINE_TERMINATOR;
 }
 
-FString FKlawrCodeGenerator::GenerateManagedGlueCodeFooter(const UClass* Class)
+void FKlawrCodeGenerator::GenerateManagedGlueCodeFooter(
+	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
+)
 {
 	// define static constructor
-	FString GeneratedGlue = GenerateManagedStaticConstructor(Class);
+	GenerateManagedStaticConstructor(Class, GeneratedGlue);
 	// close the class
-	UnindentManagedCode();
-	GeneratedGlue += ManagedIndent + TEXT("}\r\n");
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 	// close the namespace
-	UnindentManagedCode();
-	GeneratedGlue += TEXT("}\r\n");
-
-	return GeneratedGlue;
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 }
 
 void FKlawrCodeGenerator::ExportClass(
@@ -819,8 +804,10 @@ void FKlawrCodeGenerator::ExportClass(
 	ManagedGlueFilename.Append(TEXT(".cs"));
 	AllScriptHeaders.Add(NativeGlueFilename);
 
-	FString NativeGlueCode = GenerateNativeGlueCodeHeader(Class);
-	FString ManagedGlueCode = GenerateManagedGlueCodeHeader(Class);
+	FKlawrCodeFormatter NativeGlueCode(TEXT('\t'), 1);
+	FKlawrCodeFormatter ManagedGlueCode(TEXT(' '), 4);
+	GenerateNativeGlueCodeHeader(Class, NativeGlueCode);
+	GenerateManagedGlueCodeHeader(Class, ManagedGlueCode);
 
 	const FString ClassNameCPP = Super::GetClassNameCPP(Class);
 
@@ -845,11 +832,11 @@ void FKlawrCodeGenerator::ExportClass(
 		}
 	}
 
-	NativeGlueCode += GenerateNativeGlueCodeFooter(Class);
-	ManagedGlueCode += GenerateManagedGlueCodeFooter(Class);
+	GenerateNativeGlueCodeFooter(Class, NativeGlueCode);
+	GenerateManagedGlueCodeFooter(Class, ManagedGlueCode);
 
-	Super::SaveHeaderIfChanged(NativeGlueFilename, NativeGlueCode);
-	Super::SaveHeaderIfChanged(ManagedGlueFilename, ManagedGlueCode);
+	Super::SaveHeaderIfChanged(NativeGlueFilename, NativeGlueCode.Content);
+	Super::SaveHeaderIfChanged(ManagedGlueFilename, ManagedGlueCode.Content);
 }
 
 void FKlawrCodeGenerator::GenerateManagedWrapperProject()
@@ -904,12 +891,12 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 
 void FKlawrCodeGenerator::FinishExport()
 {
-	GlueAllGeneratedFiles();
+	GlueAllNativeWrapperFiles();
 	Super::RenameTempFiles();
 	GenerateManagedWrapperProject();
 }
 
-void FKlawrCodeGenerator::GlueAllGeneratedFiles()
+void FKlawrCodeGenerator::GlueAllNativeWrapperFiles()
 {
 	// generate the file that will be included by ScriptPlugin.cpp
 	FString GlueFilename = GeneratedCodePath / TEXT("GeneratedScriptLibraries.inl");
@@ -931,24 +918,4 @@ void FKlawrCodeGenerator::GlueAllGeneratedFiles()
 	}
 	
 	Super::SaveHeaderIfChanged(GlueFilename, GeneratedGlue);
-}
-
-void FKlawrCodeGenerator::IndentManagedCode()
-{
-	ManagedIndent += ManagedTab;
-}
-
-void FKlawrCodeGenerator::UnindentManagedCode()
-{
-	ManagedIndent.RemoveFromEnd(ManagedTab);
-}
-
-void FKlawrCodeGenerator::IndentNativeCode()
-{
-	NativeIndent += NativeTab;
-}
-
-void FKlawrCodeGenerator::UnindentNativeCode()
-{
-	NativeIndent.RemoveFromEnd(NativeTab);
 }
