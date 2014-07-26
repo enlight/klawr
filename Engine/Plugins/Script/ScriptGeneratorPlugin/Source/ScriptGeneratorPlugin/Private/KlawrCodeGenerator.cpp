@@ -702,7 +702,7 @@ void FKlawrCodeGenerator::GenerateManagedStaticConstructor(
 	
 	// bind managed delegates to pointers to native wrapper functions
 	GeneratedGlue 
-		<< TEXT("var manager = AppDomain.CurrentDomain.Manager as ICustomAppDomainManager;")
+		<< TEXT("var manager = AppDomain.CurrentDomain.DomainManager as ICustomAppDomainManager;")
 		<< TEXT("var nativeFuncPtrs = manager.GetNativeFunctionPointers();");
 	
 	int32 FunctionIdx = 0;
@@ -750,6 +750,12 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
 ) const
 {
+	// usings
+	GeneratedGlue 
+		<< TEXT("using System;")
+		<< TEXT("using System.Runtime.InteropServices;")
+		<< LINE_TERMINATOR;
+
 	// declare namespace
 	GeneratedGlue << TEXT("namespace Klawr.UnrealEngine") << FKlawrCodeFormatter::OpenBrace();
 
