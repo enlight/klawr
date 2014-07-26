@@ -841,11 +841,22 @@ void FKlawrCodeGenerator::ExportClass(
 
 void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 {
+	const FString ResourcesBasePath = 
+		FPaths::EnginePluginsDir() / TEXT("Script/ScriptGeneratorPlugin/Resources");
+	const FString ProjectBasePath = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr");
+
+	const FString AssemblyInfoSubPath(TEXT("Properties/AssemblyInfo.cs"));
+	const FString AssemblyInfoSrcFilename =	ResourcesBasePath / AssemblyInfoSubPath;
+	const FString AssemblyInfoDestFilename = ProjectBasePath / AssemblyInfoSubPath;
+
+	if (COPY_OK != IFileManager::Get().Copy(*AssemblyInfoDestFilename, *AssemblyInfoSrcFilename))
+	{
+		FError::Throwf(TEXT("Failed to copy '%s'"), *AssemblyInfoSrcFilename);
+	}
+
 	const FString ProjectName("UE4Wrapper.csproj");
-	const FString ProjectTemplateFilename = 
-		FPaths::EnginePluginsDir() / TEXT("Script/ScriptGeneratorPlugin/Resources") / ProjectName;
-	const FString ProjectOutputFilename = 
-		FPaths::EngineIntermediateDir() / TEXT("ProjectFiles") / ProjectName;
+	const FString ProjectTemplateFilename = ResourcesBasePath / ProjectName;
+	const FString ProjectOutputFilename = ProjectBasePath / ProjectName;
 
 	// load the template .csproj
 	pugi::xml_document Project;
