@@ -223,7 +223,7 @@ UProperty* FKlawrCodeGenerator::GetNativeWrapperArgsAndReturnType(
 }
 
 void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
-	const UClass* Class, UFunction* Function, const UClass* FuncSuper, FKlawrCodeFormatter& GeneratedGlue
+	const UClass* Class, UFunction* Function, FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	FString FormalArgs, ActualArgs, ReturnValueType, ReturnValueName;
@@ -243,28 +243,18 @@ void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
 
 	// call the wrapped UFunction
-	if (!FuncSuper)
-	{
-		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
-		//        regular function argument names.
-		GeneratedGlue << TEXT("UObject* Obj = (UObject*)self;");
-		// FIXME: Super::GenerateFunctionDispatch() doesn't indent code properly, get rid of it!
-		// TODO: Maybe use an initializer list to FDispatchParams struct instead of the current multi-line init
-		GeneratedGlue << Super::GenerateFunctionDispatch(Function);
+	// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
+	//        regular function argument names.
+	GeneratedGlue << TEXT("UObject* Obj = (UObject*)self;");
+	// FIXME: Super::GenerateFunctionDispatch() doesn't indent code properly, get rid of it!
+	// TODO: Maybe use an initializer list to FDispatchParams struct instead of the current multi-line init
+	GeneratedGlue << Super::GenerateFunctionDispatch(Function);
 
-		if (ReturnValue)
-		{
-			GenerateNativeReturnValueHandler(
-				ReturnValue, FString::Printf(TEXT("Params.%s"), *ReturnValue->GetName()), 
-				GeneratedGlue
-			);
-		}
-	}
-	else // the function is actually implemented in a base class, so call the base class version
+	if (ReturnValue)
 	{
-		GeneratedGlue << FString::Printf(
-			TEXT("return %s_%s(%s);"),
-			*FuncSuper->GetName(), *Function->GetName(), *ActualArgs
+		GenerateNativeReturnValueHandler(
+			ReturnValue, FString::Printf(TEXT("Params.%s"), *ReturnValue->GetName()), 
+			GeneratedGlue
 		);
 	}
 
@@ -334,8 +324,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperArgsAndReturnType(
 }
 
 void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
-	const UClass* Class, const UFunction* Function, const UClass* FuncSuper, 
-	FKlawrCodeFormatter& GeneratedGlue
+	const UClass* Class, const UFunction* Function, FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	FString FormalInteropArgs, ActualInteropArgs, FormalManagedArgs, ActualManagedArgs;
@@ -367,29 +356,19 @@ void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
 
 	// call the delegate bound to the native wrapper function
-	if (!FuncSuper)
-	{
-		if (ReturnValueTypeName.Compare(TEXT("void")) == 0)
-		{
-			GeneratedGlue << FString::Printf(
-				TEXT("%s(%s);"), *DelegateName, *ActualInteropArgs
-			);
-		}
-		else // method has a return value
-		{
-			// TODO: convert return type
-			GeneratedGlue << FString::Printf(
-				TEXT("return %s(%s);"), *DelegateName, *ActualInteropArgs
-			);
-		}
-	}
-	else // the function is actually implemented in a base class, so call the base class version
+	if (!bHasReturnValue)
 	{
 		GeneratedGlue << FString::Printf(
-			TEXT("return base.%s(%s);"), *Function->GetName(), *ActualManagedArgs
+			TEXT("%s(%s);"), *DelegateName, *ActualInteropArgs
 		);
 	}
-
+	else // method has a return value
+	{
+		GeneratedGlue << FString::Printf(
+			TEXT("return %s(%s);"), *DelegateName, *ActualInteropArgs
+		);
+	}
+	
 	GeneratedGlue << FKlawrCodeFormatter::CloseBrace() << FKlawrCodeFormatter::LineTerminator();
 }
 
@@ -398,22 +377,15 @@ void FKlawrCodeGenerator::ExportFunction(
 	FKlawrCodeFormatter& NativeGlueCode, FKlawrCodeFormatter& ManagedGlueCode
 )
 {
-	// FIXME: Do we really need to export a wrapper that calls the base class function?
-	//        In theory that shouldn't be necessary because the inheritance hierarchy is mirrored
-	//        in the managed wrapper classes, though is it possible for a subclass to be exported
-	//        while its base class isn't? Need to experiment!
-	UClass* FuncSuper = nullptr;
-	if (Function->GetOwnerClass() != Class)
+	// The inheritance hierarchy is mirrored in the C# wrapper classes, so there's no need to
+	// redefine functions from a base class (assuming that base class has also been exported).
+	// However, this also means that functions that are defined in UObject (which isn't exported)
+	// are not available in the C# wrapper classes, but that's not a problem for now.
+	if (Function->GetOwnerClass() == Class)
 	{
-		// find the base definition of the function
-		if (Super::ExportedClasses.Contains(Function->GetOwnerClass()->GetFName()))
-		{
-			FuncSuper = Function->GetOwnerClass();
-		}
+		GenerateNativeWrapperFunction(Class, Function, NativeGlueCode);
+		GenerateManagedWrapperFunction(Class, Function, ManagedGlueCode);
 	}
-
-	GenerateNativeWrapperFunction(Class, Function, FuncSuper, NativeGlueCode);
-	GenerateManagedWrapperFunction(Class, Function, FuncSuper, ManagedGlueCode);
 }
 
 bool FKlawrCodeGenerator::IsPropertyTypeSupported(UProperty* Property) const
@@ -515,90 +487,63 @@ bool FKlawrCodeGenerator::CanExportProperty(const FString& ClassNameCPP, UClass*
 }
 
 void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
-	const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+	const FString& ClassNameCPP, UClass* Class, UProperty* Property,
 	FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	// define a native getter wrapper function that will be bound to a managed delegate
 	FString PropertyNativeTypeName = GetPropertyNativeType(Property);
-	FString GetterName = FString::Printf(
-		TEXT("%s_Get_%s"), *Class->GetName(), *Property->GetName()
-	);
+	FString GetterName = FString::Printf(TEXT("%s_Get_%s"), *Class->GetName(), *Property->GetName());
 	GeneratedGlue << FString::Printf(TEXT("%s %s(void* self)"), *PropertyNativeTypeName, *GetterName);
 	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
 	
-	if (!PropertySuper)
-	{
-		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
-		//        regular function argument names.
-		GeneratedGlue 
-			<< TEXT("UObject* Obj = (UObject*)self;")
-			<< FString::Printf(
-				TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"),
-				*ClassNameCPP, *Property->GetName()
-			)
-			<< FString::Printf(
-				TEXT("%s PropertyValue;\r\n"), 
-				*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue)
-			)
-			<< TEXT("Property->CopyCompleteValue(&PropertyValue, Property->ContainerPtrToValuePtr<void>(Obj));");
+	// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
+	//        regular function argument names.
+	GeneratedGlue 
+		<< TEXT("UObject* Obj = (UObject*)self;")
+		<< FString::Printf(
+			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"),
+			*ClassNameCPP, *Property->GetName()
+		)
+		<< FString::Printf(
+			TEXT("%s PropertyValue;\r\n"), 
+			*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue)
+		)
+		<< TEXT("Property->CopyCompleteValue(&PropertyValue, Property->ContainerPtrToValuePtr<void>(Obj));");
 			
-		GenerateNativeReturnValueHandler(Property, TEXT("PropertyValue"), GeneratedGlue);
-	}
-	else // the property is actually implemented in a base class, so call the base class getter
-	{
-		// FIXME: Do we really need to export a wrapper that calls the base getter/setter?
-		GeneratedGlue << FString::Printf(
-			TEXT("return %s_Get_%s(self);"),
-			*PropertySuper->GetName(), *Property->GetName()
-		);
-	}
-
+	GenerateNativeReturnValueHandler(Property, TEXT("PropertyValue"), GeneratedGlue);
+	
 	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 }
 
 void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
-	const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+	const FString& ClassNameCPP, UClass* Class, UProperty* Property,
 	FKlawrCodeFormatter& GeneratedGlue
 )
 {
 	// define a native setter wrapper function that will be bound to a managed delegate
 	FString PropertyNativeTypeName = GetPropertyNativeType(Property);
-	FString SetterName = FString::Printf(
-		TEXT("%s_Set_%s"), *Class->GetName(), *Property->GetName()
+	FString SetterName = FString::Printf(TEXT("%s_Set_%s"), *Class->GetName(), *Property->GetName());
+	GeneratedGlue << FString::Printf(
+		TEXT("void %s(void* self, %s %s)"), 
+		*SetterName, *PropertyNativeTypeName, *Property->GetName()
 	);
+	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
+		
+	// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
+	//        regular function argument names.
 	GeneratedGlue 
+		<< TEXT("UObject* Obj = (UObject*)self;")
 		<< FString::Printf(
-			TEXT("void %s(void* self, %s %s)"), 
-			*SetterName, *PropertyNativeTypeName, *Property->GetName()
+			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"), 
+			*ClassNameCPP, *Property->GetName()
 		)
-		<< TEXT("{");
-	++GeneratedGlue.Indent;
-	if (!PropertySuper)
-	{
-		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
-		//        regular function argument names.
-		GeneratedGlue 
-			<< TEXT("UObject* Obj = (UObject*)self;")
-			<< FString::Printf(
-				TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"), 
-				*ClassNameCPP, *Property->GetName()
-			)
-			<< FString::Printf(
-				TEXT("%s PropertyValue = %s;"), 
-				*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue), 
-				*InitializeFunctionDispatchParam(NULL, Property, 0)
-			)
-			<< TEXT("Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<void>(Obj), &PropertyValue);");
-	}
-	else // the property is actually implemented in a base class, so call the base class setter
-	{
-		// FIXME: Do we really need to export a wrapper that calls the base getter/setter?
-		GeneratedGlue << FString::Printf(
-			TEXT("%s_Set_%s(self, %s);"),
-			*PropertySuper->GetName(), *Property->GetName(), *Property->GetName()
-		);
-	}
+		<< FString::Printf(
+			TEXT("%s PropertyValue = %s;"), 
+			*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue), 
+			*InitializeFunctionDispatchParam(NULL, Property, 0)
+		)
+		<< TEXT("Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<void>(Obj), &PropertyValue);");
 	
 	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 }
@@ -660,20 +605,12 @@ void FKlawrCodeGenerator::ExportProperty(
 	FKlawrCodeFormatter& NativeGlueCode, FKlawrCodeFormatter& ManagedGlueCode
 )
 {
-	UClass* PropertySuper = nullptr;
-	if (Property->GetOwnerClass() != Class)
+	// Only wrap properties that are actually in this class, inheritance will take care of the 
+	// properties from base classes.
+	if (Property->GetOwnerClass() == Class)
 	{
-		// find the base class where this property was defined
-		if (ExportedClasses.Contains(Property->GetOwnerClass()->GetFName()))
-		{
-			PropertySuper = Property->GetOwnerClass();
-		}
-	}
-
-	GenerateNativePropertyGetterWrapper(ClassNameCPP, Class, Property, PropertySuper, NativeGlueCode);
-	GenerateNativePropertySetterWrapper(ClassNameCPP, Class, Property, PropertySuper, NativeGlueCode);
-	if (!PropertySuper)
-	{
+		GenerateNativePropertyGetterWrapper(ClassNameCPP, Class, Property, NativeGlueCode);
+		GenerateNativePropertySetterWrapper(ClassNameCPP, Class, Property, NativeGlueCode);
 		GenerateManagedPropertyWrapper(Class, Property, ManagedGlueCode);
 	}
 }
@@ -735,6 +672,7 @@ void FKlawrCodeGenerator::GenerateManagedStaticConstructor(
 	{
 		for (const FExportedFunction& FuncInfo : *ExportedFunctions)
 		{
+			// FIXME: don't generate the delegate type and name again, get it from FExportedFunction
 			const FString DelegateTypeName = GenerateDelegateTypeName(
 				FuncInfo.Function->GetName(), FuncInfo.bHasReturnValue
 			);

@@ -142,22 +142,20 @@ private:
 	);
 		
 	void GenerateNativeWrapperFunction(
-		const UClass* Class, UFunction* Function, const UClass* FuncSuper, 
-		FKlawrCodeFormatter& GeneratedGlue
+		const UClass* Class, UFunction* Function, FKlawrCodeFormatter& GeneratedGlue
 	);
 
 	void GenerateManagedWrapperFunction(
-		const UClass* Class, const UFunction* Function, const UClass* FuncSuper, 
-		FKlawrCodeFormatter& GeneratedGlue
+		const UClass* Class, const UFunction* Function, FKlawrCodeFormatter& GeneratedGlue
 	);
 
 	void GenerateNativePropertyGetterWrapper(
-		const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+		const FString& ClassNameCPP, UClass* Class, UProperty* Property,
 		FKlawrCodeFormatter& GeneratedGlue
 	);
 
 	void GenerateNativePropertySetterWrapper(
-		const FString& ClassNameCPP, UClass* Class, UProperty* Property, UClass* PropertySuper,
+		const FString& ClassNameCPP, UClass* Class, UProperty* Property,
 		FKlawrCodeFormatter& GeneratedGlue
 	);
 
