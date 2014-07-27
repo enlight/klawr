@@ -77,6 +77,8 @@ private:
 	static const FName Name_Color;
 
 	static const FString UnmanagedFunctionPointerAttribute;
+	static const FString MarshalReturnedBoolAsUint8Attribute;
+	static const FString MarshalBoolParameterAsUint8Attribute;
 	static const FString ClrHostInterfacesAssemblyName;
 
 	struct FExportedProperty
@@ -135,10 +137,9 @@ private:
 		const UFunction* Function, FString& OutFormalArgs, FString& OutActualArgs
 	);
 
-	void GenerateManagedWrapperArgsAndReturnType(
+	UProperty* GetManagedWrapperArgsAndReturnType(
 		const UFunction* Function, FString& OutFormalInteropArgs, FString& OutActualInteropArgs,
-		FString& OutFormalManagedArgs, FString& OutActualManagedArgs,
-		FString& OutReturnValueType
+		FString& OutFormalManagedArgs, FString& OutActualManagedArgs
 	);
 		
 	void GenerateNativeWrapperFunction(

@@ -39,6 +39,12 @@ const FName FKlawrCodeGenerator::Name_Color("Color");
 const FString FKlawrCodeGenerator::UnmanagedFunctionPointerAttribute = 
 	TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl)]");
 
+const FString FKlawrCodeGenerator::MarshalReturnedBoolAsUint8Attribute =
+	TEXT("[return: MarshalAs(UnmanagedType.U1)]");
+
+const FString FKlawrCodeGenerator::MarshalBoolParameterAsUint8Attribute =
+	TEXT("[MarshalAs(UnmanagedType.U1)]");
+
 const FString FKlawrCodeGenerator::ClrHostInterfacesAssemblyName = "Klawr.ClrHost.Interfaces";
 
 FKlawrCodeGenerator::FKlawrCodeGenerator(
@@ -56,10 +62,21 @@ FString FKlawrCodeGenerator::InitializeFunctionDispatchParam(UFunction* Function
 		if (Param->IsA(UIntProperty::StaticClass())	|| 
 			Param->IsA(UFloatProperty::StaticClass()) ||
 			Param->IsA(UStrProperty::StaticClass()) ||
-			Param->IsA(UNameProperty::StaticClass()) ||
-			Param->IsA(UBoolProperty::StaticClass()))
+			Param->IsA(UNameProperty::StaticClass()))
 		{
 			Param->GetName(Initializer);
+		}
+		else if (Param->IsA(UBoolProperty::StaticClass()))
+		{
+			if (CastChecked<UBoolProperty>(Param)->IsNativeBool())
+			{
+				// explicitly convert uin8 to bool
+				Initializer = FString::Printf(TEXT("!!%s"), *Param->GetName());
+			}
+			else
+			{
+				Param->GetName(Initializer);
+			}
 		}
 		else if (Param->IsA(UStructProperty::StaticClass()))
 		{
@@ -78,8 +95,7 @@ FString FKlawrCodeGenerator::InitializeFunctionDispatchParam(UFunction* Function
 		}
 		else if (Param->IsA(UClassProperty::StaticClass()))
 		{
-			Initializer = TEXT("(UClass*)");
-			Initializer += Param->GetName();
+			Initializer = FString::Printf(TEXT("(UClass*)%s"), *Param->GetName());
 		}
 		else if (Param->IsA(UObjectPropertyBase::StaticClass()))
 		{
@@ -258,7 +274,9 @@ void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 		);
 	}
 
-	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
+	GeneratedGlue 
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator();
 
 	FExportedFunction FuncInfo;
 	FuncInfo.Function = Function;
@@ -283,29 +301,40 @@ FString FKlawrCodeGenerator::GenerateDelegateName(const FString& FunctionName) c
 	return FString(TEXT("_")) + FunctionName;
 }
 
-void FKlawrCodeGenerator::GenerateManagedWrapperArgsAndReturnType(
+UProperty* FKlawrCodeGenerator::GetManagedWrapperArgsAndReturnType(
 	const UFunction* Function, FString& OutFormalInteropArgs, FString& OutActualInteropArgs,
-	FString& OutFormalManagedArgs, FString& OutActualManagedArgs, FString& OutReturnValueType
+	FString& OutFormalManagedArgs, FString& OutActualManagedArgs
 )
 {
 	OutFormalInteropArgs = TEXT("IntPtr self");
 	OutActualInteropArgs = TEXT("_nativeObject");
 	OutFormalManagedArgs.Empty();
 	OutActualManagedArgs.Empty();
-	OutReturnValueType = TEXT("void");
+	UProperty* ReturnValue = nullptr;
 
 	for (TFieldIterator<UProperty> ParamIt(Function); ParamIt; ++ParamIt)
 	{
 		UProperty* Param = *ParamIt;
 		if (Param->GetPropertyFlags() & CPF_ReturnParm)
 		{
-			OutReturnValueType = GetPropertyInteropType(Param);
+			ReturnValue = Param;
 		}
 		else
 		{
 			FString ArgName = Param->GetName();
 			FString ArgType = GetPropertyInteropType(Param);
-			OutFormalInteropArgs += FString::Printf(TEXT(", %s %s"), *ArgType, *ArgName);
+			if (Param->IsA(UBoolProperty::StaticClass()))
+			{
+				// by default C# bool gets marshaled to unmanaged BOOL (4-bytes),
+				// marshal it to uint8 instead (which is the size of an MSVC bool)
+				OutFormalInteropArgs += FString::Printf(
+					TEXT(", %s %s %s"), *MarshalBoolParameterAsUint8Attribute, *ArgType, *ArgName
+				);
+			}
+			else
+			{
+				OutFormalInteropArgs += FString::Printf(TEXT(", %s %s"), *ArgType, *ArgName);
+			}
 			OutActualInteropArgs += FString::Printf(TEXT(", %s"), *ArgName);
 			if (!OutFormalManagedArgs.IsEmpty())
 			{
@@ -321,6 +350,8 @@ void FKlawrCodeGenerator::GenerateManagedWrapperArgsAndReturnType(
 			OutActualManagedArgs += ArgName;
 		}
 	}
+
+	return ReturnValue;
 }
 
 void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
@@ -328,48 +359,54 @@ void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 )
 {
 	FString FormalInteropArgs, ActualInteropArgs, FormalManagedArgs, ActualManagedArgs;
-	FString ReturnValueTypeName;
-	GenerateManagedWrapperArgsAndReturnType(
-		Function, FormalInteropArgs, ActualInteropArgs, FormalManagedArgs, ActualManagedArgs, 
-		ReturnValueTypeName
+	UProperty* ReturnValue = GetManagedWrapperArgsAndReturnType(
+		Function, FormalInteropArgs, ActualInteropArgs, FormalManagedArgs, ActualManagedArgs
 	);
-	bool bHasReturnValue = (ReturnValueTypeName.Compare(TEXT("void")) != 0);
-	// declare a managed delegate type matching the type of the native wrapper function
-	GeneratedGlue << UnmanagedFunctionPointerAttribute;
+	const bool bHasReturnValue = (ReturnValue != nullptr);
+	const bool bReturnsBool = (bHasReturnValue && ReturnValue->IsA(UBoolProperty::StaticClass()));
+	const FString ReturnValueTypeName = 
+		bHasReturnValue ? GetPropertyInteropType(ReturnValue) : TEXT("void");
 	const FString DelegateTypeName = GenerateDelegateTypeName(Function->GetName(), bHasReturnValue);
-	GeneratedGlue << FString::Printf(
-		TEXT("private delegate %s %s(%s);"),
-		*ReturnValueTypeName, *DelegateTypeName, *FormalInteropArgs
-	);
-	// declare a delegate instance that will be bound to the native wrapper function
 	const FString DelegateName = GenerateDelegateName(Function->GetName());
-	GeneratedGlue << FString::Printf(
-		TEXT("private static %s %s;"),
-		*DelegateTypeName, *DelegateName
-	);
-	// define a managed method that calls the native wrapper function through the delegate 
-	// declared above
-	GeneratedGlue << FString::Printf(
-		TEXT("public %s %s(%s)"),
-		*ReturnValueTypeName, *Function->GetName(), *FormalManagedArgs
-	);
-	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
+
+	GeneratedGlue 
+		// declare a managed delegate type matching the type of the native wrapper function
+		<< UnmanagedFunctionPointerAttribute
+		<< (bReturnsBool ? MarshalReturnedBoolAsUint8Attribute : FString())
+		<< FString::Printf(
+			TEXT("private delegate %s %s(%s);"),
+			*ReturnValueTypeName, *DelegateTypeName, *FormalInteropArgs
+		)
+		// declare a delegate instance that will be bound to the native wrapper function
+		<< FString::Printf(
+			TEXT("private static %s %s;"),
+			*DelegateTypeName, *DelegateName
+		)
+		// define a managed method that calls the native wrapper function through the delegate 
+		// declared above
+		<< FString::Printf(
+			TEXT("public %s %s(%s)"),
+			*ReturnValueTypeName, *Function->GetName(), *FormalManagedArgs
+		)
+		<< FKlawrCodeFormatter::OpenBrace();
 
 	// call the delegate bound to the native wrapper function
-	if (!bHasReturnValue)
-	{
-		GeneratedGlue << FString::Printf(
-			TEXT("%s(%s);"), *DelegateName, *ActualInteropArgs
-		);
-	}
-	else // method has a return value
+	if (bHasReturnValue)
 	{
 		GeneratedGlue << FString::Printf(
 			TEXT("return %s(%s);"), *DelegateName, *ActualInteropArgs
 		);
 	}
+	else // method has a return value
+	{
+		GeneratedGlue << FString::Printf(
+			TEXT("%s(%s);"), *DelegateName, *ActualInteropArgs
+		);
+	}
 	
-	GeneratedGlue << FKlawrCodeFormatter::CloseBrace() << FKlawrCodeFormatter::LineTerminator();
+	GeneratedGlue
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator();
 }
 
 void FKlawrCodeGenerator::ExportFunction(
@@ -437,6 +474,12 @@ FString FKlawrCodeGenerator::GetPropertyNativeType(UProperty* Property)
 	{
 		return TEXT("void*");
 	}
+	else if (Property->IsA(UBoolProperty::StaticClass()))
+	{
+		// the managed wrapper functions marshal C# bool to uint8, so for the sake of consistency
+		// use uint8 instead of C++ bool in the native wrapper functions
+		return TEXT("uint8");
+	}
 	else if (Property->IsA(UStrProperty::StaticClass()) || Property->IsA(UNameProperty::StaticClass()))
 	{
 		return TEXT("const TCHAR*");
@@ -453,6 +496,10 @@ FString FKlawrCodeGenerator::GetPropertyInteropType(UProperty* Property)
 	if (IsPropertyTypePointer(Property))
 	{
 		return TEXT("IntPtr");
+	}
+	else if (Property->IsA(UBoolProperty::StaticClass()))
+	{
+		return TEXT("bool");
 	}
 	else if (Property->IsA(UIntProperty::StaticClass()))
 	{
@@ -494,12 +541,12 @@ void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
 	// define a native getter wrapper function that will be bound to a managed delegate
 	FString PropertyNativeTypeName = GetPropertyNativeType(Property);
 	FString GetterName = FString::Printf(TEXT("%s_Get_%s"), *Class->GetName(), *Property->GetName());
-	GeneratedGlue << FString::Printf(TEXT("%s %s(void* self)"), *PropertyNativeTypeName, *GetterName);
-	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
-	
-	// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
-	//        regular function argument names.
+
 	GeneratedGlue 
+		<< FString::Printf(TEXT("%s %s(void* self)"), *PropertyNativeTypeName, *GetterName)
+		<< FKlawrCodeFormatter::OpenBrace()
+		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
+		//        regular function argument names.
 		<< TEXT("UObject* Obj = (UObject*)self;")
 		<< FString::Printf(
 			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"),
@@ -513,7 +560,9 @@ void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
 			
 	GenerateNativeReturnValueHandler(Property, TEXT("PropertyValue"), GeneratedGlue);
 	
-	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
+	GeneratedGlue 
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator();
 }
 
 void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
@@ -524,15 +573,15 @@ void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
 	// define a native setter wrapper function that will be bound to a managed delegate
 	FString PropertyNativeTypeName = GetPropertyNativeType(Property);
 	FString SetterName = FString::Printf(TEXT("%s_Set_%s"), *Class->GetName(), *Property->GetName());
-	GeneratedGlue << FString::Printf(
-		TEXT("void %s(void* self, %s %s)"), 
-		*SetterName, *PropertyNativeTypeName, *Property->GetName()
-	);
-	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
-		
-	// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
-	//        regular function argument names.
+
 	GeneratedGlue 
+		<< FString::Printf(
+			TEXT("void %s(void* self, %s %s)"), 
+			*SetterName, *PropertyNativeTypeName, *Property->GetName()
+		)
+		<< FKlawrCodeFormatter::OpenBrace()
+		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
+		//        regular function argument names.
 		<< TEXT("UObject* Obj = (UObject*)self;")
 		<< FString::Printf(
 			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"), 
@@ -543,9 +592,9 @@ void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
 			*GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue), 
 			*InitializeFunctionDispatchParam(NULL, Property, 0)
 		)
-		<< TEXT("Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<void>(Obj), &PropertyValue);");
-	
-	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
+		<< TEXT("Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<void>(Obj), &PropertyValue);")
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator();
 }
 
 void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
@@ -562,21 +611,31 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 	PropInfo.SetterDelegateTypeName = GenerateDelegateTypeName(SetterName, false);
 	ClassExportedProperties.FindOrAdd(Class).Add(PropInfo);
 	
+	const bool bIsBoolProperty = Property->IsA(UBoolProperty::StaticClass());
 	FString PropertyTypeName = GetPropertyInteropType(Property);
-	// declare managed delegate types matching the types of the native wrapper functions
+	FString SetterParamType = PropertyTypeName;
+	if (bIsBoolProperty)
+	{
+		SetterParamType = FString::Printf(
+			TEXT("%s %s"), *MarshalBoolParameterAsUint8Attribute, *PropertyTypeName
+		);
+	}
+	
 	GeneratedGlue
+		// declare getter delegate type
 		<< UnmanagedFunctionPointerAttribute
+		<< (bIsBoolProperty ? MarshalReturnedBoolAsUint8Attribute : FString())
 		<< FString::Printf(
 			TEXT("private delegate %s %s(IntPtr self);"),
 			*PropertyTypeName, *PropInfo.GetterDelegateTypeName
 		)
+		// declare setter delegate type
 		<< UnmanagedFunctionPointerAttribute
 		<< FString::Printf(
 			TEXT("private delegate void %s(IntPtr self, %s %s);"),
-			*PropInfo.SetterDelegateTypeName, *PropertyTypeName, *Property->GetName()
-		);
-	// declare delegate instances that will be bound to the native wrapper functions
-	GeneratedGlue 
+			*PropInfo.SetterDelegateTypeName, *SetterParamType, *Property->GetName()
+		)
+		// declare delegate instances that will be bound to the native wrapper functions
 		<< FString::Printf(
 			TEXT("private static %s %s;"),
 			*PropInfo.GetterDelegateTypeName, *PropInfo.GetterDelegateName
@@ -584,10 +643,9 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 		<< FString::Printf(
 			TEXT("private static %s %s;"),
 			*PropInfo.SetterDelegateTypeName, *PropInfo.SetterDelegateName
-		);
-	// define a managed property that calls the native wrapper functions through the delegates 
-	// declared above
-	GeneratedGlue 
+		)
+		// define a property that calls the native wrapper functions through the delegates 
+		// declared above
 		<< FString::Printf(TEXT("public %s %s"), *PropertyTypeName, *Property->GetName())
 		<< FKlawrCodeFormatter::OpenBrace()
 		<< FString::Printf(

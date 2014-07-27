@@ -85,7 +85,10 @@ public:
 	 */
 	FKlawrCodeFormatter& operator<<(const FString& Text)
 	{
-		Content += Indent.Text + Text + LINE_TERMINATOR;
+		if (!Text.IsEmpty())
+		{
+			Content += Indent.Text + Text + LINE_TERMINATOR;
+		}
 		return *this;
 	}
 
