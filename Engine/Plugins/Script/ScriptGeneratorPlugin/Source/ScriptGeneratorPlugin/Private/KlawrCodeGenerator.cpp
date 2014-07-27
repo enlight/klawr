@@ -39,6 +39,8 @@ const FName FKlawrCodeGenerator::Name_Color("Color");
 const FString FKlawrCodeGenerator::UnmanagedFunctionPointerAttribute = 
 	TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl)]");
 
+const FString FKlawrCodeGenerator::ClrHostInterfacesAssemblyName = "Klawr.ClrHost.Interfaces";
+
 FKlawrCodeGenerator::FKlawrCodeGenerator(
 	const FString& RootLocalPath, const FString& RootBuildPath, const FString& OutputDirectory, 
 	const FString& InIncludeBase
@@ -695,15 +697,16 @@ void FKlawrCodeGenerator::GenerateManagedStaticConstructor(
 	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
 )
 {
-	GeneratedGlue << FString::Printf(
-		TEXT("static %s%s()"), Class->GetPrefixCPP(), *Class->GetName()
-	);
+	const FString ClassNameCPP = FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *Class->GetName());
+	GeneratedGlue << FString::Printf(TEXT("static %s()"), *ClassNameCPP);
 	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
 	
 	// bind managed delegates to pointers to native wrapper functions
 	GeneratedGlue 
-		<< TEXT("var manager = AppDomain.CurrentDomain.DomainManager as ICustomAppDomainManager;")
-		<< TEXT("var nativeFuncPtrs = manager.GetNativeFunctionPointers();");
+		<< TEXT("var manager = AppDomain.CurrentDomain.DomainManager as IKlawrAppDomainManager;")
+		<< FString::Printf(
+			TEXT("var nativeFuncPtrs = manager.GetNativeFunctionPointers(\"%s\");"), *ClassNameCPP
+		);
 	
 	int32 FunctionIdx = 0;
 	auto ExportedProperties = ClassExportedProperties.Find(Class);
@@ -754,6 +757,7 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 	GeneratedGlue 
 		<< TEXT("using System;")
 		<< TEXT("using System.Runtime.InteropServices;")
+		<< TEXT("using Klawr.ClrHost.Interfaces;")
 		<< LINE_TERMINATOR;
 
 	// declare namespace
@@ -876,7 +880,23 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 	}
 	else
 	{
-		// add references to all the generated C# wrapper classes to the .csproj
+		// add a reference to the CLR host interfaces assembly
+		auto ReferencesNode = Project.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
+		if (ReferencesNode)
+		{
+			FString ClrHostInterfacesAssemblyPath = 
+				FPaths::RootDir() 
+				/ TEXT("Engine/Source/ThirdParty/Klawr/ClrHostInterfaces/bin/$(Configuration)") 
+				/ ClrHostInterfacesAssemblyName + TEXT(".dll");
+			FPaths::MakePathRelativeTo(ClrHostInterfacesAssemblyPath, *ProjectOutputFilename);
+			FPaths::MakePlatformFilename(ClrHostInterfacesAssemblyPath);
+
+			auto RefNode = ReferencesNode.append_child(TEXT("Reference"));
+			RefNode.append_attribute(TEXT("Include")) = *ClrHostInterfacesAssemblyName;
+			RefNode.append_child(TEXT("HintPath")).text() = *ClrHostInterfacesAssemblyPath;
+		}
+
+		// include all the generated C# wrapper classes in the project file
 		auto SourceNode = Project.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
 		if (SourceNode)
 		{
@@ -890,8 +910,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 				FPaths::MakePlatformFilename(ManagedGlueFilename);
 				SourceNode
 					.append_child(TEXT("Compile"))
-					.append_attribute(TEXT("Include"))
-					.set_value(*ManagedGlueFilename);
+					.append_attribute(TEXT("Include")) = *ManagedGlueFilename;
 			}
 		}
 

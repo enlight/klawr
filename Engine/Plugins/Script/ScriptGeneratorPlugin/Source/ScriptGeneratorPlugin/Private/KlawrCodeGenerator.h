@@ -77,6 +77,7 @@ private:
 	static const FName Name_Color;
 
 	static const FString UnmanagedFunctionPointerAttribute;
+	static const FString ClrHostInterfacesAssemblyName;
 
 	struct FExportedProperty
 	{
