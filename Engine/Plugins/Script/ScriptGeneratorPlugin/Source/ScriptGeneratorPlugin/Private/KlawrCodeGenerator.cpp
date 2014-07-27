@@ -390,7 +390,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 		);
 	}
 
-	GeneratedGlue << FKlawrCodeFormatter::CloseBrace() << LINE_TERMINATOR;
+	GeneratedGlue << FKlawrCodeFormatter::CloseBrace() << FKlawrCodeFormatter::LineTerminator();
 }
 
 void FKlawrCodeGenerator::ExportFunction(
@@ -651,7 +651,8 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 		<< FString::Printf(
 			TEXT("set { %s(_nativeObject, value); }"), *PropInfo.SetterDelegateName
 		)
-		<< FKlawrCodeFormatter::CloseBrace();
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator();
 }
 
 void FKlawrCodeGenerator::ExportProperty(
@@ -758,7 +759,7 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 		<< TEXT("using System;")
 		<< TEXT("using System.Runtime.InteropServices;")
 		<< TEXT("using Klawr.ClrHost.Interfaces;")
-		<< LINE_TERMINATOR;
+		<< FKlawrCodeFormatter::LineTerminator();
 
 	// declare namespace
 	GeneratedGlue << TEXT("namespace Klawr.UnrealEngine") << FKlawrCodeFormatter::OpenBrace();

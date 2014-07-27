@@ -21,6 +21,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //-------------------------------------------------------------------------------
+#pragma once
 
 /** Automatically indents and terminates lines of code. */
 class FKlawrCodeFormatter
@@ -66,6 +67,7 @@ public:
 
 	struct OpenBrace {};
 	struct CloseBrace {};
+	struct LineTerminator {};
 
 	/** Current indent. */
 	FIndent Indent;
@@ -77,21 +79,31 @@ public:
 	{
 	}
 
-	/** Indent and store the given line of code (a line terminator will be added automatically). */
+	/** 
+	 * Append the given line of code.
+	 * The text will be indented according to the current indentation level, and line terminated.
+	 */
 	FKlawrCodeFormatter& operator<<(const FString& Text)
 	{
 		Content += Indent.Text + Text + LINE_TERMINATOR;
 		return *this;
 	}
 
-	/** Indent and store the given line of code (a line terminator will be added automatically). */
+	/** 
+	 * Append the given line of code.
+	 * The text will be indented according to the current indentation level, and line terminated.
+	 */
 	FKlawrCodeFormatter& operator<<(const TCHAR* Text)
 	{
 		Content += Indent.Text + Text + LINE_TERMINATOR;
 		return *this;
 	}
 
-	/** Format and store the given line of code (a line terminator will be added automatically). */
+	/** 
+	 * Append an opening brace.
+	 * A line terminator will be appended after the brace, and the indentation level will be 
+	 * increased by one.
+	 */
 	FKlawrCodeFormatter& operator<<(const OpenBrace&)
 	{
 		Content += Indent.Text + TEXT("{") LINE_TERMINATOR;
@@ -99,11 +111,22 @@ public:
 		return *this;
 	}
 
-	/** Format and store the given line of code (a line terminator will be added automatically). */
+	/** 
+	 * Append a closing brace.
+	 * The indentation level will be decreased by one, and a line terminator will be appended after
+	 * the brace.
+	 */
 	FKlawrCodeFormatter& operator<<(const CloseBrace&)
 	{
 		--Indent;
 		Content += Indent.Text + TEXT("}") LINE_TERMINATOR;
+		return *this;
+	}
+
+	/** Append a line terminator. */
+	FKlawrCodeFormatter& operator<<(const LineTerminator&)
+	{
+		Content += LINE_TERMINATOR;
 		return *this;
 	}
 };
