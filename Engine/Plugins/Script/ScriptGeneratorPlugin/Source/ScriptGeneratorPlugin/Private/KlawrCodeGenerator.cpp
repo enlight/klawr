@@ -853,7 +853,7 @@ void FKlawrCodeGenerator::ExportClass(
 void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 {
 	const FString ResourcesBasePath = 
-		FPaths::EnginePluginsDir() / TEXT("Script/ScriptGeneratorPlugin/Resources");
+		FPaths::EnginePluginsDir() / TEXT("Script/ScriptGeneratorPlugin/Resources/WrapperProjectTemplate");
 	const FString ProjectBasePath = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr");
 
 	const FString AssemblyInfoSubPath(TEXT("Properties/AssemblyInfo.cs"));
@@ -901,7 +901,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		auto SourceNode = Project.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
 		if (SourceNode)
 		{
-			FString ManagedGlueFilename;
+			FString ManagedGlueFilename, LinkFilename;
 			for (const FString& ScriptHeaderFilename : AllScriptHeaders)
 			{
 				ManagedGlueFilename = ScriptHeaderFilename;
@@ -909,9 +909,12 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 				ManagedGlueFilename.Append(TEXT(".cs"));
 				FPaths::MakePathRelativeTo(ManagedGlueFilename, *ProjectOutputFilename);
 				FPaths::MakePlatformFilename(ManagedGlueFilename);
-				SourceNode
-					.append_child(TEXT("Compile"))
-					.append_attribute(TEXT("Include")) = *ManagedGlueFilename;
+				auto CompileNode = SourceNode.append_child(TEXT("Compile"));
+				CompileNode.append_attribute(TEXT("Include")) = *ManagedGlueFilename;
+				// group all generated .cs files under a virtual folder in the project file
+				LinkFilename = TEXT("Generated\\");
+				LinkFilename += FPaths::GetCleanFilename(ManagedGlueFilename);
+				CompileNode.append_child(TEXT("Link")).text() = *LinkFilename;
 			}
 		}
 
