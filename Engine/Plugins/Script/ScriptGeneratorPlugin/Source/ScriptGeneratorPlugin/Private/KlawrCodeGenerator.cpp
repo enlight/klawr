@@ -58,53 +58,68 @@ FString FKlawrCodeGenerator::InitializeFunctionDispatchParam(UFunction* Function
 {	
 	if (!(Param->GetPropertyFlags() & CPF_ReturnParm))
 	{
+		FString ParamName = Param->GetName();
 		FString Initializer;
-		if (Param->IsA(UIntProperty::StaticClass())	|| 
-			Param->IsA(UFloatProperty::StaticClass()) ||
-			Param->IsA(UStrProperty::StaticClass()) ||
-			Param->IsA(UNameProperty::StaticClass()))
+
+		if (Param->IsA(UClassProperty::StaticClass()))
 		{
-			Param->GetName(Initializer);
-		}
-		else if (Param->IsA(UBoolProperty::StaticClass()))
-		{
-			if (CastChecked<UBoolProperty>(Param)->IsNativeBool())
-			{
-				// explicitly convert uin8 to bool
-				Initializer = FString::Printf(TEXT("!!%s"), *Param->GetName());
-			}
-			else
-			{
-				Param->GetName(Initializer);
-			}
-		}
-		else if (Param->IsA(UStructProperty::StaticClass()))
-		{
-			auto StructProp = CastChecked<UStructProperty>(Param);
-			if (IsStructPropertyTypeSupported(StructProp))
-			{
-				Param->GetName(Initializer);
-			}
-			else
-			{
-				FError::Throwf(
-					TEXT("Unsupported function param struct type: %s"), 
-					*StructProp->Struct->GetName()
-				);
-			}
-		}
-		else if (Param->IsA(UClassProperty::StaticClass()))
-		{
-			Initializer = FString::Printf(TEXT("(UClass*)%s"), *Param->GetName());
+			Initializer = FString::Printf(TEXT("(UClass*)%s"), *ParamName);
 		}
 		else if (Param->IsA(UObjectPropertyBase::StaticClass()))
 		{
 			Initializer = FString::Printf(
-				TEXT("(%s)%s"), 
-				*Super::GetPropertyTypeCPP(Param, CPPF_ArgumentOrReturnValue), *Param->GetName()
+				TEXT("(%s)%s"),
+				*Super::GetPropertyTypeCPP(Param, CPPF_ArgumentOrReturnValue), *ParamName
 			);
 		}
+		else if (Param->IsA(UStrProperty::StaticClass()) || Param->IsA(UNameProperty::StaticClass()))
+		{
+			Initializer = ParamName;
+		}
 		else
+		{
+			// reference params are passed into a native wrapper function via a pointer,
+			// so dereference the pointer so that the value can be copied into FDispatchParams
+			if (Param->HasAnyPropertyFlags(CPF_OutParm | CPF_ReferenceParm))
+			{
+				ParamName = FString::Printf(TEXT("(*%s)"), *ParamName);
+			}
+
+			if (Param->IsA(UIntProperty::StaticClass()) ||
+				Param->IsA(UFloatProperty::StaticClass()))
+			{
+				Initializer = ParamName;
+			}
+			else if (Param->IsA(UBoolProperty::StaticClass()))
+			{
+				if (CastChecked<UBoolProperty>(Param)->IsNativeBool())
+				{
+					// explicitly convert uin8 to bool
+					Initializer = FString::Printf(TEXT("!!%s"), *ParamName);
+				}
+				else
+				{
+					Initializer = ParamName;
+				}
+			}
+			else if (Param->IsA(UStructProperty::StaticClass()))
+			{
+				auto StructProp = CastChecked<UStructProperty>(Param);
+				if (IsStructPropertyTypeSupported(StructProp))
+				{
+					Initializer = ParamName;
+				}
+				else
+				{
+					FError::Throwf(
+						TEXT("Unsupported function param struct type: %s"),
+						*StructProp->Struct->GetName()
+					);
+				}
+			}
+		}
+		
+		if (Initializer.IsEmpty())
 		{
 			FError::Throwf(
 				TEXT("Unsupported function param type: %s"), *Param->GetClass()->GetName()
@@ -266,6 +281,20 @@ void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 	// TODO: Maybe use an initializer list to FDispatchParams struct instead of the current multi-line init
 	GeneratedGlue << Super::GenerateFunctionDispatch(Function);
 
+	// for non-const reference parameters to the UFunction copy their values from the 
+	// FDispatchParams struct
+	for (TFieldIterator<UProperty> ParamIt(Function); ParamIt; ++ParamIt)
+	{
+		UProperty* Param = *ParamIt;
+		if (!Param->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm) &&
+			Param->HasAnyPropertyFlags(CPF_OutParm | CPF_ReferenceParm))
+		{
+			GeneratedGlue << FString::Printf(
+				TEXT("*%s = Params.%s;"), *Param->GetName(), *Param->GetName()
+			);
+		}
+	}
+
 	if (ReturnValue)
 	{
 		GenerateNativeReturnValueHandler(
@@ -323,25 +352,22 @@ UProperty* FKlawrCodeGenerator::GetManagedWrapperArgsAndReturnType(
 		{
 			FString ArgName = Param->GetName();
 			FString ArgType = GetPropertyInteropType(Param);
-			if (Param->IsA(UBoolProperty::StaticClass()))
-			{
-				// by default C# bool gets marshaled to unmanaged BOOL (4-bytes),
-				// marshal it to uint8 instead (which is the size of an MSVC bool)
-				OutFormalInteropArgs += FString::Printf(
-					TEXT(", %s %s %s"), *MarshalBoolParameterAsUint8Attribute, *ArgType, *ArgName
-				);
-			}
-			else
-			{
-				OutFormalInteropArgs += FString::Printf(TEXT(", %s %s"), *ArgType, *ArgName);
-			}
-			OutActualInteropArgs += FString::Printf(TEXT(", %s"), *ArgName);
+			FString ArgAttrs = GetPropertyInteropTypeAttributes(Param);
+			FString ArgMods = GetPropertyInteropTypeModifiers(Param);
+			OutFormalInteropArgs += FString::Printf(
+				TEXT(", %s %s %s %s"), *ArgAttrs, *ArgMods, *ArgType, *ArgName
+			);
+			OutActualInteropArgs += FString::Printf(TEXT(", %s %s"), *ArgMods, *ArgName);
 			if (!OutFormalManagedArgs.IsEmpty())
 			{
 				OutFormalManagedArgs += TEXT(", ");
 			}
 			// TODO: managed types can be more precise than interop types, because we can use the
 			//       exported managed wrapper classes!
+			if (!ArgMods.IsEmpty())
+			{
+				OutFormalManagedArgs += ArgMods + TEXT(" ");
+			}
 			OutFormalManagedArgs += FString::Printf(TEXT("%s %s"), *ArgType, *ArgName);
 			if (!OutActualManagedArgs.IsEmpty())
 			{
@@ -433,10 +459,42 @@ bool FKlawrCodeGenerator::IsPropertyTypeSupported(UProperty* Property) const
 		auto StructProp = CastChecked<UStructProperty>(Property);
 		bSupported = IsStructPropertyTypeSupported(StructProp);
 	}
+	else if (Property->IsA(UStrProperty::StaticClass()))
+	{
+		if (!Property->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm) && 
+			Property->HasAnyPropertyFlags(CPF_OutParm | CPF_ReferenceParm))
+		{
+			// Non-const FString references can't be easily marshaled from/to a C# string.
+			// A few modifications to the generator will be required. For each non-const 
+			// FString parameter the generated native wrapper function will need to take a TCHAR* 
+			// to a preallocated buffer and the buffer size, then the corresponding value from the
+			// FDispatchParams struct will need to be copied to the preallocated buffer after the
+			// UFunction is called. On the managed side the managed wrapper delegate will need to
+			// use the StringBuilder type for each non-const FString reference parameter, and the
+			// corresponding StringBuilder instance of the appropriate size will need to be created
+			// before the delegate can be invoked. The need to preallocate the buffer on the managed
+			// side is what makes this a bit tedious, since the user is unlikely to know what a
+			// suitable buffer size would be!
+			bSupported = false;
+		}
+		else if (Property->HasAnyPropertyFlags(CPF_ReturnParm))
+		{
+			// FIXME: String to be returned must be allocated using CoTaskMemAlloc() because the
+			//        managed side will attempt to free it using Marshal.FreeCoTaskMem().
+			bSupported = false;
+		}
+	}
+	else if (Property->IsA(UNameProperty::StaticClass()))
+	{
+		if (Property->HasAnyPropertyFlags(CPF_ReturnParm))
+		{
+			// FIXME: String to be returned must be allocated using CoTaskMemAlloc() because the
+			//        managed side will attempt to free it using Marshal.FreeCoTaskMem().
+			bSupported = false;
+		}
+	}
 	else if (!Property->IsA(UIntProperty::StaticClass()) &&
 		!Property->IsA(UFloatProperty::StaticClass()) &&
-		!Property->IsA(UStrProperty::StaticClass()) &&
-		!Property->IsA(UNameProperty::StaticClass()) &&
 		!Property->IsA(UBoolProperty::StaticClass()) &&
 		!Property->IsA(UObjectPropertyBase::StaticClass()) &&
 		!Property->IsA(UClassProperty::StaticClass()))
@@ -470,6 +528,8 @@ bool FKlawrCodeGenerator::IsStructPropertyTypeSupported(const UStructProperty* P
 
 FString FKlawrCodeGenerator::GetPropertyNativeType(UProperty* Property)
 {
+	FString NativeType;
+
 	if (IsPropertyTypePointer(Property))
 	{
 		return TEXT("void*");
@@ -478,16 +538,30 @@ FString FKlawrCodeGenerator::GetPropertyNativeType(UProperty* Property)
 	{
 		// the managed wrapper functions marshal C# bool to uint8, so for the sake of consistency
 		// use uint8 instead of C++ bool in the native wrapper functions
-		return TEXT("uint8");
+		NativeType = TEXT("uint8");
 	}
 	else if (Property->IsA(UStrProperty::StaticClass()) || Property->IsA(UNameProperty::StaticClass()))
 	{
+		if (Property->HasAnyPropertyFlags(CPF_ReturnParm))
+		{
+			FError::Throwf(TEXT("%s return type not supported (yet)"), *Property->GetName());
+		}
 		return TEXT("const TCHAR*");
 	}
 	else
 	{
-		return Super::GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue);
+		NativeType = Super::GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue);
 	}
+	// TODO: handle constness?
+	// return by reference must be converted to return by value because 
+	// FDispatchParams::ReturnValue is only valid within the scope of a native wrapper function
+	if (!(Property->GetPropertyFlags() & CPF_ReturnParm) &&
+		Property->HasAnyPropertyFlags(CPF_OutParm | CPF_ReferenceParm))
+	{
+		NativeType += TEXT("*");
+	}
+
+	return NativeType;
 }
 
 // FIXME: this method should be const, as should the argument, but Super::GetPropertyTypeCPP() isn't!
@@ -523,14 +597,63 @@ FString FKlawrCodeGenerator::GetPropertyInteropType(UProperty* Property)
 	}
 }
 
+FString FKlawrCodeGenerator::GetPropertyInteropTypeAttributes(UProperty* Property)
+{
+	if (Property->IsA(UBoolProperty::StaticClass()))
+	{
+		// by default C# bool gets marshaled to unmanaged BOOL (4-bytes),
+		// marshal it to uint8 instead (which is the size of an MSVC bool)
+		return MarshalBoolParameterAsUint8Attribute;
+	}
+	
+	// Not convinced the directional attributes are necessary, seems like the C# out and ref 
+	// keywords should be sufficient.
+	/*
+	if (!IsPropertyTypePointer(Property))
+	{
+		if (!Property->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm))
+		{
+			if (Property->HasAnyPropertyFlags(CPF_ReferenceParm))
+			{
+				Attributes += TEXT("[In][Out]");
+			}
+			else if (Property->HasAnyPropertyFlags(CPF_OutParm))
+			{
+				Attributes += TEXT("[Out]");
+			}
+		}
+	}
+	*/
+	return FString();
+}
+
+FString FKlawrCodeGenerator::GetPropertyInteropTypeModifiers(UProperty* Property)
+{
+	if (!IsPropertyTypePointer(Property))
+	{
+		if (!Property->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm))
+		{
+			if (Property->HasAnyPropertyFlags(CPF_ReferenceParm))
+			{
+				return TEXT("ref");
+			}
+			else if (Property->HasAnyPropertyFlags(CPF_OutParm))
+			{
+				return TEXT("out");
+			}
+		}
+	}
+	return FString();
+}
+
 bool FKlawrCodeGenerator::CanExportProperty(const FString& ClassNameCPP, UClass* Class, UProperty* Property)
 {
-	// only editable properties can be exported
-	if (!(Property->PropertyFlags & CPF_Edit))
+	bool bCanExport = Super::CanExportProperty(ClassNameCPP, Class, Property);
+	if (bCanExport)
 	{
-		return false;
+		bCanExport = IsPropertyTypeSupported(Property);
 	}
-	return IsPropertyTypeSupported(Property);
+	return bCanExport;
 }
 
 void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(

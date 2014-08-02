@@ -132,6 +132,8 @@ private:
 
 	FString GetPropertyNativeType(UProperty* Property);
 	FString GetPropertyInteropType(UProperty* Property);
+	static FString GetPropertyInteropTypeAttributes(UProperty* Property);
+	static FString GetPropertyInteropTypeModifiers(UProperty* Property);
 
 	UProperty* GetNativeWrapperArgsAndReturnType(
 		const UFunction* Function, FString& OutFormalArgs, FString& OutActualArgs
