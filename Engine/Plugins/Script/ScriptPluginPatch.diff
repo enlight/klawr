@@ -1,0 +1,32 @@
+diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
+index 9a40829..c5abb90 100644
+--- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
++++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
+@@ -2,6 +2,9 @@
+ 
+ #include "ScriptPluginPrivatePCH.h"
+ #include "ScriptObjectReferencer.h"
++#ifdef WITH_KLAWR
++#include "KlawrClrHost.h"
++#endif // WITH_KLAWR
+ 
+ UProperty* FindScriptPropertyHelper(UClass* Class, FName PropertyName)
+ {
+diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs
+index 26813c9..aa08524 100644
+--- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs
++++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs
+@@ -66,6 +66,13 @@ namespace UnrealBuildTool.Rules
+ 					Definitions.Add("WITH_LUA=1");
+ 					PrivateIncludePaths.Add(Path.Combine("ScriptPlugin", "lua-5.2.3", "src"));
+ 				}
++
++                var KlawrPath = Path.Combine(UEBuildConfiguration.UEThirdPartySourceDirectory, "Klawr");
++                if (Directory.Exists(KlawrPath))
++                {
++                    Definitions.Add("WITH_KLAWR=1");
++                    PrivateDependencyModuleNames.Add("KlawrClrHostNative");
++                }
+ 			}
+ 		}
+ 	}

@@ -24,6 +24,7 @@
 
 #include "KlawrClrHostPCH.h"
 #include "KlawrClrHost.h"
+#include <assert.h>
 #include <metahost.h>
 #include <comdef.h> // for _COM_SMARTPTR_TYPEDEF
 
