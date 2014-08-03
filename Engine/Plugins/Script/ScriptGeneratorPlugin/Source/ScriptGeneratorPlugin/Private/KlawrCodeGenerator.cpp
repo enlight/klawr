@@ -148,11 +148,15 @@ void FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 		}
 		else if (ReturnValue->IsA(UStrProperty::StaticClass()))
 		{
-			GeneratedGlue << FString::Printf(TEXT("return *%s;"), *ReturnValueName);
+			GeneratedGlue << FString::Printf(
+				TEXT("return Klawr::MakeStringCopyForCLR(*%s);"), *ReturnValueName
+			);
 		}
 		else if (ReturnValue->IsA(UNameProperty::StaticClass()))
 		{
-			GeneratedGlue << FString::Printf(TEXT("return *(%s.ToString());"), *ReturnValueName);
+			GeneratedGlue << FString::Printf(
+				TEXT("return Klawr::MakeStringCopyForCLR(*(%s.ToString()));"), *ReturnValueName
+			);
 		}
 		else if (ReturnValue->IsA(UStructProperty::StaticClass()))
 		{
