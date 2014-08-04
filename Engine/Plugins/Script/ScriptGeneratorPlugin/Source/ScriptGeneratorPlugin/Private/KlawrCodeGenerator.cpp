@@ -481,27 +481,13 @@ bool FKlawrCodeGenerator::IsPropertyTypeSupported(UProperty* Property) const
 			// suitable buffer size would be!
 			bSupported = false;
 		}
-		else if (Property->HasAnyPropertyFlags(CPF_ReturnParm))
-		{
-			// FIXME: String to be returned must be allocated using CoTaskMemAlloc() because the
-			//        managed side will attempt to free it using Marshal.FreeCoTaskMem().
-			bSupported = false;
-		}
-	}
-	else if (Property->IsA(UNameProperty::StaticClass()))
-	{
-		if (Property->HasAnyPropertyFlags(CPF_ReturnParm))
-		{
-			// FIXME: String to be returned must be allocated using CoTaskMemAlloc() because the
-			//        managed side will attempt to free it using Marshal.FreeCoTaskMem().
-			bSupported = false;
-		}
 	}
 	else if (!Property->IsA(UIntProperty::StaticClass()) &&
 		!Property->IsA(UFloatProperty::StaticClass()) &&
 		!Property->IsA(UBoolProperty::StaticClass()) &&
 		!Property->IsA(UObjectPropertyBase::StaticClass()) &&
-		!Property->IsA(UClassProperty::StaticClass()))
+		!Property->IsA(UClassProperty::StaticClass()) &&
+		!Property->IsA(UNameProperty::StaticClass()))
 	{
 		bSupported = false;
 	}
@@ -546,10 +532,6 @@ FString FKlawrCodeGenerator::GetPropertyNativeType(UProperty* Property)
 	}
 	else if (Property->IsA(UStrProperty::StaticClass()) || Property->IsA(UNameProperty::StaticClass()))
 	{
-		if (Property->HasAnyPropertyFlags(CPF_ReturnParm))
-		{
-			FError::Throwf(TEXT("%s return type not supported (yet)"), *Property->GetName());
-		}
 		return TEXT("const TCHAR*");
 	}
 	else
