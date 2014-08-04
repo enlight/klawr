@@ -156,11 +156,15 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Private\ClrHostControl.h" />
+    <ClInclude Include="Private\ClrHost.h" />
+    <ClInclude Include="Private\KlawrClrHostInterfaces.h" />
     <ClInclude Include="Public\KlawrClrHost.h" />
     <ClInclude Include="Private\KlawrClrHostPCH.h" />
     <ClInclude Include="Private\targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Private\ClrHostControl.cpp" />
     <ClCompile Include="Private\KlawrClrHost.cpp" />
     <ClCompile Include="Private\KlawrClrHostPCH.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

@@ -7,4 +7,15 @@
 
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 
+#include <tchar.h>
+#include <string>
+
+#ifdef _UNICODE
+typedef std::wstring tstring;
+#else
+typedef std::string tstring;
+#endif // _UNICODE
+
+#include <assert.h>
+
 // TODO: reference additional headers here

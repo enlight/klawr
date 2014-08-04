@@ -24,18 +24,12 @@
 
 #include "KlawrClrHostPCH.h"
 #include "KlawrClrHost.h"
-#include <assert.h>
+#include "ClrHost.h"
+#include "ClrHostControl.h"
 #include <metahost.h>
 #include <comdef.h> // for _COM_SMARTPTR_TYPEDEF
-
-#ifdef _DEBUG
-#import "../../ClrHostInterfaces/bin/Debug/Klawr.ClrHost.Interfaces.tlb"
-#else
-#import "../../ClrHostInterfaces/bin/Release/Klawr.ClrHost.Interfaces.tlb"
-#endif // _DEBUG
-
-// so we can use the types from the tlb
-using namespace Klawr_ClrHost_Interfaces;
+#include <memory> // for unique_ptr
+#include "KlawrClrHostInterfaces.h"
 
 #pragma comment(lib, "mscoree.lib")
 
@@ -51,80 +45,6 @@ TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy)
 	}
 	return buffer;
 }
-
-// keeps track of app domain managers (created from managed code) on the unmanaged side,
-// unmanaged code can interact with these app domain managers via the IKlawrAppDomainManager
-// interface
-class ClrHostControl : public IHostControl
-{
-public:
-	ClrHostControl()
-		: _refCount(0)
-	{
-	}
-
-	IKlawrAppDomainManager* GetDefaultDomainManager()
-	{
-		return _appDomainManager.GetInterfacePtr();
-	}
-
-public: // IHostControl interface
-	virtual HRESULT STDMETHODCALLTYPE GetHostManager(REFIID riid, void** ppObject) override
-	{
-		// no custom managers have been implemented yet
-		*ppObject = nullptr;
-		return E_NOINTERFACE;
-	}
-
-	virtual HRESULT STDMETHODCALLTYPE SetAppDomainManager(
-		DWORD dwAppDomainID, IUnknown* pUnkAppDomainManager
-	) override
-	{
-		HRESULT hr = pUnkAppDomainManager->QueryInterface(IID_PPV_ARGS(&_appDomainManager));
-		if (SUCCEEDED(hr))
-		{
-			//hr = _appDomainManager->SetNativeFunctionPointers(nativeClassName, functionPointers);
-		}
-		return hr;
-	}
-
-public: // IUnknown interface
-	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
-	{
-		if (!ppvObject)
-		{
-			return E_POINTER;
-		}
-		if ((riid == IID_IUnknown) || (riid == IID_IHostControl))
-		{
-			*ppvObject = this;
-			AddRef();
-			return S_OK;
-		}
-		return E_POINTER;
-	}
-
-	virtual ULONG STDMETHODCALLTYPE AddRef() override
-	{
-		return InterlockedIncrement(&_refCount);
-	}
-
-	virtual ULONG STDMETHODCALLTYPE Release() override
-	{
-		ULONG refCount = InterlockedDecrement(&_refCount);
-		if (refCount == 0)
-		{
-			delete this;
-		}
-		return refCount;
-	}
-
-private:
-	volatile ULONG _refCount;
-	// the default app domain manager
-	IKlawrAppDomainManagerPtr _appDomainManager;
-	// TODO: keep track of any other app domain managers
-};
 
 // bootstrap the CLR runtime and load a simple test assembly
 void TestClrHost()
@@ -174,6 +94,12 @@ void TestClrHost()
 	// since this project is native).
 	hr = runtimeHost->Stop();
 	assert(SUCCEEDED(hr));
+}
+
+IClrHost* IClrHost::Get()
+{
+	static auto singleton = std::make_unique<ClrHost>();
+	return singleton.get();
 }
 
 } // namespace Klawr

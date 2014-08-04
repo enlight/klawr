@@ -23,36 +23,27 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
+#include "KlawrClrHostPCH.h"
+#include "KlawrClrHost.h"
+#include <map>
+
 namespace Klawr {
 
-/**
- * @brief Makes a copy of the given string, the resulting copy can be safely released by the CLR.
- *
- * The CLR will attempt to release any c-string that is returned to it from a native function after
- * it creates a corresponding managed string. However, it can only release the c-string if it was 
- * allocated on the correct heap. This function will allocate a copy of the passed in c-string on 
- * the same heap the CLR will attempt to release it from, this copy is what should be returned to 
- * the CLR instead of the original c-string.
- *
- * @return A copy of the c-string passed in.
- */
-TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
-
-/** This public interface can be used to pass native wrapper functions to the CLR host. */
-class IClrHost
+class ClrHost : public IClrHost
 {
 public:
-	/** 
-	 * @brief Store native wrapper functions for the given class.
-	 * @param className The name of a scriptable C++ class (including prefix, e.g. AActor).
-	 * @param wrapperFunctions Array of pointers to native wrapper functions for the given class.
-	 * @param numFunctions Number of elements in the wrapperFunctions array.
-	 */
-	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) = 0;
+	struct ClassWrapperInfo
+	{
+		void** functionPointers;
+		int numFunctions;
+	};
+	std::map<tstring, ClassWrapperInfo> ClassWrappers;
 
 public:
-	/** Get the singleton instance. */
-	static IClrHost* Get();
+	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) override
+	{
+		ClassWrappers[className] = { wrapperFunctions, numFunctions };
+	}
 };
 
 } // namespace Klawr

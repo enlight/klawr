@@ -149,13 +149,13 @@ void FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 		else if (ReturnValue->IsA(UStrProperty::StaticClass()))
 		{
 			GeneratedGlue << FString::Printf(
-				TEXT("return Klawr::MakeStringCopyForCLR(*%s);"), *ReturnValueName
+				TEXT("return MakeStringCopyForCLR(*%s);"), *ReturnValueName
 			);
 		}
 		else if (ReturnValue->IsA(UNameProperty::StaticClass()))
 		{
 			GeneratedGlue << FString::Printf(
-				TEXT("return Klawr::MakeStringCopyForCLR(*(%s.ToString()));"), *ReturnValueName
+				TEXT("return MakeStringCopyForCLR(*(%s.ToString()));"), *ReturnValueName
 			);
 		}
 		else if (ReturnValue->IsA(UStructProperty::StaticClass()))
@@ -271,9 +271,10 @@ void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 		ReturnValueTypeName = GetPropertyNativeType(ReturnValue);
 	}
 	// define a native wrapper function that will be bound to a managed delegate
+	FString WrapperName = FString::Printf(TEXT("%s_%s"), *Class->GetName(), *Function->GetName());
 	GeneratedGlue << FString::Printf(
-		TEXT("%s %s_%s(%s)"),
-		*ReturnValueTypeName, *Class->GetName(), *Function->GetName(), *FormalArgs
+		TEXT("%s %s(%s)"),
+		*ReturnValueTypeName, *WrapperName, *FormalArgs
 	);
 	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
 
@@ -314,6 +315,7 @@ void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 	FExportedFunction FuncInfo;
 	FuncInfo.Function = Function;
 	FuncInfo.bHasReturnValue = (ReturnValue != nullptr);
+	FuncInfo.NativeWrapperFunctionName = WrapperName;
 	ClassExportedFunctions.FindOrAdd(Class).Add(FuncInfo);
 }
 
@@ -644,12 +646,13 @@ bool FKlawrCodeGenerator::CanExportProperty(const FString& ClassNameCPP, UClass*
 
 void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
 	const FString& ClassNameCPP, UClass* Class, UProperty* Property,
-	FKlawrCodeFormatter& GeneratedGlue
+	FKlawrCodeFormatter& GeneratedGlue, FExportedProperty& ExportedProperty
 )
 {
 	// define a native getter wrapper function that will be bound to a managed delegate
 	FString PropertyNativeTypeName = GetPropertyNativeType(Property);
 	FString GetterName = FString::Printf(TEXT("%s_Get_%s"), *Class->GetName(), *Property->GetName());
+	ExportedProperty.NativeGetterWrapperFunctionName = GetterName;
 
 	GeneratedGlue 
 		<< FString::Printf(TEXT("%s %s(void* self)"), *PropertyNativeTypeName, *GetterName)
@@ -676,12 +679,13 @@ void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
 
 void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
 	const FString& ClassNameCPP, UClass* Class, UProperty* Property,
-	FKlawrCodeFormatter& GeneratedGlue
+	FKlawrCodeFormatter& GeneratedGlue, FExportedProperty& ExportedProperty
 )
 {
 	// define a native setter wrapper function that will be bound to a managed delegate
 	FString PropertyNativeTypeName = GetPropertyNativeType(Property);
 	FString SetterName = FString::Printf(TEXT("%s_Set_%s"), *Class->GetName(), *Property->GetName());
+	ExportedProperty.NativeSetterWrapperFunctionName = SetterName;
 
 	GeneratedGlue 
 		<< FString::Printf(
@@ -707,18 +711,17 @@ void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
 }
 
 void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
-	UClass* Class, UProperty* Property, FKlawrCodeFormatter& GeneratedGlue
+	UClass* Class, UProperty* Property, FKlawrCodeFormatter& GeneratedGlue, 
+	FExportedProperty& ExportedProperty
 )
 {
 	const FString GetterName = FString::Printf(TEXT("Get_%s"), *Property->GetName());
 	const FString SetterName = FString::Printf(TEXT("Set_%s"), *Property->GetName());
 	
-	FExportedProperty PropInfo;
-	PropInfo.GetterDelegateName = GenerateDelegateName(GetterName);
-	PropInfo.GetterDelegateTypeName = GenerateDelegateTypeName(GetterName, true);
-	PropInfo.SetterDelegateName = GenerateDelegateName(SetterName);
-	PropInfo.SetterDelegateTypeName = GenerateDelegateTypeName(SetterName, false);
-	ClassExportedProperties.FindOrAdd(Class).Add(PropInfo);
+	ExportedProperty.GetterDelegateName = GenerateDelegateName(GetterName);
+	ExportedProperty.GetterDelegateTypeName = GenerateDelegateTypeName(GetterName, true);
+	ExportedProperty.SetterDelegateName = GenerateDelegateName(SetterName);
+	ExportedProperty.SetterDelegateTypeName = GenerateDelegateTypeName(SetterName, false);
 	
 	const bool bIsBoolProperty = Property->IsA(UBoolProperty::StaticClass());
 	FString PropertyTypeName = GetPropertyInteropType(Property);
@@ -736,32 +739,32 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 		<< (bIsBoolProperty ? MarshalReturnedBoolAsUint8Attribute : FString())
 		<< FString::Printf(
 			TEXT("private delegate %s %s(IntPtr self);"),
-			*PropertyTypeName, *PropInfo.GetterDelegateTypeName
+			*PropertyTypeName, *ExportedProperty.GetterDelegateTypeName
 		)
 		// declare setter delegate type
 		<< UnmanagedFunctionPointerAttribute
 		<< FString::Printf(
 			TEXT("private delegate void %s(IntPtr self, %s %s);"),
-			*PropInfo.SetterDelegateTypeName, *SetterParamType, *Property->GetName()
+			*ExportedProperty.SetterDelegateTypeName, *SetterParamType, *Property->GetName()
 		)
 		// declare delegate instances that will be bound to the native wrapper functions
 		<< FString::Printf(
 			TEXT("private static %s %s;"),
-			*PropInfo.GetterDelegateTypeName, *PropInfo.GetterDelegateName
+			*ExportedProperty.GetterDelegateTypeName, *ExportedProperty.GetterDelegateName
 		)
 		<< FString::Printf(
 			TEXT("private static %s %s;"),
-			*PropInfo.SetterDelegateTypeName, *PropInfo.SetterDelegateName
+			*ExportedProperty.SetterDelegateTypeName, *ExportedProperty.SetterDelegateName
 		)
 		// define a property that calls the native wrapper functions through the delegates 
 		// declared above
 		<< FString::Printf(TEXT("public %s %s"), *PropertyTypeName, *Property->GetName())
 		<< FKlawrCodeFormatter::OpenBrace()
 		<< FString::Printf(
-			TEXT("get { return %s(_nativeObject); }"), *PropInfo.GetterDelegateName
+			TEXT("get { return %s(_nativeObject); }"), *ExportedProperty.GetterDelegateName
 		)
 		<< FString::Printf(
-			TEXT("set { %s(_nativeObject, value); }"), *PropInfo.SetterDelegateName
+			TEXT("set { %s(_nativeObject, value); }"), *ExportedProperty.SetterDelegateName
 		)
 		<< FKlawrCodeFormatter::CloseBrace()
 		<< FKlawrCodeFormatter::LineTerminator();
@@ -776,9 +779,11 @@ void FKlawrCodeGenerator::ExportProperty(
 	// properties from base classes.
 	if (Property->GetOwnerClass() == Class)
 	{
-		GenerateNativePropertyGetterWrapper(ClassNameCPP, Class, Property, NativeGlueCode);
-		GenerateNativePropertySetterWrapper(ClassNameCPP, Class, Property, NativeGlueCode);
-		GenerateManagedPropertyWrapper(Class, Property, ManagedGlueCode);
+		FExportedProperty PropInfo;
+		GenerateNativePropertyGetterWrapper(ClassNameCPP, Class, Property, NativeGlueCode, PropInfo);
+		GenerateNativePropertySetterWrapper(ClassNameCPP, Class, Property, NativeGlueCode, PropInfo);
+		GenerateManagedPropertyWrapper(Class, Property, ManagedGlueCode, PropInfo);
+		ClassExportedProperties.FindOrAdd(Class).Add(PropInfo);
 	}
 }
 
@@ -786,16 +791,53 @@ void FKlawrCodeGenerator::GenerateNativeGlueCodeHeader(
 	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
 )
 {
-	GeneratedGlue << TEXT("#pragma once") LINE_TERMINATOR;
-	GeneratedGlue << TEXT("namespace KlawrNativeGlue {") LINE_TERMINATOR;
+	GeneratedGlue 
+		<< TEXT("#pragma once") LINE_TERMINATOR
+		<< TEXT("namespace Klawr {")
+		<< TEXT("namespace NativeGlue {") LINE_TERMINATOR;
 }
 
 void FKlawrCodeGenerator::GenerateNativeGlueCodeFooter(
 	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
 ) const
 {
-	// TODO: pass the pointers to all the native wrapper functions to the CLR host
-	GeneratedGlue << TEXT("} // namespace KlawrNativeGlue");
+	const auto ExportedProperties = ClassExportedProperties.Find(Class);
+	const auto ExportedFunctions = ClassExportedFunctions.Find(Class);
+	bool bHasExports = (ExportedProperties && ExportedProperties->Num()) 
+		|| (ExportedFunctions && ExportedFunctions->Num());
+
+	if (bHasExports)
+	{
+		// generate an array of function pointers to all the native wrapper functions
+		FString FunctionsArrayName = FString::Printf(TEXT("%s_WrapperFunctions"), *Class->GetName());
+		GeneratedGlue
+			<< FString::Printf(TEXT("static void* %s[] ="), *FunctionsArrayName)
+			<< FKlawrCodeFormatter::OpenBrace();
+
+		if (ExportedProperties)
+		{
+			for (const auto& ExportedProperty : *ExportedProperties)
+			{
+				GeneratedGlue
+					<< ExportedProperty.NativeGetterWrapperFunctionName + TEXT(",")
+					<< ExportedProperty.NativeSetterWrapperFunctionName + TEXT(",");
+			}
+		}
+
+		if (ExportedFunctions)
+		{
+			for (const auto& ExportedFunction : *ExportedFunctions)
+			{
+				GeneratedGlue << ExportedFunction.NativeWrapperFunctionName + TEXT(",");
+			}
+		}
+
+		GeneratedGlue
+			<< FKlawrCodeFormatter::CloseBrace()
+			<< TEXT(";");
+	}
+
+	GeneratedGlue << TEXT("}} // namespace Klawr::NativeGlue");
 }
 
 void FKlawrCodeGenerator::GenerateManagedStaticConstructor(
@@ -912,6 +954,7 @@ void FKlawrCodeGenerator::ExportClass(
 	UE_LOG(LogScriptGenerator, Log, TEXT("Exporting class %s"), *Class->GetName());
 	
 	Super::ExportedClasses.Add(Class->GetFName());
+	AllExportedClasses.Add(Class);
 	AllSourceClassHeaders.Add(SourceHeaderFilename);
 
 	const FString NativeGlueFilename = Super::GetScriptHeaderForClass(Class);
@@ -1045,22 +1088,61 @@ void FKlawrCodeGenerator::GlueAllNativeWrapperFiles()
 {
 	// generate the file that will be included by ScriptPlugin.cpp
 	FString GlueFilename = GeneratedCodePath / TEXT("GeneratedScriptLibraries.inl");
-	FString GeneratedGlue;
+	FKlawrCodeFormatter GeneratedGlue(TEXT('\t'), 1);
+
+	GeneratedGlue 
+		<< TEXT("// This file is autogenerated, DON'T EDIT it, if you do your changes will be lost!")
+		<< FKlawrCodeFormatter::LineTerminator();
 
 	// include all source header files
+	GeneratedGlue << TEXT("// The native classes which will be made scriptable:");
 	for (const auto& HeaderFilename : AllSourceClassHeaders)
 	{
 		// re-base to make sure we're including the right files on a remote machine
 		FString NewFilename(Super::RebaseToBuildPath(HeaderFilename));
-		GeneratedGlue += FString::Printf(TEXT("#include \"%s\"\r\n"), *NewFilename);
+		GeneratedGlue << FString::Printf(TEXT("#include \"%s\""), *NewFilename);
 	}
 
 	// include all script glue headers
+	GeneratedGlue << TEXT("// The autogenerated native wrappers:");
 	for (const auto& HeaderFilename : AllScriptHeaders)
 	{
 		FString NewFilename(FPaths::GetCleanFilename(HeaderFilename));
-		GeneratedGlue += FString::Printf(TEXT("#include \"%s\"\r\n"), *NewFilename);
+		GeneratedGlue << FString::Printf(TEXT("#include \"%s\""), *NewFilename);
 	}
 	
-	Super::SaveHeaderIfChanged(GlueFilename, GeneratedGlue);
+	// generate a function that feeds all the native wrapper functions to the CLR host
+	GeneratedGlue
+		<< FKlawrCodeFormatter::LineTerminator()
+		<< TEXT("namespace Klawr {")
+		<< TEXT("namespace NativeGlue {")
+		<< FKlawrCodeFormatter::LineTerminator()
+		<< TEXT("void RegisterWrapperClasses()")
+		<< FKlawrCodeFormatter::OpenBrace();
+
+	for (auto Class : AllExportedClasses)
+	{
+		const auto ExportedProperties = ClassExportedProperties.Find(Class);
+		const auto ExportedFunctions = ClassExportedFunctions.Find(Class);
+		bool bHasExports = (ExportedProperties && ExportedProperties->Num())
+			|| (ExportedFunctions && ExportedFunctions->Num());
+
+		if (bHasExports)
+		{
+			FString ClassName = Class->GetName();
+			FString ClassNameCPP = FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *ClassName);
+			GeneratedGlue << FString::Printf(
+				TEXT("IClrHost::Get()->AddClass(TEXT(\"%s\"), %s_WrapperFunctions, ")
+				TEXT("sizeof(%s_WrapperFunctions) / sizeof(%s_WrapperFunctions[0]));"),
+				*ClassNameCPP, *ClassName, *ClassName, *ClassName
+			);
+		}
+	}
+
+	GeneratedGlue 
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator()
+		<< TEXT("}} // namespace Klawr::NativeGlue");
+
+	Super::SaveHeaderIfChanged(GlueFilename, GeneratedGlue.Content);
 }

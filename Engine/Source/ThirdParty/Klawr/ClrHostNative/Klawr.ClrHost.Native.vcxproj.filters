@@ -24,12 +24,24 @@
     <ClInclude Include="Public\KlawrClrHost.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Private\ClrHostControl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\KlawrClrHostInterfaces.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\ClrHost.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\KlawrClrHostPCH.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Private\KlawrClrHost.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\ClrHostControl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

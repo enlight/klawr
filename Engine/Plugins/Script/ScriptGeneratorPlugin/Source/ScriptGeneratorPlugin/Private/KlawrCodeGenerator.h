@@ -87,12 +87,15 @@ private:
 		FString GetterDelegateTypeName;
 		FString SetterDelegateName;
 		FString SetterDelegateTypeName;
+		FString NativeGetterWrapperFunctionName;
+		FString NativeSetterWrapperFunctionName;
 	};
 
 	struct FExportedFunction
 	{
 		const UFunction* Function;
 		bool bHasReturnValue;
+		FString NativeWrapperFunctionName;
 	};
 
 	/** All generated C++ script header filenames. */
@@ -103,6 +106,7 @@ private:
 	TMap<const UClass*, TArray<FExportedFunction> > ClassExportedFunctions;
 	/** Properties that were exported for each class. */
 	TMap<const UClass*, TArray<FExportedProperty> > ClassExportedProperties;
+	TArray<const UClass*> AllExportedClasses;
 
 	/** Generate a .csproj for the C# wrapper classes. */
 	void GenerateManagedWrapperProject();
@@ -154,16 +158,17 @@ private:
 
 	void GenerateNativePropertyGetterWrapper(
 		const FString& ClassNameCPP, UClass* Class, UProperty* Property,
-		FKlawrCodeFormatter& GeneratedGlue
+		FKlawrCodeFormatter& GeneratedGlue, FExportedProperty& ExportedProperty
 	);
 
 	void GenerateNativePropertySetterWrapper(
 		const FString& ClassNameCPP, UClass* Class, UProperty* Property,
-		FKlawrCodeFormatter& GeneratedGlue
+		FKlawrCodeFormatter& GeneratedGlue, FExportedProperty& ExportedProperty
 	);
 
 	void GenerateManagedPropertyWrapper(
-		UClass* Class, UProperty* Property, FKlawrCodeFormatter& GeneratedGlue
+		UClass* Class, UProperty* Property, FKlawrCodeFormatter& GeneratedGlue, 
+		FExportedProperty& ExportedProperty
 	);
 
 	void GenerateManagedStaticConstructor(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue);
