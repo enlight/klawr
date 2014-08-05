@@ -24,7 +24,6 @@
 #pragma once
 
 #include "KlawrClrHostInterfaces.h"
-#include <mscoree.h>
 
 namespace Klawr {
 
@@ -38,13 +37,18 @@ class ClrHostControl : public IHostControl
 {
 public:
 	ClrHostControl()
-		: _refCount(0)
+		: _refCount(1)
 	{
 	}
 
-	IKlawrAppDomainManager* GetDefaultDomainManager()
+	IKlawrAppDomainManager* GetDefaultAppDomainManager()
 	{
-		return _appDomainManager.GetInterfacePtr();
+		return _defaultAppDomainManager.GetInterfacePtr();
+	}
+
+	IKlawrAppDomainManager* GetEngineAppDomainManager()
+	{
+		return _engineAppDomainManager.GetInterfacePtr();
 	}
 
 public: // IHostControl interface
@@ -86,9 +90,10 @@ public: // IUnknown interface
 
 private:
 	volatile ULONG _refCount;
-	// the default app domain manager
-	IKlawrAppDomainManagerPtr _appDomainManager;
-	// TODO: keep track of any other app domain managers
+	// the app domain manager for the default app domain (that can't be unloaded while the CLR is running)
+	IKlawrAppDomainManagerPtr _defaultAppDomainManager;
+	// the app domain manager for the engine app domain (that can be unloaded while the CLR is running)
+	IKlawrAppDomainManagerPtr _engineAppDomainManager;
 };
 
 } // namespace Klawr

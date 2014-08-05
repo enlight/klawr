@@ -24,39 +24,6 @@
 
 #include "KlawrClrHostPCH.h"
 #include "ClrHostControl.h"
-#include "ClrHost.h"
-
-namespace {
-
-SAFEARRAY* CreateSafeArrayOfWrapperFunctions(void** wrapperFunctions, int numFunctions)
-{
-	SAFEARRAY* safeArray;
-	//SAFEARRAYBOUND safeArrayBound[1];
-	//safeArrayBound[0].cElements = numFunctions;
-	//safeArrayBound[0].lLbound = 0;
-	//safeArray = SafeArrayCreate(VT_VARIANT, 1, safeArrayBound);
-	safeArray = SafeArrayCreateVector(VT_VARIANT, 0, numFunctions);
-	if (safeArray)
-	{
-		VARIANT* safeArrayData = nullptr;
-		HRESULT hr = SafeArrayAccessData(safeArray, (void**)&safeArrayData);
-		if (SUCCEEDED(hr))
-		{
-			for (auto i = 0; i < numFunctions; ++i)
-			{
-				VARIANT* var = &safeArrayData[i];
-				VariantInit(var);
-				var->vt = VT_I8;
-				var->llVal = 0;
-				var->byref = wrapperFunctions[i];
-			}
-			SafeArrayUnaccessData(safeArray);
-		}
-	}
-	return safeArray;
-}
-
-} // unnamed namespace
 
 namespace Klawr {
 
@@ -71,21 +38,16 @@ HRESULT STDMETHODCALLTYPE ClrHostControl::SetAppDomainManager(
 	DWORD dwAppDomainID, IUnknown* pUnkAppDomainManager
 )
 {
-	HRESULT hr = pUnkAppDomainManager->QueryInterface(IID_PPV_ARGS(&_appDomainManager));
-	if (SUCCEEDED(hr))
+	HRESULT hr;
+	if (!_defaultAppDomainManager)
 	{
-		auto clrHost = static_cast<ClrHost*>(IClrHost::Get());
-		for (const auto& classWrapper : clrHost->ClassWrappers)
-		{
-			auto className = classWrapper.first.c_str();
-			auto& wrapperInfo = classWrapper.second;
-			auto safeArray = CreateSafeArrayOfWrapperFunctions(
-				wrapperInfo.functionPointers, wrapperInfo.numFunctions
-			);
-			hr = _appDomainManager->SetNativeFunctionPointers(className, safeArray);
-			assert(SUCCEEDED(hr));
-		}
+		hr = pUnkAppDomainManager->QueryInterface(IID_PPV_ARGS(&_defaultAppDomainManager));
 	}
+	else
+	{
+		hr = pUnkAppDomainManager->QueryInterface(IID_PPV_ARGS(&_engineAppDomainManager));
+	}
+	assert(SUCCEEDED(hr));
 	return hr;
 }
 

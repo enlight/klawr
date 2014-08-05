@@ -18,4 +18,6 @@ typedef std::string tstring;
 
 #include <assert.h>
 
+#include <mscoree.h>
+
 // TODO: reference additional headers here

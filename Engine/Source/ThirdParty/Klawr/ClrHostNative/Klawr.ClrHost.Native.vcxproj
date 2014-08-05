@@ -164,6 +164,7 @@
     <ClInclude Include="Private\targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Private\ClrHost.cpp" />
     <ClCompile Include="Private\ClrHostControl.cpp" />
     <ClCompile Include="Private\KlawrClrHost.cpp" />
     <ClCompile Include="Private\KlawrClrHostPCH.cpp">

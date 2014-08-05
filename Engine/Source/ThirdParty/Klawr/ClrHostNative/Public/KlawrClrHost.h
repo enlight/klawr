@@ -42,6 +42,11 @@ TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
 class IClrHost
 {
 public:
+	/** Startup the CLR. */
+	virtual void Startup() = 0;
+	/** Shutdown the CLR. */
+	virtual void Shutdown() = 0;
+
 	/** 
 	 * @brief Store native wrapper functions for the given class.
 	 * @param className The name of a scriptable C++ class (including prefix, e.g. AActor).

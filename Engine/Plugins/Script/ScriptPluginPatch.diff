@@ -1,5 +1,5 @@
 diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
-index 9a40829..c5abb90 100644
+index 9a40829..7bcefad 100644
 --- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
 +++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
 @@ -2,6 +2,9 @@
@@ -12,6 +12,23 @@ index 9a40829..c5abb90 100644
  
  UProperty* FindScriptPropertyHelper(UClass* Class, FName PropertyName)
  {
+@@ -33,10 +36,15 @@ IMPLEMENT_MODULE(FScriptPlugin, ScriptPlugin)
+ void FScriptPlugin::StartupModule()
+ {
+ 	FScriptObjectReferencer::Init();
+-
++#ifdef WITH_KLAWR
++	Klawr::IClrHost::Get()->Startup();
++#endif // WITH_KLAWR
+ }
+ 
+ void FScriptPlugin::ShutdownModule()
+ {
++#ifdef WITH_KLAWR
++	Klawr::IClrHost::Get()->Shutdown();
++#endif // WITH_KLAWR
+ 	FScriptObjectReferencer::Shutdown();
+ }
 diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs
 index 26813c9..aa08524 100644
 --- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs

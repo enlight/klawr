@@ -25,25 +25,43 @@
 
 #include "KlawrClrHostPCH.h"
 #include "KlawrClrHost.h"
+#include <comdef.h> // for _COM_SMARTPTR_TYPEDEF
 #include <map>
+
+_COM_SMARTPTR_TYPEDEF(ICLRRuntimeHost, IID_ICLRRuntimeHost); // for ICLRRuntimeHostPtr
 
 namespace Klawr {
 
+/**
+ * @brief The implementation of the public IClrHost interface.
+ */
 class ClrHost : public IClrHost
 {
+public: // IClrHost interface
+	virtual void Startup() override;
+	virtual void Shutdown() override;
+
+	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) override
+	{
+		_classWrappers[className] = { wrapperFunctions, numFunctions };
+	}
+
 public:
+	ClrHost() : _hostControl(nullptr) {}
+
+private:
+	void InitializeEngineAppDomain();
+
+private:
+	class ClrHostControl* _hostControl;
+	ICLRRuntimeHostPtr _runtimeHost;
+
 	struct ClassWrapperInfo
 	{
 		void** functionPointers;
 		int numFunctions;
 	};
-	std::map<tstring, ClassWrapperInfo> ClassWrappers;
-
-public:
-	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) override
-	{
-		ClassWrappers[className] = { wrapperFunctions, numFunctions };
-	}
+	std::map<tstring, ClassWrapperInfo> _classWrappers;
 };
 
 } // namespace Klawr

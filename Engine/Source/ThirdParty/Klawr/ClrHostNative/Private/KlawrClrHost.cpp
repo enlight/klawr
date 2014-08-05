@@ -25,13 +25,7 @@
 #include "KlawrClrHostPCH.h"
 #include "KlawrClrHost.h"
 #include "ClrHost.h"
-#include "ClrHostControl.h"
-#include <metahost.h>
-#include <comdef.h> // for _COM_SMARTPTR_TYPEDEF
 #include <memory> // for unique_ptr
-#include "KlawrClrHostInterfaces.h"
-
-#pragma comment(lib, "mscoree.lib")
 
 namespace Klawr {
 
@@ -44,56 +38,6 @@ TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy)
 		memcpy(buffer, stringToCopy, bufferSize);
 	}
 	return buffer;
-}
-
-// bootstrap the CLR runtime and load a simple test assembly
-void TestClrHost()
-{
-	_COM_SMARTPTR_TYPEDEF(ICLRMetaHost, IID_ICLRMetaHost);
-	ICLRMetaHostPtr metaHost;
-	HRESULT hr = CLRCreateInstance(CLSID_CLRMetaHost, IID_PPV_ARGS(&metaHost));
-	assert(SUCCEEDED(hr));
-
-	// specify which version of the CLR should be used
-	_COM_SMARTPTR_TYPEDEF(ICLRRuntimeInfo, IID_ICLRRuntimeInfo);
-	ICLRRuntimeInfoPtr runtimeInfo;
-	hr = metaHost->GetRuntime(L"v4.0.30319", IID_PPV_ARGS(&runtimeInfo));
-	assert(SUCCEEDED(hr));
-
-	// load the CLR (it won't be initialized just yet)
-	_COM_SMARTPTR_TYPEDEF(ICLRRuntimeHost, IID_ICLRRuntimeHost);
-	ICLRRuntimeHostPtr runtimeHost;
-	hr = runtimeInfo->GetInterface(CLSID_CLRRuntimeHost, IID_PPV_ARGS(&runtimeHost));
-	assert(SUCCEEDED(hr));
-
-	// TODO: figure out if the host control we create gets cleaned up automatically
-	// hook up our unmanaged host to the runtime host
-	auto clrHostControl = new ClrHostControl();
-	hr = runtimeHost->SetHostControl(clrHostControl);
-	assert(SUCCEEDED(hr));
-
-	_COM_SMARTPTR_TYPEDEF(ICLRControl, IID_ICLRControl);
-	ICLRControlPtr clrControl;
-	hr = runtimeHost->GetCLRControl(&clrControl);
-	assert(SUCCEEDED(hr));
-	
-	// by default the CLR runtime will look for the app domain manager assembly in the same 
-	// directory as the application, which in this case will be 
-	// C:\Program Files\Unreal Engine\4.X\Engine\Binaries\Win64 (or Win32)
-	hr = clrControl->SetAppDomainManagerType(L"Klawr.ClrHost.Managed", L"Klawr.ClrHost.Managed.KlawrAppDomainManager");
-	assert(SUCCEEDED(hr));
-
-	// initialize the CLR (not strictly necessary because the runtime can initialize itself)
-	hr = runtimeHost->Start();
-	assert(SUCCEEDED(hr));
-
-	//clrHostControl->GetDefaultDomainManager()->RunTest();
-
-	// NOTE: There's a crash here while debugging with the Mixed mode debugger, but everything works
-	// fine when using the Auto mode debugger (which probably ends up using the Native debugger 
-	// since this project is native).
-	hr = runtimeHost->Stop();
-	assert(SUCCEEDED(hr));
 }
 
 IClrHost* IClrHost::Get()
