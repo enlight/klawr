@@ -36,7 +36,20 @@ namespace Klawr.ClrHost.Interfaces
     public interface IKlawrAppDomainManager
     {
         /// <summary>
+        /// Create an engine app domain that can be unloaded.
+        /// This method should only be invoked on the default app domain manager.
+        /// </summary>
+        void CreateEngineAppDomain();
+
+        /// <summary>
+        /// Unload the engine app domain.
+        /// This method should only be invoked on the default app domain manager.
+        /// </summary>
+        void DestroyEngineAppDomain();
+
+        /// <summary>
         /// Store pointers to native functions that wrap methods of a C++ class.
+        /// This method should only be invoked on the engine app domain manager.
         /// </summary>
         /// <param name="nativeClassName">Name of C++ class to store function pointers for.</param>
         /// <param name="functionPointers">Array of pointers to native functions.</param>
@@ -44,6 +57,7 @@ namespace Klawr.ClrHost.Interfaces
 
         /// <summary>
         /// Retrieve pointers to native functions that wrap methods of a C++ class.
+        /// This method should only be invoked on the default app domain manager.
         /// </summary>
         /// <param name="nativeClassName">Name of C++ class to retrieve function pointers for.</param>
         /// <returns>Array of pointers to native functions.</returns>
