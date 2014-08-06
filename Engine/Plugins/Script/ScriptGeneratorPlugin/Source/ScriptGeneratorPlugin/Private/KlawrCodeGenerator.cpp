@@ -1018,8 +1018,8 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 	const FString ProjectOutputFilename = ProjectBasePath / ProjectName;
 
 	// load the template .csproj
-	pugi::xml_document Project;
-	pugi::xml_parse_result result = Project.load_file(
+	pugi::xml_document XmlDoc;
+	pugi::xml_parse_result result = XmlDoc.load_file(
 		*ProjectTemplateFilename, pugi::parse_default | pugi::parse_declaration | pugi::parse_comments
 	);
 
@@ -1030,7 +1030,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 	else
 	{
 		// add a reference to the CLR host interfaces assembly
-		auto ReferencesNode = Project.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
+		auto ReferencesNode = XmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
 		if (ReferencesNode)
 		{
 			FString ClrHostInterfacesAssemblyPath = 
@@ -1046,7 +1046,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		}
 
 		// include all the generated C# wrapper classes in the project file
-		auto SourceNode = Project.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
+		auto SourceNode = XmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
 		if (SourceNode)
 		{
 			FString ManagedGlueFilename, LinkFilename;
@@ -1057,20 +1057,36 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 				ManagedGlueFilename.Append(TEXT(".cs"));
 				FPaths::MakePathRelativeTo(ManagedGlueFilename, *ProjectOutputFilename);
 				FPaths::MakePlatformFilename(ManagedGlueFilename);
-				auto CompileNode = SourceNode.append_child(TEXT("Compile"));
-				CompileNode.append_attribute(TEXT("Include")) = *ManagedGlueFilename;
 				// group all generated .cs files under a virtual folder in the project file
 				LinkFilename = TEXT("Generated\\");
 				LinkFilename += FPaths::GetCleanFilename(ManagedGlueFilename);
+
+				auto CompileNode = SourceNode.append_child(TEXT("Compile"));
+				CompileNode.append_attribute(TEXT("Include")) = *ManagedGlueFilename;
 				CompileNode.append_child(TEXT("Link")).text() = *LinkFilename;
 			}
 		}
+
+		// add a post-build event to copy the C# wrapper assembly to the engine binaries dir
+		FString AssemblyDestPath = FPlatformProcess::BaseDir();
+		FPaths::NormalizeFilename(AssemblyDestPath);
+		FPaths::CollapseRelativeDirectories(AssemblyDestPath);
+		FPaths::MakePlatformFilename(AssemblyDestPath);
+		
+		FString PostBuildCmd = FString::Printf(
+			TEXT("xcopy \"$(TargetPath)\" \"%s\" /Y"), *AssemblyDestPath
+		);
+
+		XmlDoc
+			.child(TEXT("Project"))
+				.append_child(TEXT("PropertyGroup"))
+					.append_child(TEXT("PostBuildEvent")).text() = *PostBuildCmd;
 
 		// preserve the BOM and line endings of the template .csproj when writing out the new file
 		unsigned int OutputFlags =
 			pugi::format_default | pugi::format_write_bom | pugi::format_save_file_text;
 
-		if (!Project.save_file(*ProjectOutputFilename, TEXT("  "), OutputFlags))
+		if (!XmlDoc.save_file(*ProjectOutputFilename, TEXT("  "), OutputFlags))
 		{
 			FError::Throwf(TEXT("Failed to save %s"), *ProjectOutputFilename);
 		}

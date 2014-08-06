@@ -43,5 +43,34 @@ public class KlawrClrHostNative : ModuleRules
 			PublicLibraryPaths.Add(Path.Combine(basePath, "..", "Build"));
             PublicAdditionalLibraries.Add(libName);
         }
+                
+        // copy the host assemblies (assumed to have been built previously) to the engine binaries 
+        // directory so that they can be found and loaded at runtime by the unmanaged CLR host
+
+        string hostAssemblyFilename = "Klawr.ClrHost.Managed.dll";
+        string hostAssemblySourceDir = Path.Combine(
+            basePath, Path.Combine("..", "ClrHostManaged", "bin", configuration)
+        );
+        Utils.CollapseRelativeDirectories(ref hostAssemblySourceDir);
+        string hostInterfacesAssemblyFilename = "Klawr.ClrHost.Interfaces.dll";
+        string hostInterfacesAssemblySourceDir = Path.Combine(
+            basePath, Path.Combine("..", "ClrHostInterfaces", "bin", configuration)
+        );
+        Utils.CollapseRelativeDirectories(ref hostInterfacesAssemblySourceDir);
+        string binariesDir = Path.Combine(
+            BuildConfiguration.RelativeEnginePath, "Binaries", Target.Platform.ToString()
+        );
+
+        bool bOverwrite = true;
+        File.Copy(
+            Path.Combine(hostAssemblySourceDir, hostAssemblyFilename),
+            Path.Combine(binariesDir, hostAssemblyFilename), 
+            bOverwrite
+        );
+        File.Copy(
+            Path.Combine(hostInterfacesAssemblySourceDir, hostInterfacesAssemblyFilename),
+            Path.Combine(binariesDir, hostInterfacesAssemblyFilename),
+            bOverwrite
+        );
 	}
 }
