@@ -20,3 +20,9 @@
 *.out
 *.app
 Engine/Source/ThirdParty/Klawr/ClrHostInterfaces/obj/
+Engine/Source/ThirdParty/Klawr/Build/
+Engine/Source/ThirdParty/Klawr/ClrHostManaged/obj/Debug/Klawr.ClrHost.Managed.csproj.FileListAbsolute.txt
+Engine/Source/ThirdParty/Klawr/ClrHostManaged/obj/
+Engine/Source/ThirdParty/Klawr/ClrHostNative/Build/
+*.opensdf
+*.sdf
