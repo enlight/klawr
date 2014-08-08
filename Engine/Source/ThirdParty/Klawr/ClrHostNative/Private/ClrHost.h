@@ -39,6 +39,7 @@ class ClrHost : public IClrHost
 {
 public: // IClrHost interface
 	virtual void Startup() override;
+	virtual void InitializeEngineAppDomain() override;
 	virtual void Shutdown() override;
 
 	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) override
@@ -48,9 +49,6 @@ public: // IClrHost interface
 
 public:
 	ClrHost() : _hostControl(nullptr) {}
-
-private:
-	void InitializeEngineAppDomain();
 
 private:
 	class ClrHostControl* _hostControl;

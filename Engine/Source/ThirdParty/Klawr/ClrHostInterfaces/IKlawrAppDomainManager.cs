@@ -53,7 +53,7 @@ namespace Klawr.ClrHost.Interfaces
         /// </summary>
         /// <param name="nativeClassName">Name of C++ class to store function pointers for.</param>
         /// <param name="functionPointers">Array of pointers to native functions.</param>
-        void SetNativeFunctionPointers(string nativeClassName, IntPtr[] functionPointers);
+        void SetNativeFunctionPointers(string nativeClassName, long[] functionPointers);
 
         /// <summary>
         /// Retrieve pointers to native functions that wrap methods of a C++ class.
@@ -62,5 +62,10 @@ namespace Klawr.ClrHost.Interfaces
         /// <param name="nativeClassName">Name of C++ class to retrieve function pointers for.</param>
         /// <returns>Array of pointers to native functions.</returns>
         IntPtr[] GetNativeFunctionPointers(string nativeClassName);
+
+        /// <summary>
+        /// Load the Klawr.UnrealEngine assembly into the engine app domain.
+        /// </summary>
+        void LoadUnrealEngineWrapperAssembly();
     }
 }

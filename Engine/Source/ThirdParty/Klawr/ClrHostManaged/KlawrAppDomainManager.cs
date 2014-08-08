@@ -30,11 +30,6 @@ namespace Klawr.ClrHost.Managed
         {
             // register the custom domain manager with the unmanaged host
             this.InitializationFlags = AppDomainManagerInitializationOptions.RegisterWithHost;
-            
-            if (!_isDefaultAppDomainManager)
-            {
-                InitializeEngineAppDomain();
-            }
         }
         
         public void CreateEngineAppDomain()
@@ -56,15 +51,6 @@ namespace Klawr.ClrHost.Managed
             }
         }
 
-        // NOTE: _engineAppDomain is still invalid at this point because this method is called
-        // by AppDomain.CreateDomain()
-        public void InitializeEngineAppDomain()
-        {
-            var domainManager = AppDomain.CurrentDomain.DomainManager as IKlawrAppDomainManager;
-            // TODO: load Klawr.UnrealEngine assembly into the new app domain
-            // TODO: initialize the wrapper?
-        }
-
         public void DestroyEngineAppDomain()
         {
             if (!_isDefaultAppDomainManager)
@@ -84,7 +70,7 @@ namespace Klawr.ClrHost.Managed
             }
         }
 
-        public void SetNativeFunctionPointers(string nativeClassName, IntPtr[] functionPointers)
+        public void SetNativeFunctionPointers(string nativeClassName, long[] functionPointers)
         {
             if (_isDefaultAppDomainManager)
             {
@@ -98,7 +84,15 @@ namespace Klawr.ClrHost.Managed
                 {
                     _nativeFunctionPointers = new Dictionary<string, IntPtr[]>();
                 }
-                _nativeFunctionPointers[nativeClassName] = functionPointers;
+                // the function pointers are passed in as long to avoid pointer truncation on a 
+                // 64-bit platform when this method is called via COM, but to actually use them
+                // they need to be converted to IntPtr
+                var unboxedFunctionPointers = new IntPtr[functionPointers.Length];
+                for (var i = 0; i < functionPointers.Length; ++i)
+                {
+                    unboxedFunctionPointers[i] = (IntPtr)(functionPointers[i]);
+                }
+                _nativeFunctionPointers[nativeClassName] = unboxedFunctionPointers;
             }
         }
 
@@ -118,6 +112,13 @@ namespace Klawr.ClrHost.Managed
             {
                 return null;
             }
+        }
+
+        public void LoadUnrealEngineWrapperAssembly()
+        {
+            AssemblyName wrapperAssembly = new AssemblyName();
+            wrapperAssembly.Name = "Klawr.UnrealEngine";
+            Assembly.Load(wrapperAssembly);
         }
     }
 }

@@ -34,27 +34,19 @@ namespace {
 
 SAFEARRAY* CreateSafeArrayOfWrapperFunctions(void** wrapperFunctions, int numFunctions)
 {
-	SAFEARRAY* safeArray;
-	//SAFEARRAYBOUND safeArrayBound[1];
-	//safeArrayBound[0].cElements = numFunctions;
-	//safeArrayBound[0].lLbound = 0;
-	//safeArray = SafeArrayCreate(VT_VARIANT, 1, safeArrayBound);
-	safeArray = SafeArrayCreateVector(VT_VARIANT, 0, numFunctions);
+	SAFEARRAY* safeArray = SafeArrayCreateVector(VT_I8, 0, numFunctions);
 	if (safeArray)
 	{
-		VARIANT* safeArrayData = nullptr;
+		LONGLONG* safeArrayData = nullptr;
 		HRESULT hr = SafeArrayAccessData(safeArray, (void**)&safeArrayData);
 		if (SUCCEEDED(hr))
 		{
 			for (auto i = 0; i < numFunctions; ++i)
 			{
-				VARIANT* var = &safeArrayData[i];
-				VariantInit(var);
-				var->vt = VT_I8;
-				var->llVal = 0;
-				var->byref = wrapperFunctions[i];
+				safeArrayData[i] = reinterpret_cast<LONGLONG>(wrapperFunctions[i]);
 			}
-			SafeArrayUnaccessData(safeArray);
+			hr = SafeArrayUnaccessData(safeArray);
+			assert(SUCCEEDED(hr));
 		}
 	}
 	return safeArray;
@@ -104,8 +96,6 @@ void ClrHost::Startup()
 	// initialize the CLR (not strictly necessary because the runtime can initialize itself)
 	hr = _runtimeHost->Start();
 	assert(SUCCEEDED(hr));
-
-	InitializeEngineAppDomain();
 }
 
 void ClrHost::Shutdown()
@@ -146,6 +136,7 @@ void ClrHost::InitializeEngineAppDomain()
 			HRESULT hr = engineAppDomainManager->SetNativeFunctionPointers(className, safeArray);
 			assert(SUCCEEDED(hr));
 		}
+		engineAppDomainManager->LoadUnrealEngineWrapperAssembly();
 	}
 }
 

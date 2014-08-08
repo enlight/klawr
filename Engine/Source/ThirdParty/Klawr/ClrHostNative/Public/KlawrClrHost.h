@@ -44,6 +44,8 @@ class IClrHost
 public:
 	/** Startup the CLR. */
 	virtual void Startup() = 0;
+	/** Load the engine wrapper assembly. */
+	virtual void InitializeEngineAppDomain() = 0;
 	/** Shutdown the CLR. */
 	virtual void Shutdown() = 0;
 
