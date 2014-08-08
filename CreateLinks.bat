@@ -5,7 +5,7 @@ set ScriptGeneratorTargetDir=C:\Projects\UE4\klawr\Engine\Plugins\Script\ScriptG
 mklink /J C:\Projects\UE4\UnrealEngine\Engine\Source\ThirdParty\Klawr C:\Projects\UE4\klawr\Engine\Source\ThirdParty\Klawr
 mklink /J %ScriptGeneratorLinkDir%\Resources\WrapperProjectTemplate %ScriptGeneratorTargetDir%\Resources\WrapperProjectTemplate
 mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeFormatter.h %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeFormatter.h
-mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.cpp %ScriptGeneratorTargetDir%\Source\Private\ScriptGeneratorPlugin\KlawrCodeGenerator.cpp
+mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.cpp %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.cpp
 mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.h %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.h
 mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\pugiconfig.hpp %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\pugiconfig.hpp
 mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\pugixml.cpp %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\pugixml.cpp
