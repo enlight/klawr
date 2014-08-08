@@ -9,6 +9,9 @@ namespace Klawr.ClrHost.Managed
     // only IKlawrAppDomainManager should be used via COM
     //[ComVisible(true)]
     //[GuidAttribute("0E23AAC2-C76D-480C-882C-220214739598")]
+    /// <summary>
+    /// One of these gets instantiated for every app domain.
+    /// </summary>
     public sealed class KlawrAppDomainManager : AppDomainManager, IKlawrAppDomainManager
     {
         private bool _isDefaultAppDomainManager = false;
@@ -22,13 +25,12 @@ namespace Klawr.ClrHost.Managed
             _isDefaultAppDomainManager = AppDomain.CurrentDomain.IsDefaultAppDomain();
         }
 
+        // NOTE: the base implementation of this method does nothing, so no need to call it
         public override void InitializeNewDomain(AppDomainSetup appDomainInfo)
         {
             // register the custom domain manager with the unmanaged host
             this.InitializationFlags = AppDomainManagerInitializationOptions.RegisterWithHost;
-
-            base.InitializeNewDomain(appDomainInfo);
-
+            
             if (!_isDefaultAppDomainManager)
             {
                 InitializeEngineAppDomain();
@@ -49,13 +51,16 @@ namespace Klawr.ClrHost.Managed
             }
             else
             {
+                // this will instantiate a new app domain manager and call InitializeNewDomain()
                 _engineAppDomain = AppDomain.CreateDomain("EngineDomain");
             }
         }
 
+        // NOTE: _engineAppDomain is still invalid at this point because this method is called
+        // by AppDomain.CreateDomain()
         public void InitializeEngineAppDomain()
         {
-            var domainManager = _engineAppDomain.DomainManager as IKlawrAppDomainManager;
+            var domainManager = AppDomain.CurrentDomain.DomainManager as IKlawrAppDomainManager;
             // TODO: load Klawr.UnrealEngine assembly into the new app domain
             // TODO: initialize the wrapper?
         }
