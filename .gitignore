@@ -26,3 +26,4 @@ Engine/Source/ThirdParty/Klawr/ClrHostManaged/obj/
 Engine/Source/ThirdParty/Klawr/ClrHostNative/Build/
 *.opensdf
 *.sdf
+Engine/Source/ThirdParty/Klawr/ipch/
