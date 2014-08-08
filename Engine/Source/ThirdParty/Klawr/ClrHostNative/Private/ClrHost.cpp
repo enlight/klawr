@@ -110,15 +110,16 @@ void ClrHost::Startup()
 
 void ClrHost::Shutdown()
 {
-	auto engineAppDomainManager = _hostControl->GetEngineAppDomainManager();
-	if (engineAppDomainManager)
+	auto defaultAppDomainManager = _hostControl->GetDefaultAppDomainManager();
+	if (defaultAppDomainManager)
 	{
-		engineAppDomainManager->DestroyEngineAppDomain();
+		defaultAppDomainManager->DestroyEngineAppDomain();
 	}
 
 	// NOTE: There's a crash here while debugging with the Mixed mode debugger, but everything works
 	// fine when using the Auto mode debugger (which probably ends up using the Native debugger 
-	// since this project is native).
+	// since this project is native). Everything also works fine if you detach the Mixed debugger 
+	// before getting here.
 	HRESULT hr = _runtimeHost->Stop();
 	assert(SUCCEEDED(hr));
 
