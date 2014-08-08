@@ -1005,15 +1005,26 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 	const FString ProjectBasePath = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr");
 
 	const FString AssemblyInfoSubPath(TEXT("Properties/AssemblyInfo.cs"));
-	const FString AssemblyInfoSrcFilename =	ResourcesBasePath / AssemblyInfoSubPath;
-	const FString AssemblyInfoDestFilename = ProjectBasePath / AssemblyInfoSubPath;
-
-	if (COPY_OK != IFileManager::Get().Copy(*AssemblyInfoDestFilename, *AssemblyInfoSrcFilename))
+	auto CopyResult = IFileManager::Get().Copy(
+		*(ProjectBasePath / AssemblyInfoSubPath), *(ResourcesBasePath / AssemblyInfoSubPath)
+	);
+	if (COPY_OK != CopyResult)
 	{
-		FError::Throwf(TEXT("Failed to copy '%s'"), *AssemblyInfoSrcFilename);
+		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / AssemblyInfoSubPath));
 	}
 
-	const FString ProjectName("UE4Wrapper.csproj");
+	const FString StructWrappersFilename(TEXT("UE4Structs.cs"));
+	CopyResult = IFileManager::Get().Copy(
+		*(ProjectBasePath / StructWrappersFilename), 
+		*(ResourcesBasePath / StructWrappersFilename)
+	);
+	if (COPY_OK != CopyResult)
+	{
+		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / StructWrappersFilename));
+	}
+
+
+	const FString ProjectName("Klawr.UnrealEngine.csproj");
 	const FString ProjectTemplateFilename = ResourcesBasePath / ProjectName;
 	const FString ProjectOutputFilename = ProjectBasePath / ProjectName;
 
@@ -1098,6 +1109,7 @@ void FKlawrCodeGenerator::FinishExport()
 	GlueAllNativeWrapperFiles();
 	Super::RenameTempFiles();
 	GenerateManagedWrapperProject();
+	// TODO: build the generated wrapper project
 }
 
 void FKlawrCodeGenerator::GlueAllNativeWrapperFiles()

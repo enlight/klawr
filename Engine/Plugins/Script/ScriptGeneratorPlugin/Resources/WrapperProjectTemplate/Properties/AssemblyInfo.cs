@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("UE4Wrapper")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Klawr.UnrealEngine")]
+[assembly: AssemblyDescription("Contains wrapper classes for Unreal Engine 4.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("UE4Wrapper")]
-[assembly: AssemblyCopyright("Copyright ©  2014")]
+[assembly: AssemblyProduct("Klawr CLR Host")]
+[assembly: AssemblyCopyright("Copyright © 2014 Vadim Macagon")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
