@@ -47,12 +47,16 @@ public class KlawrClrHostNative : ModuleRules
         // copy the host assemblies (assumed to have been built previously) to the engine binaries 
         // directory so that they can be found and loaded at runtime by the unmanaged CLR host
 
-        string hostAssemblyFilename = "Klawr.ClrHost.Managed.dll";
+        string hostAssemblyName = "Klawr.ClrHost.Managed";
+        string hostAssemblyDLL = hostAssemblyName + ".dll";
+        string hostAssemblyPDB = hostAssemblyName + ".pdb";
         string hostAssemblySourceDir = Path.Combine(
             basePath, Path.Combine("..", "ClrHostManaged", "bin", configuration)
         );
         Utils.CollapseRelativeDirectories(ref hostAssemblySourceDir);
-        string hostInterfacesAssemblyFilename = "Klawr.ClrHost.Interfaces.dll";
+        string hostInterfacesAssemblyName = "Klawr.ClrHost.Interfaces";
+        string hostInterfacesAssemblyDLL = hostInterfacesAssemblyName + ".dll";
+        string hostInterfacesAssemblyPDB = hostInterfacesAssemblyName + ".pdb";
         string hostInterfacesAssemblySourceDir = Path.Combine(
             basePath, Path.Combine("..", "ClrHostInterfaces", "bin", configuration)
         );
@@ -63,13 +67,23 @@ public class KlawrClrHostNative : ModuleRules
 
         bool bOverwrite = true;
         File.Copy(
-            Path.Combine(hostAssemblySourceDir, hostAssemblyFilename),
-            Path.Combine(binariesDir, hostAssemblyFilename), 
+            Path.Combine(hostAssemblySourceDir, hostAssemblyDLL),
+            Path.Combine(binariesDir, hostAssemblyDLL), 
             bOverwrite
         );
         File.Copy(
-            Path.Combine(hostInterfacesAssemblySourceDir, hostInterfacesAssemblyFilename),
-            Path.Combine(binariesDir, hostInterfacesAssemblyFilename),
+            Path.Combine(hostAssemblySourceDir, hostAssemblyPDB),
+            Path.Combine(binariesDir, hostAssemblyPDB),
+            bOverwrite
+        );
+        File.Copy(
+            Path.Combine(hostInterfacesAssemblySourceDir, hostInterfacesAssemblyDLL),
+            Path.Combine(binariesDir, hostInterfacesAssemblyDLL),
+            bOverwrite
+        );
+        File.Copy(
+            Path.Combine(hostInterfacesAssemblySourceDir, hostInterfacesAssemblyPDB),
+            Path.Combine(binariesDir, hostInterfacesAssemblyPDB),
             bOverwrite
         );
 	}
