@@ -1004,6 +1004,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		FPaths::EnginePluginsDir() / TEXT("Script/ScriptGeneratorPlugin/Resources/WrapperProjectTemplate");
 	const FString ProjectBasePath = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr");
 
+	// copy Properties/AssemblyInfo.cs from the template folder
 	const FString AssemblyInfoSubPath(TEXT("Properties/AssemblyInfo.cs"));
 	auto CopyResult = IFileManager::Get().Copy(
 		*(ProjectBasePath / AssemblyInfoSubPath), *(ResourcesBasePath / AssemblyInfoSubPath)
@@ -1013,6 +1014,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / AssemblyInfoSubPath));
 	}
 
+	// copy UE4Structs.cs from the template folder
 	const FString StructWrappersFilename(TEXT("UE4Structs.cs"));
 	CopyResult = IFileManager::Get().Copy(
 		*(ProjectBasePath / StructWrappersFilename), 
@@ -1023,7 +1025,17 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / StructWrappersFilename));
 	}
 
-
+	// copy batch file that will be used to build the generated project
+	const FString BuildBatchFilename(TEXT("Build.bat"));
+	CopyResult = IFileManager::Get().Copy(
+		*(ProjectBasePath / BuildBatchFilename),
+		*(ResourcesBasePath / BuildBatchFilename)
+	);
+	if (COPY_OK != CopyResult)
+	{
+		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / BuildBatchFilename));
+	}
+	
 	const FString ProjectName("Klawr.UnrealEngine.csproj");
 	const FString ProjectTemplateFilename = ResourcesBasePath / ProjectName;
 	const FString ProjectOutputFilename = ProjectBasePath / ProjectName;
@@ -1104,12 +1116,31 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 	}
 }
 
+void FKlawrCodeGenerator::BuildManagedWrapperProject()
+{
+	FString BuildFilename = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr/Build.bat");
+	FPaths::CollapseRelativeDirectories(BuildFilename);
+	FPaths::MakePlatformFilename(BuildFilename);
+	int32 ReturnCode = 0;
+	FString StdOut;
+	FString StdError;
+
+	FPlatformProcess::ExecProcess(
+		*BuildFilename, TEXT(""), &ReturnCode, &StdOut, &StdError
+	);
+
+	if (ReturnCode != 0)
+	{
+		FError::Throwf(TEXT("Failed to build Klawr.UnrealEngine assembly!"));
+	}
+}
+
 void FKlawrCodeGenerator::FinishExport()
 {
 	GlueAllNativeWrapperFiles();
 	Super::RenameTempFiles();
 	GenerateManagedWrapperProject();
-	// TODO: build the generated wrapper project
+	BuildManagedWrapperProject();
 }
 
 void FKlawrCodeGenerator::GlueAllNativeWrapperFiles()

@@ -110,6 +110,8 @@ private:
 
 	/** Generate a .csproj for the C# wrapper classes. */
 	void GenerateManagedWrapperProject();
+	/** Build the generated .csproj of C# wrapper classes. */
+	void BuildManagedWrapperProject();
 	/** Create a 'glue' file that merges all generated script files */
 	void GlueAllNativeWrapperFiles();
 
