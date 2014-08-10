@@ -28,44 +28,23 @@ using System.Runtime.InteropServices;
 namespace Klawr.ClrHost.Interfaces
 {
     /// <summary>
+    /// Manager for the default app domain (that can't be unloaded), accessible via COM.
+    /// 
     /// This interface is implemented by the managed side of the CLR host, and is used by the
     /// native side of the CLR host to interact with the managed side.
     /// </summary>
     [ComVisible(true)]
     [GuidAttribute("D90BC9C3-F4DC-4103-BEFA-966FA8C4B7EF")]
-    public interface IKlawrAppDomainManager
+    public interface IDefaultAppDomainManager
     {
         /// <summary>
         /// Create an engine app domain that can be unloaded.
-        /// This method should only be invoked on the default app domain manager.
         /// </summary>
         void CreateEngineAppDomain();
 
         /// <summary>
         /// Unload the engine app domain.
-        /// This method should only be invoked on the default app domain manager.
         /// </summary>
         void DestroyEngineAppDomain();
-
-        /// <summary>
-        /// Store pointers to native functions that wrap methods of a C++ class.
-        /// This method should only be invoked on the engine app domain manager.
-        /// </summary>
-        /// <param name="nativeClassName">Name of C++ class to store function pointers for.</param>
-        /// <param name="functionPointers">Array of pointers to native functions.</param>
-        void SetNativeFunctionPointers(string nativeClassName, long[] functionPointers);
-
-        /// <summary>
-        /// Retrieve pointers to native functions that wrap methods of a C++ class.
-        /// This method should only be invoked on the default app domain manager.
-        /// </summary>
-        /// <param name="nativeClassName">Name of C++ class to retrieve function pointers for.</param>
-        /// <returns>Array of pointers to native functions.</returns>
-        IntPtr[] GetNativeFunctionPointers(string nativeClassName);
-
-        /// <summary>
-        /// Load the Klawr.UnrealEngine assembly into the engine app domain.
-        /// </summary>
-        void LoadUnrealEngineWrapperAssembly();
     }
 }

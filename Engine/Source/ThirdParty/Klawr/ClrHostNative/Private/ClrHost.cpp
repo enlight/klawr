@@ -90,7 +90,7 @@ void ClrHost::Startup()
 	// by default the CLR runtime will look for the app domain manager assembly in the same 
 	// directory as the application, which in this case will be 
 	// C:\Program Files\Unreal Engine\4.X\Engine\Binaries\Win64 (or Win32)
-	hr = clrControl->SetAppDomainManagerType(L"Klawr.ClrHost.Managed", L"Klawr.ClrHost.Managed.KlawrAppDomainManager");
+	hr = clrControl->SetAppDomainManagerType(L"Klawr.ClrHost.Managed", L"Klawr.ClrHost.Managed.DefaultAppDomainManager");
 	assert(SUCCEEDED(hr));
 
 	// initialize the CLR (not strictly necessary because the runtime can initialize itself)

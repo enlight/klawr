@@ -43,7 +43,8 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IKlawrAppDomainManager.cs" />
+    <Compile Include="IDefaultAppDomainManager.cs" />
+    <Compile Include="IEngineAppDomainManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSHARP.Targets" />

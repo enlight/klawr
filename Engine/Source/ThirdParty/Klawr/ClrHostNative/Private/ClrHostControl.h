@@ -41,12 +41,12 @@ public:
 	{
 	}
 
-	IKlawrAppDomainManager* GetDefaultAppDomainManager()
+	IDefaultAppDomainManager* GetDefaultAppDomainManager()
 	{
 		return _defaultAppDomainManager.GetInterfacePtr();
 	}
 
-	IKlawrAppDomainManager* GetEngineAppDomainManager()
+	IEngineAppDomainManager* GetEngineAppDomainManager()
 	{
 		return _engineAppDomainManager.GetInterfacePtr();
 	}
@@ -91,9 +91,9 @@ public: // IUnknown interface
 private:
 	volatile ULONG _refCount;
 	// the app domain manager for the default app domain (that can't be unloaded while the CLR is running)
-	IKlawrAppDomainManagerPtr _defaultAppDomainManager;
+	IDefaultAppDomainManagerPtr _defaultAppDomainManager;
 	// the app domain manager for the engine app domain (that can be unloaded while the CLR is running)
-	IKlawrAppDomainManagerPtr _engineAppDomainManager;
+	IEngineAppDomainManagerPtr _engineAppDomainManager;
 };
 
 } // namespace Klawr

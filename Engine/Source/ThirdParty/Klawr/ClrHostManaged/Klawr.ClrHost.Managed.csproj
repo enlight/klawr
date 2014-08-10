@@ -39,7 +39,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="KlawrAppDomainManager.cs" />
+    <Compile Include="DefaultAppDomainManager.cs" />
+    <Compile Include="EngineAppDomainManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
