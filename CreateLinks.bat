@@ -1,13 +1,25 @@
 :: Engine source is in a git repo, Klawr source is in a different git repo, no simple way to put the Klawr checkout inside Engine checkout due to a shared directory structure,
 :: so create a couple of directory junctions and a few symbolic links in the Engine source that link to the Klawr source.
-set ScriptGeneratorLinkDir=C:\Projects\UE4\UnrealEngine\Engine\Plugins\Script\ScriptGeneratorPlugin
-set ScriptGeneratorTargetDir=C:\Projects\UE4\klawr\Engine\Plugins\Script\ScriptGeneratorPlugin
-mklink /J C:\Projects\UE4\UnrealEngine\Engine\Source\ThirdParty\Klawr C:\Projects\UE4\klawr\Engine\Source\ThirdParty\Klawr
-mklink /J %ScriptGeneratorLinkDir%\Resources\WrapperProjectTemplate %ScriptGeneratorTargetDir%\Resources\WrapperProjectTemplate
-mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeFormatter.h %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeFormatter.h
-mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.cpp %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.cpp
-mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.h %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\KlawrCodeGenerator.h
-mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\pugiconfig.hpp %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\pugiconfig.hpp
-mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\pugixml.cpp %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\pugixml.cpp
-mklink %ScriptGeneratorLinkDir%\Source\ScriptGeneratorPlugin\Private\pugixml.hpp %ScriptGeneratorTargetDir%\Source\ScriptGeneratorPlugin\Private\pugixml.hpp
+@echo off
+set BATCH_FILE_LOCATION=%~dp0
+set ScriptGeneratorBaseLinkDir=C:\Projects\UE4\UnrealEngine\Engine\Plugins\Script\ScriptGeneratorPlugin
+set ScriptGeneratorBaseTargetDir=%BATCH_FILE_LOCATION%Engine\Plugins\Script\ScriptGeneratorPlugin
+set ScriptGeneratorCodeLinkDir=%ScriptGeneratorBaseLinkDir%\Source\ScriptGeneratorPlugin
+set ScriptGeneratorCodeTargetDir=%ScriptGeneratorBaseTargetDir%\Source\ScriptGeneratorPlugin
+set ScriptPluginCodeLinkDir=C:\Projects\UE4\UnrealEngine\Engine\Plugins\Script\ScriptPlugin\Source\ScriptPlugin
+set ScriptPluginCodeTargetDir=%BATCH_FILE_LOCATION%Engine\Plugins\Script\ScriptPlugin\Source\ScriptPlugin
+@echo on
+
+mklink /J C:\Projects\UE4\UnrealEngine\Engine\Source\ThirdParty\Klawr %BATCH_FILE_LOCATION%Engine\Source\ThirdParty\Klawr
+mklink /J %ScriptGeneratorBaseLinkDir%\Resources\WrapperProjectTemplate %ScriptGeneratorBaseTargetDir%\Resources\WrapperProjectTemplate
+
+mklink %ScriptGeneratorCodeLinkDir%\Private\KlawrCodeFormatter.h %ScriptGeneratorCodeTargetDir%\Private\KlawrCodeFormatter.h
+mklink %ScriptGeneratorCodeLinkDir%\Private\KlawrCodeGenerator.cpp %ScriptGeneratorCodeTargetDir%\Private\KlawrCodeGenerator.cpp
+mklink %ScriptGeneratorCodeLinkDir%\Private\KlawrCodeGenerator.h %ScriptGeneratorCodeTargetDir%\Private\KlawrCodeGenerator.h
+mklink %ScriptGeneratorCodeLinkDir%\Private\pugiconfig.hpp %ScriptGeneratorCodeTargetDir%\Private\pugiconfig.hpp
+mklink %ScriptGeneratorCodeLinkDir%\Private\pugixml.cpp %ScriptGeneratorCodeTargetDir%\Private\pugixml.cpp
+mklink %ScriptGeneratorCodeLinkDir%\Private\pugixml.hpp %ScriptGeneratorCodeTargetDir%\Private\pugixml.hpp
+
+mklink %ScriptPluginCodeLinkDir%\Private\KlawrScriptContext.cpp %ScriptPluginCodeTargetDir%\Private\KlawrScriptContext.cpp
+mklink %ScriptPluginCodeLinkDir%\Private\KlawrScriptContext.h %ScriptPluginCodeTargetDir%\Private\KlawrScriptContext.h
 pause
