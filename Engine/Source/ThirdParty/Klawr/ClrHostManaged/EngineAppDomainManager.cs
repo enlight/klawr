@@ -26,6 +26,7 @@ using Klawr.ClrHost.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 
 namespace Klawr.ClrHost.Managed
 {
@@ -36,6 +37,10 @@ namespace Klawr.ClrHost.Managed
     {
         // only set for the engine app domain manager
         private Dictionary<string, IntPtr[]> _nativeFunctionPointers;
+        // all currently registered script objects
+        private Dictionary<long, ScriptObject> _scriptObjects = new Dictionary<long, ScriptObject>();
+        // identifier of the most recently registered ScriptObject instance
+        private long _lastScriptObjectID = 0;
 
         // NOTE: the base implementation of this method does nothing, so no need to call it
         public override void InitializeNewDomain(AppDomainSetup appDomainInfo)
@@ -78,6 +83,36 @@ namespace Klawr.ClrHost.Managed
             AssemblyName wrapperAssembly = new AssemblyName();
             wrapperAssembly.Name = "Klawr.UnrealEngine";
             Assembly.Load(wrapperAssembly);
+        }
+
+        /// <summary>
+        /// Register the given ScriptObject instance with the manager.
+        /// 
+        /// The manager will keep a reference to the given object until the object is unregistered.
+        /// 
+        /// Note that the identifier returned by this method is only unique amongst all ScriptObject 
+        /// instances registered with this manager instance. Since all ScriptObject instances
+        /// automatically register themselves with the manager of the app domain within which they
+        /// are constructed the returned identifier can be used to uniquely identify a ScriptObject
+        /// instance within the app domain it was created in.
+        /// </summary>
+        /// <returns>A unique identifier for the registered object.</returns>
+        public long RegisterScriptObject(ScriptObject scriptObject)
+        {
+            var uniqueID = Interlocked.Increment(ref _lastScriptObjectID);
+            _scriptObjects.Add(uniqueID, scriptObject);
+            return uniqueID;
+        }
+
+        /// <summary>
+        /// Unregister the given ScriptObject with the manager.
+        /// 
+        /// The manager will remove the reference it previously held to the object.
+        /// </summary>
+        /// <param name="scriptObject">A registered ScriptObject instance.</param>
+        public void UnregisterScriptObject(ScriptObject scriptObject)
+        {
+            _scriptObjects.Remove(scriptObject.InstanceID);
         }
     }
 }

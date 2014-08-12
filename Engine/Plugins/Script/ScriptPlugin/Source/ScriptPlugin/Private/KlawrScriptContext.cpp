@@ -34,8 +34,8 @@ bool FKlawrContext::Initialize(const FString& Code, UObject* Owner)
 	// [editor-only] rebuild the .csproj
 	// [editor-only] copy the assembly to a directory in the search path
 	// [editor-only] reload the engine app domain
-	// check if BeginPlay()/Tick()/Destroy() were implemented
 	// create an instance of the class defined in the code
+	// check if BeginPlay()/Tick()/Destroy() were implemented
 }
 
 void FKlawrContext::BeginPlay()
