@@ -47,6 +47,9 @@ public: // IClrHost interface
 		_classWrappers[className] = { wrapperFunctions, numFunctions };
 	}
 
+	virtual bool CreateScriptObject(const TCHAR* className, ScriptObjectInstanceInfo& info) override;
+	virtual void DestroyScriptObject(__int64 instanceID) override;
+
 public:
 	ClrHost() : _hostControl(nullptr) {}
 

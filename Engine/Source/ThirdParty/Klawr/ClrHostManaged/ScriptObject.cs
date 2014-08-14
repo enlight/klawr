@@ -23,6 +23,8 @@
 //
 
 using System;
+using Klawr.ClrHost.Interfaces;
+using System.Diagnostics;
 
 namespace Klawr.ClrHost.Managed
 {
@@ -37,24 +39,44 @@ namespace Klawr.ClrHost.Managed
     /// </summary>
     public class ScriptObject
     {
-        private readonly long _instanceID;
-
+        // contains bits and pieces used for native/managed interop
+        private ScriptObjectInstanceInfo _instanceInfo;
+        
         /// <summary>
         /// Unique identifier for this instance that's guaranteed to be unique amongst all the
         /// ScriptObject instances within the app domain this instance was created in.
         /// </summary>
         public long InstanceID
         {
-            get { return _instanceID; }
+            get { return _instanceInfo.InstanceID; }
+        }
+
+        internal ScriptObjectInstanceInfo InstanceInfo
+        {
+            set { _instanceInfo = value; }
         }
 
         /// <summary>
-        /// Construct a new instance and register it with the EngineAppDomainManager.
+        /// Construct a new instance.
         /// </summary>
-        ScriptObject()
+        public ScriptObject()
         {
-            var manager = (EngineAppDomainManager)AppDomain.CurrentDomain.DomainManager;
-            _instanceID = manager.RegisterScriptObject(this);
+            Console.WriteLine("ScriptObject::ScriptObject()");
+        }
+
+        public virtual void BeginPlay()
+        {
+            Console.WriteLine("ScriptObject::BeginPlay()");
+        }
+
+        public virtual void Tick(float deltaTime)
+        {
+            Console.WriteLine("ScriptObject::Tick(float)");
+        }
+
+        public virtual void Destroy()
+        {
+            Console.WriteLine("ScriptObject::Destroy()");
         }
     }
 }

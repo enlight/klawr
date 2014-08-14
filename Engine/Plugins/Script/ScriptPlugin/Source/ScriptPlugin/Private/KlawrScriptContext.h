@@ -24,9 +24,14 @@
 #pragma once
 
 #include "ScriptBlueprintGeneratedClass.h"
+#include "KlawrClrHost.h"
 
 class FKlawrContext : public FScriptContextBase
 {
+public:
+	FKlawrContext();
+	virtual ~FKlawrContext();
+
 public: // FScriptContextBase interface
 
 	virtual bool Initialize(const FString& Code, UObject* Owner) override;
@@ -46,5 +51,13 @@ public: // FScriptContextBase interface
 	virtual bool SetStringProperty(const FString& PropertyName, const FString& NewValue) override;
 	virtual FString GetStringProperty(const FString& PropertyName) override;
 	virtual void InvokeScriptFunction(FFrame& Stack, RESULT_DECL) override;
+#if WITH_EDITOR
 	virtual void GetScriptDefinedFields(TArray<FScriptField>& OutFields) override;
+#endif // WITH_EDITOR
+
+private:
+	void DestroyScriptObject();
+
+private:
+	Klawr::ScriptObjectInstanceInfo ScriptObjectInfo;
 };

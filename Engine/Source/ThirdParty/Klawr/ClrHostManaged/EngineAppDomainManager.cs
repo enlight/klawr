@@ -85,6 +85,29 @@ namespace Klawr.ClrHost.Managed
             Assembly.Load(wrapperAssembly);
         }
 
+        public bool CreateScriptObject(string className, ref ScriptObjectInstanceInfo info)
+        {
+            var objType = typeof(EngineAppDomainManager).Assembly.GetType(className);
+            var constructor = objType.GetConstructor(Type.EmptyTypes);
+            if (constructor != null)
+            {
+                var obj = (ScriptObject)constructor.Invoke(null);
+                info.InstanceID = RegisterScriptObject(obj);
+                info.BeginPlay = new ScriptObjectInstanceInfo.BeginPlayAction(obj.BeginPlay);
+                info.Tick = new ScriptObjectInstanceInfo.TickAction(obj.Tick);
+                info.Destroy = new ScriptObjectInstanceInfo.DestroyAction(obj.Destroy);
+                obj.InstanceInfo = info;
+                return true;
+            }
+            // TODO: log an error
+            return false;
+        }
+
+        public void DestroyScriptObject(long scriptObjectInstanceID)
+        {
+            UnregisterScriptObject(scriptObjectInstanceID);
+        }
+
         /// <summary>
         /// Register the given ScriptObject instance with the manager.
         /// 
@@ -105,14 +128,14 @@ namespace Klawr.ClrHost.Managed
         }
 
         /// <summary>
-        /// Unregister the given ScriptObject with the manager.
+        /// Unregister a ScriptObject that was previously registered with the manager.
         /// 
         /// The manager will remove the reference it previously held to the object.
         /// </summary>
-        /// <param name="scriptObject">A registered ScriptObject instance.</param>
-        public void UnregisterScriptObject(ScriptObject scriptObject)
+        /// <param name="scriptObjectInstanceID">ID of a registered ScriptObject instance.</param>
+        public void UnregisterScriptObject(long scriptObjectInstanceID)
         {
-            _scriptObjects.Remove(scriptObject.InstanceID);
+            _scriptObjects.Remove(scriptObjectInstanceID);
         }
     }
 }

@@ -140,4 +140,23 @@ void ClrHost::InitializeEngineAppDomain()
 	}
 }
 
+bool ClrHost::CreateScriptObject(const TCHAR* className, ScriptObjectInstanceInfo& info)
+{
+	Klawr_ClrHost_Interfaces::ScriptObjectInstanceInfo srcInfo;
+	bool created = !!_hostControl->GetEngineAppDomainManager()->CreateScriptObject(className, &srcInfo);
+	if (created)
+	{
+		info.InstanceID = srcInfo.InstanceID;
+		info.BeginPlay = reinterpret_cast<ScriptObjectInstanceInfo::BeginPlayAction>(srcInfo.BeginPlay);
+		info.Tick = reinterpret_cast<ScriptObjectInstanceInfo::TickAction>(srcInfo.Tick);
+		info.Destroy = reinterpret_cast<ScriptObjectInstanceInfo::DestroyAction>(srcInfo.Destroy);
+	}
+	return created;
+}
+
+void ClrHost::DestroyScriptObject(__int64 instanceID)
+{
+	_hostControl->GetEngineAppDomainManager()->DestroyScriptObject(instanceID);
+}
+
 } // namespace Klawr

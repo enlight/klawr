@@ -52,5 +52,20 @@ namespace Klawr.ClrHost.Interfaces
         /// Load the Klawr.UnrealEngine assembly into the engine app domain.
         /// </summary>
         void LoadUnrealEngineWrapperAssembly();
+
+        /// <summary>
+        /// Create a new ScriptObject instance of the given class.
+        /// </summary>
+        /// <param name="className">The name of a class derived from ScriptObject, the namespace
+        /// must also be provided, e.g. "MyExample.MyScriptObject"</param>
+        /// <param name="info">Information about the newly created ScriptObject instance.</param>
+        /// <returns>true if the object was created successfuly, false otherwise</returns>
+        bool CreateScriptObject(string className, ref ScriptObjectInstanceInfo info);
+
+        /// <summary>
+        /// Destroy a ScriptObject instance.
+        /// </summary>
+        /// <param name="scriptObjectInstanceID">The ID of the ScriptObject instance to destroy.</param>
+        void DestroyScriptObject(long scriptObjectInstanceID);
     }
 }

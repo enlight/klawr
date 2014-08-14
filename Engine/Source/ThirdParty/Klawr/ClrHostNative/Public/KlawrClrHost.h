@@ -38,6 +38,28 @@ namespace Klawr {
  */
 TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
 
+/**
+ * @brief Contains native/managed interop information for a ScriptObject instance.
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ *       the managed counterpart is also exposed to native code via COM under the 
+ *       Klawr_ClrHost_Interfaces namespace.
+ */
+struct ScriptObjectInstanceInfo
+{
+	typedef void (*BeginPlayAction)();
+	typedef void (*TickAction)(float);
+	typedef void (*DestroyAction)();
+
+	/** Unique ID of a managed ScriptObject instance. */
+	__int64 InstanceID;
+	/** Pointer to the managed BeginPlay() method of a ScriptObject instance. */
+	BeginPlayAction BeginPlay;
+	/** Pointer to the managed Tick() method of a ScriptObject instance. */
+	TickAction Tick;
+	/** Pointer to the managed Destroy() method of a ScriptObject instance. */
+	DestroyAction Destroy;
+};
+
 /** This public interface can be used to pass native wrapper functions to the CLR host. */
 class IClrHost
 {
@@ -56,6 +78,9 @@ public:
 	 * @param numFunctions Number of elements in the wrapperFunctions array.
 	 */
 	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) = 0;
+
+	virtual bool CreateScriptObject(const TCHAR* className, ScriptObjectInstanceInfo& info) = 0;
+	virtual void DestroyScriptObject(__int64 instanceID) = 0;
 
 public:
 	/** Get the singleton instance. */

@@ -27,6 +27,11 @@
 
 namespace Klawr {
 
+using Klawr_ClrHost_Interfaces::IDefaultAppDomainManager;
+using Klawr_ClrHost_Interfaces::IDefaultAppDomainManagerPtr;
+using Klawr_ClrHost_Interfaces::IEngineAppDomainManager;
+using Klawr_ClrHost_Interfaces::IEngineAppDomainManagerPtr;
+
 /*
  * Keeps track of app domain managers (created from managed code) on the unmanaged side.
  *

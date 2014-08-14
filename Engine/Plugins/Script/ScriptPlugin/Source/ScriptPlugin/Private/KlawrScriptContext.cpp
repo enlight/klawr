@@ -25,6 +25,16 @@
 #include "ScriptPluginPrivatePCH.h"
 #include "KlawrScriptContext.h"
 
+FKlawrContext::FKlawrContext()
+{
+	ScriptObjectInfo.InstanceID = 0;
+}
+
+FKlawrContext::~FKlawrContext()
+{
+	DestroyScriptObject();
+}
+
 bool FKlawrContext::Initialize(const FString& Code, UObject* Owner)
 {
 	// TODO:
@@ -34,29 +44,50 @@ bool FKlawrContext::Initialize(const FString& Code, UObject* Owner)
 	// [editor-only] rebuild the .csproj
 	// [editor-only] copy the assembly to a directory in the search path
 	// [editor-only] reload the engine app domain
-	// create an instance of the class defined in the code
-	// check if BeginPlay()/Tick()/Destroy() were implemented
+
+	// create an instance of the managed class
+	return Klawr::IClrHost::Get()->CreateScriptObject(TEXT("Klawr.ClrHost.Managed.ScriptObject"), ScriptObjectInfo);
+}
+
+void FKlawrContext::DestroyScriptObject()
+{
+	if (ScriptObjectInfo.InstanceID != 0)
+	{
+		Klawr::IClrHost::Get()->DestroyScriptObject(ScriptObjectInfo.InstanceID);
+		ScriptObjectInfo.InstanceID = 0;
+	}
 }
 
 void FKlawrContext::BeginPlay()
 {
-	// TODO
+	if (ScriptObjectInfo.BeginPlay)
+	{
+		ScriptObjectInfo.BeginPlay();
+	}
 }
 
 void FKlawrContext::Tick(float DeltaTime)
 {
-	// TODO
+	if (ScriptObjectInfo.Tick)
+	{
+		ScriptObjectInfo.Tick(DeltaTime);
+	}
 }
 
 void FKlawrContext::Destroy()
 {
-	// TODO
+	// clean up anything created in BeginPlay/Tick
+	if (ScriptObjectInfo.Destroy)
+	{
+		ScriptObjectInfo.Destroy();
+	}
+	// the managed object will not be accessed from here on, so get rid of it now
+	DestroyScriptObject();
 }
 
 bool FKlawrContext::CanTick()
 {
-	// TODO:
-	return false;
+	return ScriptObjectInfo.Tick != nullptr;
 }
 
 bool FKlawrContext::CallFunction(const FString& FunctionName)
@@ -127,10 +158,13 @@ FString FKlawrContext::GetStringProperty(const FString& PropertyName)
 
 void FKlawrContext::InvokeScriptFunction(FFrame& Stack, RESULT_DECL)
 {
-	// TODO
+	P_FINISH;
+	CallFunction(Stack.CurrentNativeFunction->GetName());
 }
 
+#if WITH_EDITOR
 void FKlawrContext::GetScriptDefinedFields(TArray<FScriptField>& OutFields)
 {
 	// TODO
 }
+#endif // WITH_EDITOR
