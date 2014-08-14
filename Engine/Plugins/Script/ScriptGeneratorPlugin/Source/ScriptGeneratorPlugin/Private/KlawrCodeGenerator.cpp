@@ -218,6 +218,12 @@ bool FKlawrCodeGenerator::CanExportClass(UClass* Class)
 // TODO: remove ClassNameCPP from args, it's not used for anything
 bool FKlawrCodeGenerator::CanExportFunction(const FString& ClassNameCPP, UClass* Class, UFunction* Function)
 {
+	// functions from base classes should only be exported when those classes are processed
+	if (Function->GetOwnerClass() != Class)
+	{
+		return false;
+	}
+
 	bool bExport = Super::CanExportFunction(ClassNameCPP, Class, Function);
 	if (bExport)
 	{
@@ -636,6 +642,12 @@ FString FKlawrCodeGenerator::GetPropertyInteropTypeModifiers(UProperty* Property
 
 bool FKlawrCodeGenerator::CanExportProperty(const FString& ClassNameCPP, UClass* Class, UProperty* Property)
 {
+	// properties from base classes should only be exported when those classes are processed
+	if (Property->GetOwnerClass() != Class)
+	{
+		return false;
+	}
+
 	bool bCanExport = Super::CanExportProperty(ClassNameCPP, Class, Property);
 	if (bCanExport)
 	{
@@ -844,19 +856,27 @@ void FKlawrCodeGenerator::GenerateManagedStaticConstructor(
 	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
 )
 {
+	auto ExportedProperties = ClassExportedProperties.Find(Class);
+	auto ExportedFunctions = ClassExportedFunctions.Find(Class);
+
+	if (((ExportedFunctions == nullptr) || (ExportedFunctions->Num() == 0)) && 
+		((ExportedProperties == nullptr) || (ExportedProperties->Num() == 0)))
+	{
+		return;
+	}
+
 	const FString ClassNameCPP = FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *Class->GetName());
 	GeneratedGlue << FString::Printf(TEXT("static %s()"), *ClassNameCPP);
 	GeneratedGlue << FKlawrCodeFormatter::OpenBrace();
 	
 	// bind managed delegates to pointers to native wrapper functions
 	GeneratedGlue 
-		<< TEXT("var manager = AppDomain.CurrentDomain.DomainManager as IKlawrAppDomainManager;")
+		<< TEXT("var manager = AppDomain.CurrentDomain.DomainManager as IEngineAppDomainManager;")
 		<< FString::Printf(
 			TEXT("var nativeFuncPtrs = manager.GetNativeFunctionPointers(\"%s\");"), *ClassNameCPP
 		);
 	
 	int32 FunctionIdx = 0;
-	auto ExportedProperties = ClassExportedProperties.Find(Class);
 	if (ExportedProperties)
 	{
 		for (const FExportedProperty& PropInfo : *ExportedProperties)
@@ -876,7 +896,6 @@ void FKlawrCodeGenerator::GenerateManagedStaticConstructor(
 		}
 	}
 	
-	auto ExportedFunctions = ClassExportedFunctions.Find(Class);
 	if (ExportedFunctions)
 	{
 		for (const FExportedFunction& FuncInfo : *ExportedFunctions)
@@ -901,32 +920,66 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
 ) const
 {
-	// usings
-	GeneratedGlue 
-		<< TEXT("using System;")
-		<< TEXT("using System.Runtime.InteropServices;")
-		<< TEXT("using Klawr.ClrHost.Interfaces;")
-		<< FKlawrCodeFormatter::LineTerminator();
-
-	// declare namespace
-	GeneratedGlue << TEXT("namespace Klawr.UnrealEngine") << FKlawrCodeFormatter::OpenBrace();
-
-	// declare class
-	FString ClassDecl = FString::Printf(
-		TEXT("public class %s%s"), Class->GetPrefixCPP(), *Class->GetName()
-	);
-	// if the base class was exported mirror the inheritance in the managed wrapper class
-	UClass* SuperClass = Class->GetSuperClass();
-	if (SuperClass && ExportedClasses.Contains(SuperClass->GetFName()))
+	FString ClassNameCPP = FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *Class->GetName());
+	FString ClassDecl = FString::Printf(TEXT("public class %s"), *ClassNameCPP);
+	FString ConstructorDecl = FString::Printf(TEXT("public %s(IntPtr nativeObject)"), *ClassNameCPP);
+	// mirror the inheritance in the managed wrapper class while skipping base classes that haven't
+	// been exported (this may change in the future)
+	UClass* SuperClass = nullptr;
+	// find the top-most exported ancestor in the inheritance hierarchy
+	for (UClass* CurrentAncestor = Class->GetSuperClass(); CurrentAncestor; )
+	{
+		if (AllExportedClasses.Contains(CurrentAncestor))
+		{
+			SuperClass = CurrentAncestor;
+		}
+		CurrentAncestor = CurrentAncestor->GetSuperClass();
+	}
+	
+	if (SuperClass)
 	{
 		ClassDecl += FString::Printf(
 			TEXT(" : %s%s"), SuperClass->GetPrefixCPP(), *SuperClass->GetName()
 		);
+		ConstructorDecl += TEXT(" : base(nativeObject)");
 	}
-	GeneratedGlue << ClassDecl << FKlawrCodeFormatter::OpenBrace();
+		
+	GeneratedGlue 
+		// usings
+		<< TEXT("using System;")
+		<< TEXT("using System.Runtime.InteropServices;")
+		<< TEXT("using Klawr.ClrHost.Interfaces;")
+		<< FKlawrCodeFormatter::LineTerminator()
+
+		// declare namespace
+		<< TEXT("namespace Klawr.UnrealEngine") 
+		<< FKlawrCodeFormatter::OpenBrace()
+		
+		// declare class
+		<< ClassDecl 
+		<< FKlawrCodeFormatter::OpenBrace();
 	
-	// declare the wrapped native object
-	GeneratedGlue << TEXT("private IntPtr _nativeObject;") LINE_TERMINATOR;
+	if (!SuperClass)
+	{
+		// declare the wrapped native object
+		GeneratedGlue
+			<< TEXT("protected IntPtr _nativeObject;")
+			<< FKlawrCodeFormatter::LineTerminator();
+	}
+
+	// constructor
+	GeneratedGlue
+		<< ConstructorDecl
+		<< FKlawrCodeFormatter::OpenBrace();
+
+	if (!SuperClass)
+	{
+		GeneratedGlue << TEXT("_nativeObject = nativeObject;");
+	}
+
+	GeneratedGlue
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator();
 }
 
 void FKlawrCodeGenerator::GenerateManagedGlueCodeFooter(
