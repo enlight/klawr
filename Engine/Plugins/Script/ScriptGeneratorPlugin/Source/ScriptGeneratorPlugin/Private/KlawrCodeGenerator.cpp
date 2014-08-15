@@ -989,9 +989,51 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeFooter(
 	// define static constructor
 	GenerateManagedStaticConstructor(Class, GeneratedGlue);
 	// close the class
-	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
+	GeneratedGlue 
+		<< FKlawrCodeFormatter::CloseBrace()
+		<< FKlawrCodeFormatter::LineTerminator();
+	// Users should be allowed to subclass the generated wrapper class, but if the subclass is to be
+	// used via Blueprints it must implement the IScriptObject interface (which would be an abstract
+	// class if C# supported multiple inheritance). To simplify things an abstract class is
+	// generated that is derived from the wrapper class and implements the IScriptObject interface,
+	// the user can then simply subclass this abstract class.
+	GenerateManagedScriptObjectClass(Class, GeneratedGlue);
 	// close the namespace
 	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
+}
+
+void FKlawrCodeGenerator::GenerateManagedScriptObjectClass(
+	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
+)
+{
+	FString ClassNameCPP = FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *Class->GetName());
+	GeneratedGlue
+		<< FString::Printf(
+			TEXT("public abstract class %sScriptObject : %s, IScriptObject"),
+			*ClassNameCPP, *ClassNameCPP
+		)
+		<< FKlawrCodeFormatter::OpenBrace()
+			<< TEXT("private readonly long _instanceID;")
+			<< FKlawrCodeFormatter::LineTerminator()
+			// InstanceID property
+			<< TEXT("public long InstanceID")
+			<< FKlawrCodeFormatter::OpenBrace()
+				<< TEXT("get { return _instanceID; }")
+			<< FKlawrCodeFormatter::CloseBrace()
+			<< FKlawrCodeFormatter::LineTerminator()
+			// constructor
+			<< FString::Printf(
+				TEXT("public %sScriptObject(long instanceID, IntPtr nativeObject) : base(nativeObject)"),
+				*ClassNameCPP
+			)
+			<< FKlawrCodeFormatter::OpenBrace()
+				<< TEXT("_instanceID = instanceID;")
+			<< FKlawrCodeFormatter::CloseBrace()
+			<< FKlawrCodeFormatter::LineTerminator()
+			<< TEXT("public virtual void BeginPlay() {}")
+			<< TEXT("public virtual void Tick(float deltaTime) {}")
+			<< TEXT("public virtual void Destroy() {}")
+		<< FKlawrCodeFormatter::CloseBrace();
 }
 
 void FKlawrCodeGenerator::ExportClass(

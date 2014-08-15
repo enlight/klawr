@@ -178,6 +178,7 @@ private:
 	void GenerateNativeGlueCodeFooter(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue) const;
 	void GenerateManagedGlueCodeHeader(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue) const;
 	void GenerateManagedGlueCodeFooter(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue);
+	void GenerateManagedScriptObjectClass(const UClass* Class, FKlawrCodeFormatter& GeneratedGlue);
 	FString GenerateDelegateTypeName(const FString& FunctionName, bool bHasReturnValue) const;
 	FString GenerateDelegateName(const FString& FunctionName) const;
 };
