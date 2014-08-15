@@ -46,7 +46,7 @@ bool FKlawrContext::Initialize(const FString& Code, UObject* Owner)
 	// [editor-only] reload the engine app domain
 
 	// create an instance of the managed class
-	return Klawr::IClrHost::Get()->CreateScriptObject(TEXT("Klawr.ClrHost.Managed.ScriptObject"), ScriptObjectInfo);
+	return Klawr::IClrHost::Get()->CreateScriptObject(TEXT("Klawr.UnrealEngine.TestActor"), Owner, ScriptObjectInfo);
 }
 
 void FKlawrContext::DestroyScriptObject()

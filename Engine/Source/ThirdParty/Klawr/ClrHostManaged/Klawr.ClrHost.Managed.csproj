@@ -42,7 +42,6 @@
     <Compile Include="DefaultAppDomainManager.cs" />
     <Compile Include="EngineAppDomainManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ScriptObject.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ClrHostInterfaces\Klawr.ClrHost.Interfaces.csproj">

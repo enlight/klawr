@@ -79,7 +79,7 @@ public:
 	 */
 	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) = 0;
 
-	virtual bool CreateScriptObject(const TCHAR* className, ScriptObjectInstanceInfo& info) = 0;
+	virtual bool CreateScriptObject(const TCHAR* className, void* owner, ScriptObjectInstanceInfo& info) = 0;
 	virtual void DestroyScriptObject(__int64 instanceID) = 0;
 
 public:

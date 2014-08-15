@@ -27,6 +27,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using System.Linq;
 
 namespace Klawr.ClrHost.Managed
 {
@@ -35,12 +36,21 @@ namespace Klawr.ClrHost.Managed
     /// </summary>
     public sealed class EngineAppDomainManager : AppDomainManager, IEngineAppDomainManager
     {
+        public struct ScriptObjectInfo
+        {
+            public IScriptObject Instance;
+            public ScriptObjectInstanceInfo.BeginPlayAction BeginPlay;
+            public ScriptObjectInstanceInfo.TickAction Tick;
+            public ScriptObjectInstanceInfo.DestroyAction Destroy;
+        }
         // only set for the engine app domain manager
-        private Dictionary<string, IntPtr[]> _nativeFunctionPointers;
+        private Dictionary<string /*Native Class*/, IntPtr[]> _nativeFunctionPointers = new Dictionary<string, IntPtr[]>();
         // all currently registered script objects
-        private Dictionary<long, ScriptObject> _scriptObjects = new Dictionary<long, ScriptObject>();
+        private Dictionary<long /*Instance ID*/, ScriptObjectInfo> _scriptObjects = new Dictionary<long, ScriptObjectInfo>();
         // identifier of the most recently registered ScriptObject instance
         private long _lastScriptObjectID = 0;
+        // cache of previously created script object types
+        private Dictionary<string /*Full Type Name*/, Type> _scriptObjectTypeCache = new Dictionary<string, Type>();
 
         // NOTE: the base implementation of this method does nothing, so no need to call it
         public override void InitializeNewDomain(AppDomainSetup appDomainInfo)
@@ -51,10 +61,6 @@ namespace Klawr.ClrHost.Managed
 
         public void SetNativeFunctionPointers(string nativeClassName, long[] functionPointers)
         {
-            if (_nativeFunctionPointers == null)
-            {
-                _nativeFunctionPointers = new Dictionary<string, IntPtr[]>();
-            }
             // the function pointers are passed in as long to avoid pointer truncation on a 
             // 64-bit platform when this method is called via COM, but to actually use them
             // they need to be converted to IntPtr
@@ -68,14 +74,7 @@ namespace Klawr.ClrHost.Managed
 
         public IntPtr[] GetNativeFunctionPointers(string nativeClassName)
         {
-            if (_nativeFunctionPointers != null)
-            {
-                return _nativeFunctionPointers[nativeClassName];
-            }
-            else
-            {
-                return null;
-            }
+            return _nativeFunctionPointers[nativeClassName];
         }
 
         public void LoadUnrealEngineWrapperAssembly()
@@ -85,19 +84,25 @@ namespace Klawr.ClrHost.Managed
             Assembly.Load(wrapperAssembly);
         }
 
-        public bool CreateScriptObject(string className, ref ScriptObjectInstanceInfo info)
+        public bool CreateScriptObject(string className, IntPtr nativeObject, ref ScriptObjectInstanceInfo info)
         {
-            var objType = typeof(EngineAppDomainManager).Assembly.GetType(className);
-            var constructor = objType.GetConstructor(Type.EmptyTypes);
-            if (constructor != null)
+            var objType = FindScriptObjectTypeByName(className);
+            if (objType != null)
             {
-                var obj = (ScriptObject)constructor.Invoke(null);
-                info.InstanceID = RegisterScriptObject(obj);
-                info.BeginPlay = new ScriptObjectInstanceInfo.BeginPlayAction(obj.BeginPlay);
-                info.Tick = new ScriptObjectInstanceInfo.TickAction(obj.Tick);
-                info.Destroy = new ScriptObjectInstanceInfo.DestroyAction(obj.Destroy);
-                obj.InstanceInfo = info;
-                return true;
+                var constructor = objType.GetConstructor(new Type[] { typeof(long), typeof(IntPtr) });
+                if (constructor != null)
+                {
+                    var instanceID = GenerateScriptObjectID();
+                    var obj = (IScriptObject)constructor.Invoke(
+                        new object[] { instanceID, nativeObject }
+                    );
+                    var objInfo = RegisterScriptObject(obj);
+                    info.InstanceID = instanceID;
+                    info.BeginPlay = objInfo.BeginPlay;
+                    info.Tick = objInfo.Tick;
+                    info.Destroy = objInfo.Destroy;
+                    return true;
+                }
             }
             // TODO: log an error
             return false;
@@ -107,35 +112,85 @@ namespace Klawr.ClrHost.Managed
         {
             UnregisterScriptObject(scriptObjectInstanceID);
         }
-
+        
         /// <summary>
-        /// Register the given ScriptObject instance with the manager.
+        /// Note that the identifier returned by this method is only unique amongst all ScriptObject 
+        /// instances registered with this manager instance. The returned identifier can be used to 
+        /// uniquely identify a ScriptObject instance within the app domain it was created in.
+        /// </summary>
+        /// <returns>Unique identifier.</returns>
+        public long GenerateScriptObjectID()
+        {
+            return Interlocked.Increment(ref _lastScriptObjectID);
+        }
+        /// <summary>
+        /// Register the given IScriptObject instance with the manager.
         /// 
         /// The manager will keep a reference to the given object until the object is unregistered.
-        /// 
-        /// Note that the identifier returned by this method is only unique amongst all ScriptObject 
-        /// instances registered with this manager instance. Since all ScriptObject instances
-        /// automatically register themselves with the manager of the app domain within which they
-        /// are constructed the returned identifier can be used to uniquely identify a ScriptObject
-        /// instance within the app domain it was created in.
         /// </summary>
-        /// <returns>A unique identifier for the registered object.</returns>
-        public long RegisterScriptObject(ScriptObject scriptObject)
+        /// <param name="scriptObject"></param>
+        /// <returns></returns>
+        public ScriptObjectInfo RegisterScriptObject(IScriptObject scriptObject)
         {
-            var uniqueID = Interlocked.Increment(ref _lastScriptObjectID);
-            _scriptObjects.Add(uniqueID, scriptObject);
-            return uniqueID;
+            ScriptObjectInfo info;
+            info.Instance = scriptObject;
+            info.BeginPlay = new ScriptObjectInstanceInfo.BeginPlayAction(scriptObject.BeginPlay);
+            info.Tick = new ScriptObjectInstanceInfo.TickAction(scriptObject.Tick);
+            info.Destroy = new ScriptObjectInstanceInfo.DestroyAction(scriptObject.Destroy);
+            _scriptObjects.Add(scriptObject.InstanceID, info);
+            return info;
         }
 
         /// <summary>
-        /// Unregister a ScriptObject that was previously registered with the manager.
+        /// Unregister a IScriptObject that was previously registered with the manager.
         /// 
         /// The manager will remove the reference it previously held to the object.
         /// </summary>
-        /// <param name="scriptObjectInstanceID">ID of a registered ScriptObject instance.</param>
+        /// <param name="scriptObjectInstanceID">ID of a registered IScriptObject instance.</param>
         public void UnregisterScriptObject(long scriptObjectInstanceID)
         {
             _scriptObjects.Remove(scriptObjectInstanceID);
+        }
+
+        /// <summary>
+        /// Search all loaded (non-dynamic) assemblies for a Type matching the given name and
+        /// implementing the IScriptObject interface.
+        /// </summary>
+        /// <param name="typeName">The full name of a type (including the namespace).</param>
+        /// <returns>Matching Type instance, or null if no match was found.</returns>
+        private Type FindScriptObjectTypeByName(string typeName)
+        {
+            Type objType = null;
+            if (!_scriptObjectTypeCache.TryGetValue(typeName, out objType))
+            {
+                objType = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(assembly => !assembly.IsDynamic)
+                    .SelectMany(assembly => assembly.GetTypes())
+                    .FirstOrDefault(
+                        t => t.FullName.Equals(typeName) 
+                            && t.GetInterfaces().Contains(typeof(IScriptObject))
+                    );
+
+                if (objType != null)
+                {
+                    // cache the result to speed up future searches
+                    _scriptObjectTypeCache.Add(typeName, objType);
+                }
+            }
+            return objType;
+        }
+
+        /// <summary>
+        /// Search all loaded (non-dynamic) assemblies for a Type matching the given name.
+        /// </summary>
+        /// <param name="typeName">The full name of a type (including the namespace).</param>
+        /// <returns>Matching Type instance, or null if no match was found.</returns>
+        private static Type FindTypeByName(string typeName)
+        {
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => !assembly.IsDynamic)
+                .SelectMany(assembly => assembly.GetTypes())
+                .FirstOrDefault(t => t.FullName.Equals(typeName));
         }
     }
 }

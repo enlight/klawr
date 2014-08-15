@@ -140,10 +140,12 @@ void ClrHost::InitializeEngineAppDomain()
 	}
 }
 
-bool ClrHost::CreateScriptObject(const TCHAR* className, ScriptObjectInstanceInfo& info)
+bool ClrHost::CreateScriptObject(const TCHAR* className, void* owner, ScriptObjectInstanceInfo& info)
 {
 	Klawr_ClrHost_Interfaces::ScriptObjectInstanceInfo srcInfo;
-	bool created = !!_hostControl->GetEngineAppDomainManager()->CreateScriptObject(className, &srcInfo);
+	bool created = !!_hostControl->GetEngineAppDomainManager()->CreateScriptObject(
+		className, reinterpret_cast<__int64>(owner), &srcInfo
+	);
 	if (created)
 	{
 		info.InstanceID = srcInfo.InstanceID;

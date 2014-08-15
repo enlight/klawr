@@ -58,9 +58,10 @@ namespace Klawr.ClrHost.Interfaces
         /// </summary>
         /// <param name="className">The name of a class derived from ScriptObject, the namespace
         /// must also be provided, e.g. "MyExample.MyScriptObject"</param>
+        /// <param name="nativeObject">Pointer to a native owner/base UObject instance, may be null.</param>
         /// <param name="info">Information about the newly created ScriptObject instance.</param>
         /// <returns>true if the object was created successfuly, false otherwise</returns>
-        bool CreateScriptObject(string className, ref ScriptObjectInstanceInfo info);
+        bool CreateScriptObject(string className, IntPtr nativeObject, ref ScriptObjectInstanceInfo info);
 
         /// <summary>
         /// Destroy a ScriptObject instance.
