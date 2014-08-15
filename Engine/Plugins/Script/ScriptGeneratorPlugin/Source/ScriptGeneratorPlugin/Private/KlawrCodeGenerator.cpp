@@ -1057,38 +1057,12 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		FPaths::EnginePluginsDir() / TEXT("Script/ScriptGeneratorPlugin/Resources/WrapperProjectTemplate");
 	const FString ProjectBasePath = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr");
 
-	// copy Properties/AssemblyInfo.cs from the template folder
-	const FString AssemblyInfoSubPath(TEXT("Properties/AssemblyInfo.cs"));
-	auto CopyResult = IFileManager::Get().Copy(
-		*(ProjectBasePath / AssemblyInfoSubPath), *(ResourcesBasePath / AssemblyInfoSubPath)
-	);
-	if (COPY_OK != CopyResult)
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	if (!PlatformFile.CopyDirectoryTree(*ProjectBasePath, *ResourcesBasePath, true))
 	{
-		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / AssemblyInfoSubPath));
+		FError::Throwf(TEXT("Failed to copy wrapper template!"));
 	}
 
-	// copy UE4Structs.cs from the template folder
-	const FString StructWrappersFilename(TEXT("UE4Structs.cs"));
-	CopyResult = IFileManager::Get().Copy(
-		*(ProjectBasePath / StructWrappersFilename), 
-		*(ResourcesBasePath / StructWrappersFilename)
-	);
-	if (COPY_OK != CopyResult)
-	{
-		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / StructWrappersFilename));
-	}
-
-	// copy batch file that will be used to build the generated project
-	const FString BuildBatchFilename(TEXT("Build.bat"));
-	CopyResult = IFileManager::Get().Copy(
-		*(ProjectBasePath / BuildBatchFilename),
-		*(ResourcesBasePath / BuildBatchFilename)
-	);
-	if (COPY_OK != CopyResult)
-	{
-		FError::Throwf(TEXT("Failed to copy '%s'"), *(ResourcesBasePath / BuildBatchFilename));
-	}
-	
 	const FString ProjectName("Klawr.UnrealEngine.csproj");
 	const FString ProjectTemplateFilename = ResourcesBasePath / ProjectName;
 	const FString ProjectOutputFilename = ProjectBasePath / ProjectName;
