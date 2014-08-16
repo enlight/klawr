@@ -1,0 +1,17 @@
+diff --git a/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp b/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp
+index ebafa1b..2f071ee 100644
+--- a/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp
++++ b/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp
+@@ -7,8 +7,12 @@ UScriptFactory::UScriptFactory(const FPostConstructInitializeProperties& PCIP)
+ 	SupportedClass = UScriptBlueprint::StaticClass();
+ 	ParentClass = AActor::StaticClass();
+ 
++#ifdef WITH_LUA
+ 	Formats.Add(TEXT("txt;Script"));
+ 	Formats.Add(TEXT("lua;Script"));
++#elif WITH_KLAWR
++	Formats.Add(TEXT("cs;Script"));
++#endif
+ 
+ 	bCreateNew = false;
+ 	bEditorImport = true;
