@@ -184,8 +184,8 @@ void FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 
 bool FKlawrCodeGenerator::CanExportClass(const UClass* Class)
 {
-	bool bCanExport = !(Class->GetClassFlags() & CLASS_Temporary) // skip temporary classes
-		&& (Class->ClassFlags & (CLASS_RequiredAPI | CLASS_MinimalAPI)); // skip classes that don't export DLL symbols
+	// skip classes that don't export DLL symbols
+	bool bCanExport = Class->HasAnyClassFlags(CLASS_RequiredAPI | CLASS_MinimalAPI);
 
 	if (bCanExport)
 	{
@@ -370,24 +370,42 @@ UProperty* FKlawrCodeGenerator::GetManagedWrapperArgsAndReturnType(
 		else
 		{
 			FString ArgName = Param->GetName();
-			FString ArgType = GetPropertyInteropType(Param);
+			FString ArgInteropType = GetPropertyInteropType(Param);
 			FString ArgAttrs = GetPropertyInteropTypeAttributes(Param);
 			FString ArgMods = GetPropertyInteropTypeModifiers(Param);
+			
+			OutFormalInteropArgs += TEXT(",");
+			if (!ArgAttrs.IsEmpty())
+			{
+				OutFormalInteropArgs += TEXT(" ");
+				OutFormalInteropArgs += ArgAttrs;
+			}
+			if (!ArgMods.IsEmpty())
+			{
+				OutFormalInteropArgs += TEXT(" ");
+				OutFormalInteropArgs += ArgMods;
+			}
 			OutFormalInteropArgs += FString::Printf(
-				TEXT(", %s %s %s %s"), *ArgAttrs, *ArgMods, *ArgType, *ArgName
+				TEXT(" %s %s"), *ArgInteropType, *ArgName
 			);
+
 			OutActualInteropArgs += FString::Printf(TEXT(", %s %s"), *ArgMods, *ArgName);
+			if (Param->IsA<UObjectProperty>() && !Param->IsA<UClassProperty>())
+			{
+				OutActualInteropArgs += TEXT(".NativeObject");
+			}
+						
 			if (!OutFormalManagedArgs.IsEmpty())
 			{
 				OutFormalManagedArgs += TEXT(", ");
 			}
-			// TODO: managed types can be more precise than interop types, because we can use the
-			//       exported managed wrapper classes!
 			if (!ArgMods.IsEmpty())
 			{
 				OutFormalManagedArgs += ArgMods + TEXT(" ");
 			}
-			OutFormalManagedArgs += FString::Printf(TEXT("%s %s"), *ArgType, *ArgName);
+			FString ArgManagedType = GetPropertyManagedType(Param);
+			OutFormalManagedArgs += FString::Printf(TEXT("%s %s"), *ArgManagedType, *ArgName);
+			
 			if (!OutActualManagedArgs.IsEmpty())
 			{
 				OutActualManagedArgs += TEXT(", ");
@@ -397,6 +415,26 @@ UProperty* FKlawrCodeGenerator::GetManagedWrapperArgsAndReturnType(
 	}
 
 	return ReturnValue;
+}
+
+FString FKlawrCodeGenerator::GenerateManagedReturnValueHandler(UProperty* ReturnValue)
+{
+	if (ReturnValue)
+	{
+		if (ReturnValue->IsA<UObjectProperty>() && !ReturnValue->IsA<UClassProperty>())
+		{
+			FString WrapperTypeName = Super::GetPropertyTypeCPP(ReturnValue);
+			WrapperTypeName.RemoveFromEnd(TEXT("*"));
+			return FString::Printf(
+				TEXT("return new %s(value);"), *WrapperTypeName
+			);
+		}
+		else
+		{
+			return TEXT("return value;");
+		}
+	}
+	return FString();
 }
 
 void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
@@ -409,8 +447,10 @@ void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 	);
 	const bool bHasReturnValue = (ReturnValue != nullptr);
 	const bool bReturnsBool = (bHasReturnValue && ReturnValue->IsA(UBoolProperty::StaticClass()));
-	const FString ReturnValueTypeName = 
+	const FString ReturnValueInteropTypeName = 
 		bHasReturnValue ? GetPropertyInteropType(ReturnValue) : TEXT("void");
+	const FString ReturnValueManagedTypeName =
+		bHasReturnValue ? GetPropertyManagedType(ReturnValue) : TEXT("void");
 	const FString DelegateTypeName = GenerateDelegateTypeName(Function->GetName(), bHasReturnValue);
 	const FString DelegateName = GenerateDelegateName(Function->GetName());
 
@@ -420,7 +460,7 @@ void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 		<< (bReturnsBool ? MarshalReturnedBoolAsUint8Attribute : FString())
 		<< FString::Printf(
 			TEXT("private delegate %s %s(%s);"),
-			*ReturnValueTypeName, *DelegateTypeName, *FormalInteropArgs
+			*ReturnValueInteropTypeName, *DelegateTypeName, *FormalInteropArgs
 		)
 		// declare a delegate instance that will be bound to the native wrapper function
 		<< FString::Printf(
@@ -431,24 +471,22 @@ void FKlawrCodeGenerator::GenerateManagedWrapperFunction(
 		// declared above
 		<< FString::Printf(
 			TEXT("public %s %s(%s)"),
-			*ReturnValueTypeName, *Function->GetName(), *FormalManagedArgs
+			*ReturnValueManagedTypeName, *Function->GetName(), *FormalManagedArgs
 		)
 		<< FKlawrCodeFormatter::OpenBrace();
 
 	// call the delegate bound to the native wrapper function
 	if (bHasReturnValue)
 	{
-		GeneratedGlue << FString::Printf(
-			TEXT("return %s(%s);"), *DelegateName, *ActualInteropArgs
-		);
+		GeneratedGlue 
+			<< FString::Printf(TEXT("var value = %s(%s);"), *DelegateName, *ActualInteropArgs)
+			<< GenerateManagedReturnValueHandler(ReturnValue);
 	}
-	else // method has a return value
+	else
 	{
-		GeneratedGlue << FString::Printf(
-			TEXT("%s(%s);"), *DelegateName, *ActualInteropArgs
-		);
+		GeneratedGlue << FString::Printf(TEXT("%s(%s);"), *DelegateName, *ActualInteropArgs);
 	}
-	
+		
 	GeneratedGlue
 		<< FKlawrCodeFormatter::CloseBrace()
 		<< FKlawrCodeFormatter::LineTerminator();
@@ -609,6 +647,19 @@ FString FKlawrCodeGenerator::GetPropertyInteropType(UProperty* Property)
 	}
 }
 
+FString FKlawrCodeGenerator::GetPropertyManagedType(UProperty* Property)
+{
+	// TODO: deal with TSubclassOf<>, UClass properties
+	if (Property->IsA<UObjectProperty>() && !Property->IsA<UClassProperty>())
+	{
+		static FString Pointer(TEXT("*"));
+		FString TypeName = Super::GetPropertyTypeCPP(Property, CPPF_ArgumentOrReturnValue);
+		TypeName.RemoveFromEnd(Pointer);
+		return TypeName;
+	}
+	return GetPropertyInteropType(Property);
+}
+
 FString FKlawrCodeGenerator::GetPropertyInteropTypeAttributes(UProperty* Property)
 {
 	if (Property->IsA(UBoolProperty::StaticClass()))
@@ -762,14 +813,22 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 	ExportedProperty.SetterDelegateName = GenerateDelegateName(SetterName);
 	ExportedProperty.SetterDelegateTypeName = GenerateDelegateTypeName(SetterName, false);
 	
-	const bool bIsBoolProperty = Property->IsA(UBoolProperty::StaticClass());
-	FString PropertyTypeName = GetPropertyInteropType(Property);
-	FString SetterParamType = PropertyTypeName;
+	const bool bIsBoolProperty = Property->IsA<UBoolProperty>();
+	const FString InteropTypeName = GetPropertyInteropType(Property);
+	const FString ManagedTypeName = GetPropertyManagedType(Property);
+	FString SetterParamType = InteropTypeName;
 	if (bIsBoolProperty)
 	{
 		SetterParamType = FString::Printf(
-			TEXT("%s %s"), *MarshalBoolParameterAsUint8Attribute, *PropertyTypeName
+			TEXT("%s %s"), *MarshalBoolParameterAsUint8Attribute, *InteropTypeName
 		);
+	}
+	FString GetterValue(TEXT("value"));
+	FString SetterValue(TEXT("value"));
+	if (Property->IsA<UObjectProperty>() && !Property->IsA<UClassProperty>())
+	{
+		GetterValue = FString::Printf(TEXT("new %s(value)"), *ManagedTypeName);
+		SetterValue = TEXT("value.NativeObject");
 	}
 	
 	GeneratedGlue
@@ -778,7 +837,7 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 		<< (bIsBoolProperty ? MarshalReturnedBoolAsUint8Attribute : FString())
 		<< FString::Printf(
 			TEXT("private delegate %s %s(IntPtr self);"),
-			*PropertyTypeName, *ExportedProperty.GetterDelegateTypeName
+			*InteropTypeName, *ExportedProperty.GetterDelegateTypeName
 		)
 		// declare setter delegate type
 		<< UnmanagedFunctionPointerAttribute
@@ -797,14 +856,19 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 		)
 		// define a property that calls the native wrapper functions through the delegates 
 		// declared above
-		<< FString::Printf(TEXT("public %s %s"), *PropertyTypeName, *Property->GetName())
+		<< FString::Printf(TEXT("public %s %s"), *ManagedTypeName, *Property->GetName())
 		<< FKlawrCodeFormatter::OpenBrace()
-		<< FString::Printf(
-			TEXT("get { return %s(_nativeObject); }"), *ExportedProperty.GetterDelegateName
-		)
-		<< FString::Printf(
-			TEXT("set { %s(_nativeObject, value); }"), *ExportedProperty.SetterDelegateName
-		)
+			<< TEXT("get")
+			<< FKlawrCodeFormatter::OpenBrace()
+				<< FString::Printf(TEXT("var value = %s(_nativeObject);"), 
+					*ExportedProperty.GetterDelegateName
+				)
+				<< GenerateManagedReturnValueHandler(Property)
+			<< FKlawrCodeFormatter::CloseBrace()
+			<< FString::Printf(
+				TEXT("set { %s(_nativeObject, %s); }"), 
+				*ExportedProperty.SetterDelegateName, *SetterValue
+			)
 		<< FKlawrCodeFormatter::CloseBrace()
 		<< FKlawrCodeFormatter::LineTerminator();
 }
@@ -988,10 +1052,15 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 	
 	if (!SuperClass)
 	{
-		// declare the wrapped native object
 		GeneratedGlue
+			// declare the wrapped native object
 			<< TEXT("protected IntPtr _nativeObject;")
-			<< FKlawrCodeFormatter::LineTerminator();
+			<< FKlawrCodeFormatter::LineTerminator()
+			// and a read-only property to access it externally
+			<< TEXT("public IntPtr NativeObject")
+			<< FKlawrCodeFormatter::OpenBrace()
+				<< TEXT("get { return _nativeObject; }")
+			<< FKlawrCodeFormatter::CloseBrace();
 	}
 
 	// constructor
@@ -1024,7 +1093,12 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeFooter(
 	// class if C# supported multiple inheritance). To simplify things an abstract class is
 	// generated that is derived from the wrapper class and implements the IScriptObject interface,
 	// the user can then simply subclass this abstract class.
+	// FIXME: GetBoolMetaDataHierarchical() is only available when WITH_EDITOR is defined, and it's
+	//        not defined when building this plugin :/
+	//if (Class->GetBoolMetaDataHierarchical(FBlueprintMetadata::MD_IsBlueprintBase))
+	//{
 	GenerateManagedScriptObjectClass(Class, GeneratedGlue);
+	//}
 	// close the namespace
 	GeneratedGlue << FKlawrCodeFormatter::CloseBrace();
 }
@@ -1068,61 +1142,72 @@ void FKlawrCodeGenerator::ExportClass(
 	bool bHasChanged
 )
 {
+	if (Class->HasAnyClassFlags(CLASS_Temporary | CLASS_Deprecated))
+	{
+		return;
+	}
+
 	if (AllExportedClasses.Contains(Class))
 	{
 		// already processed
 		return;
 	}
 
-	if (!CanExportClass(Class))
-	{
-		return;
-	}
-	
 	UE_LOG(LogScriptGenerator, Log, TEXT("Exporting class %s"), *Class->GetName());
-	
+
+	// even if a class can't be properly exported generate a C# wrapper for it, because it may 
+	// still be used as a function parameter in a function that is exported by another class
 	Super::ExportedClasses.Add(Class->GetFName());
 	AllExportedClasses.Add(Class);
-	AllSourceClassHeaders.Add(SourceHeaderFilename);
-
-	const FString NativeGlueFilename = Super::GetScriptHeaderForClass(Class);
-	FString ManagedGlueFilename = NativeGlueFilename;
-	ManagedGlueFilename.RemoveFromEnd(TEXT(".h"));
-	ManagedGlueFilename.Append(TEXT(".cs"));
-	AllScriptHeaders.Add(NativeGlueFilename);
 
 	FKlawrCodeFormatter NativeGlueCode(TEXT('\t'), 1);
 	FKlawrCodeFormatter ManagedGlueCode(TEXT(' '), 4);
-	GenerateNativeGlueCodeHeader(Class, NativeGlueCode);
+
+	bool bCanExport = CanExportClass(Class);
+	if (bCanExport)
+	{
+		AllSourceClassHeaders.Add(SourceHeaderFilename);
+		GenerateNativeGlueCodeHeader(Class, NativeGlueCode);
+	}
+	
 	GenerateManagedGlueCodeHeader(Class, ManagedGlueCode);
-
-	const FString ClassNameCPP = Super::GetClassNameCPP(Class);
-
-	// export functions
-	for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
+	
+	if (bCanExport)
 	{
-		UFunction* Function = *FuncIt;
-		if (CanExportFunction(Class, Function))
+		const FString ClassNameCPP = Super::GetClassNameCPP(Class);
+
+		// export functions
+		for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
 		{
-			ExportFunction(ClassNameCPP, Class, Function, NativeGlueCode, ManagedGlueCode);
+			UFunction* Function = *FuncIt;
+			if (CanExportFunction(Class, Function))
+			{
+				ExportFunction(ClassNameCPP, Class, Function, NativeGlueCode, ManagedGlueCode);
+			}
 		}
+
+		// export properties
+		for (TFieldIterator<UProperty> PropertyIt(Class); PropertyIt; ++PropertyIt)
+		{
+			UProperty* Property = *PropertyIt;
+			if (CanExportProperty(Class, Property))
+			{
+				UE_LOG(LogScriptGenerator, Log, TEXT("  %s %s"), *Property->GetClass()->GetName(), *Property->GetName());
+				ExportProperty(ClassNameCPP, Class, Property, NativeGlueCode, ManagedGlueCode);
+			}
+		}
+
+		GenerateNativeGlueCodeFooter(Class, NativeGlueCode);
+
+		const FString NativeGlueFilename = GeneratedCodePath / (Class->GetName() + TEXT(".script.h"));
+		AllScriptHeaders.Add(NativeGlueFilename);
+		Super::SaveHeaderIfChanged(NativeGlueFilename, NativeGlueCode.Content);
 	}
 
-	// export properties
-	for (TFieldIterator<UProperty> PropertyIt(Class); PropertyIt; ++PropertyIt)
-	{
-		UProperty* Property = *PropertyIt;
-		if (CanExportProperty(Class, Property))
-		{
-			UE_LOG(LogScriptGenerator, Log, TEXT("  %s %s"), *Property->GetClass()->GetName(), *Property->GetName());
-			ExportProperty(ClassNameCPP, Class, Property, NativeGlueCode, ManagedGlueCode);
-		}
-	}
-
-	GenerateNativeGlueCodeFooter(Class, NativeGlueCode);
 	GenerateManagedGlueCodeFooter(Class, ManagedGlueCode);
 
-	Super::SaveHeaderIfChanged(NativeGlueFilename, NativeGlueCode.Content);
+	const FString ManagedGlueFilename = GeneratedCodePath / (Class->GetName() + TEXT(".cs"));
+	AllManagedWrapperFiles.Add(ManagedGlueFilename);
 	Super::SaveHeaderIfChanged(ManagedGlueFilename, ManagedGlueCode.Content);
 }
 
@@ -1174,12 +1259,9 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		auto SourceNode = XmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
 		if (SourceNode)
 		{
-			FString ManagedGlueFilename, LinkFilename;
-			for (const FString& ScriptHeaderFilename : AllScriptHeaders)
+			FString LinkFilename;
+			for (FString ManagedGlueFilename : AllManagedWrapperFiles)
 			{
-				ManagedGlueFilename = ScriptHeaderFilename;
-				ManagedGlueFilename.RemoveFromEnd(TEXT(".h"));
-				ManagedGlueFilename.Append(TEXT(".cs"));
 				FPaths::MakePathRelativeTo(ManagedGlueFilename, *ProjectOutputFilename);
 				FPaths::MakePlatformFilename(ManagedGlueFilename);
 				// group all generated .cs files under a virtual folder in the project file

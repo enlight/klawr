@@ -90,6 +90,8 @@ private:
 
 	/** All generated C++ script header filenames. */
 	TArray<FString> AllScriptHeaders;
+	/** All the generated C# wrapper class filenames. */
+	TArray<FString> AllManagedWrapperFiles;
 	/** Engine source header filenames for all exported classes. */
 	TArray<FString> AllSourceClassHeaders;
 	/** Functions that were exported for each class. */
@@ -123,6 +125,9 @@ private:
 	void GenerateNativeReturnValueHandler(
 		UProperty* ReturnValue, const FString& ReturnValueName, FKlawrCodeFormatter& GeneratedGlue
 	);
+
+	FString GenerateManagedReturnValueHandler(UProperty* ReturnValue);
+
 	/** Check if a property type is supported */
 	static bool IsPropertyTypeSupported(const UProperty* Property);
 	/** Check if the property type is a pointer. */
@@ -132,6 +137,7 @@ private:
 
 	FString GetPropertyNativeType(UProperty* Property);
 	FString GetPropertyInteropType(UProperty* Property);
+	FString GetPropertyManagedType(UProperty* Property);
 	static FString GetPropertyInteropTypeAttributes(UProperty* Property);
 	static FString GetPropertyInteropTypeModifiers(UProperty* Property);
 
