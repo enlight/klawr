@@ -50,16 +50,6 @@ public: // FScriptCodeGeneratorBase interface
 	virtual void FinishExport() override;
 
 protected: // FScriptCodeGeneratorBase interface
-	virtual bool CanExportClass(UClass* Class) override;
-
-	virtual bool CanExportFunction(
-		const FString& ClassNameCPP, UClass* Class, UFunction* Function
-	) override;
-
-	virtual bool CanExportProperty(
-		const FString& ClassNameCPP, UClass* Class, UProperty* Property
-	) override;
-
 	virtual FString InitializeFunctionDispatchParam(
 		UFunction* Function, UProperty* Param, int32 ParamIndex
 	) override;
@@ -108,6 +98,10 @@ private:
 	TMap<const UClass*, TArray<FExportedProperty> > ClassExportedProperties;
 	TArray<const UClass*> AllExportedClasses;
 
+	static bool CanExportClass(const UClass* Class);
+	static bool CanExportProperty(const UClass* Class, const UProperty* Property);
+	static bool CanExportFunction(const UClass* Class, const UFunction* Function);
+
 	/** Generate a .csproj for the C# wrapper classes. */
 	void GenerateManagedWrapperProject();
 	/** Build the generated .csproj of C# wrapper classes. */
@@ -130,7 +124,7 @@ private:
 		UProperty* ReturnValue, const FString& ReturnValueName, FKlawrCodeFormatter& GeneratedGlue
 	);
 	/** Check if a property type is supported */
-	bool IsPropertyTypeSupported(UProperty* Property) const;
+	static bool IsPropertyTypeSupported(const UProperty* Property);
 	/** Check if the property type is a pointer. */
 	static bool IsPropertyTypePointer(const UProperty* Property);
 	/** Check if the property type is a struct that can be used for interop. */

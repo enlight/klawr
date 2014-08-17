@@ -182,17 +182,18 @@ void FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 	}
 }
 
-bool FKlawrCodeGenerator::CanExportClass(UClass* Class)
+bool FKlawrCodeGenerator::CanExportClass(const UClass* Class)
 {
-	bool bCanExport = FScriptCodeGeneratorBase::CanExportClass(Class);
+	bool bCanExport = !(Class->GetClassFlags() & CLASS_Temporary) // skip temporary classes
+		&& (Class->ClassFlags & (CLASS_RequiredAPI | CLASS_MinimalAPI)); // skip classes that don't export DLL symbols
+
 	if (bCanExport)
 	{
-		const FString ClassNameCPP = GetClassNameCPP(Class);
 		// check for exportable functions
 		bool bHasMembersToExport = false;
 		for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
 		{
-			if (CanExportFunction(ClassNameCPP, Class, *FuncIt))
+			if (CanExportFunction(Class, *FuncIt))
 			{
 				bHasMembersToExport = true;
 				break;
@@ -203,7 +204,7 @@ bool FKlawrCodeGenerator::CanExportClass(UClass* Class)
 		{
 			for (TFieldIterator<UProperty> PropertyIt(Class, EFieldIteratorFlags::ExcludeSuper); PropertyIt; ++PropertyIt)
 			{
-				if (CanExportProperty(ClassNameCPP, Class, *PropertyIt))
+				if (CanExportProperty(Class, *PropertyIt))
 				{
 					bHasMembersToExport = true;
 					break;
@@ -215,8 +216,7 @@ bool FKlawrCodeGenerator::CanExportClass(UClass* Class)
 	return bCanExport;
 }
 
-// TODO: remove ClassNameCPP from args, it's not used for anything
-bool FKlawrCodeGenerator::CanExportFunction(const FString& ClassNameCPP, UClass* Class, UFunction* Function)
+bool FKlawrCodeGenerator::CanExportFunction(const UClass* Class, const UFunction* Function)
 {
 	// functions from base classes should only be exported when those classes are processed
 	if (Function->GetOwnerClass() != Class)
@@ -224,15 +224,22 @@ bool FKlawrCodeGenerator::CanExportFunction(const FString& ClassNameCPP, UClass*
 		return false;
 	}
 
-	bool bExport = Super::CanExportFunction(ClassNameCPP, Class, Function);
-	if (bExport)
+	// delegates and non-public functions are not supported yet
+	if (Function->HasAnyFunctionFlags(FUNC_Delegate | FUNC_Private | FUNC_Protected))
 	{
-		for (TFieldIterator<UProperty> ParamIt(Function); bExport && ParamIt; ++ParamIt)
+		return false;
+	}
+
+	// check all parameter types for this function are supported
+	for (TFieldIterator<UProperty> ParamIt(Function); ParamIt; ++ParamIt)
+	{
+		if (!IsPropertyTypeSupported(*ParamIt))
 		{
-			bExport = IsPropertyTypeSupported(*ParamIt);
+			return false;
 		}
 	}
-	return bExport;
+
+	return true;
 }
 
 // TODO: this method should be const, but can't be because Super::GetPropertyTypeCPP() isn't
@@ -463,15 +470,25 @@ void FKlawrCodeGenerator::ExportFunction(
 	}
 }
 
-bool FKlawrCodeGenerator::IsPropertyTypeSupported(UProperty* Property) const
+bool FKlawrCodeGenerator::IsPropertyTypeSupported(const UProperty* Property)
 {
 	bool bSupported = true;
-	if (Property->IsA(UStructProperty::StaticClass()))
+
+	if (Property->IsA<UArrayProperty>() ||
+		Property->ArrayDim > 1 ||
+		Property->IsA<UDelegateProperty>() ||
+		Property->IsA<UMulticastDelegateProperty>() ||
+		Property->IsA<UWeakObjectProperty>() ||
+		Property->IsA<UInterfaceProperty>())
+	{
+		bSupported = false;
+	}
+	else if (Property->IsA<UStructProperty>())
 	{
 		auto StructProp = CastChecked<UStructProperty>(Property);
 		bSupported = IsStructPropertyTypeSupported(StructProp);
 	}
-	else if (Property->IsA(UStrProperty::StaticClass()))
+	else if (Property->IsA<UStrProperty>())
 	{
 		if (!Property->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm) && 
 			Property->HasAnyPropertyFlags(CPF_OutParm | CPF_ReferenceParm))
@@ -490,19 +507,20 @@ bool FKlawrCodeGenerator::IsPropertyTypeSupported(UProperty* Property) const
 			bSupported = false;
 		}
 	}
-	else if (!Property->IsA(UIntProperty::StaticClass()) &&
-		!Property->IsA(UFloatProperty::StaticClass()) &&
-		!Property->IsA(UBoolProperty::StaticClass()) &&
-		!Property->IsA(UObjectPropertyBase::StaticClass()) &&
-		!Property->IsA(UClassProperty::StaticClass()) &&
-		!Property->IsA(UNameProperty::StaticClass()))
+	else if (!Property->IsA<UIntProperty>() &&
+		!Property->IsA<UFloatProperty>() &&
+		!Property->IsA<UBoolProperty>() &&
+		!Property->IsA<UObjectPropertyBase>() &&
+		!Property->IsA<UClassProperty>() &&
+		!Property->IsA<UNameProperty>())
 	{
 		bSupported = false;
 	}
-	else if (Property->IsA(ULazyObjectProperty::StaticClass()))
+	else if (Property->IsA<ULazyObjectProperty>())
 	{
 		bSupported = false;
 	}
+
 	return bSupported;
 }
 
@@ -640,7 +658,7 @@ FString FKlawrCodeGenerator::GetPropertyInteropTypeModifiers(UProperty* Property
 	return FString();
 }
 
-bool FKlawrCodeGenerator::CanExportProperty(const FString& ClassNameCPP, UClass* Class, UProperty* Property)
+bool FKlawrCodeGenerator::CanExportProperty(const UClass* Class, const UProperty* Property)
 {
 	// properties from base classes should only be exported when those classes are processed
 	if (Property->GetOwnerClass() != Class)
@@ -648,12 +666,21 @@ bool FKlawrCodeGenerator::CanExportProperty(const FString& ClassNameCPP, UClass*
 		return false;
 	}
 
-	bool bCanExport = Super::CanExportProperty(ClassNameCPP, Class, Property);
-	if (bCanExport)
+	// property must be DLL exported (well, not really, will remove this later)
+	if (!(Class->ClassFlags & CLASS_RequiredAPI))
 	{
-		bCanExport = IsPropertyTypeSupported(Property);
+		return false;
 	}
-	return bCanExport;
+
+	// only public, editable properties can be exported
+	if (!Property->HasAnyFlags(RF_Public) ||
+		(Property->GetPropertyFlags() & CPF_Protected) ||
+		!(Property->GetPropertyFlags() & CPF_Edit))
+	{
+		return false;
+	}
+
+	return IsPropertyTypeSupported(Property);
 }
 
 void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
@@ -1041,6 +1068,12 @@ void FKlawrCodeGenerator::ExportClass(
 	bool bHasChanged
 )
 {
+	if (AllExportedClasses.Contains(Class))
+	{
+		// already processed
+		return;
+	}
+
 	if (!CanExportClass(Class))
 	{
 		return;
@@ -1069,7 +1102,7 @@ void FKlawrCodeGenerator::ExportClass(
 	for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
 	{
 		UFunction* Function = *FuncIt;
-		if (CanExportFunction(ClassNameCPP, Class, Function))
+		if (CanExportFunction(Class, Function))
 		{
 			ExportFunction(ClassNameCPP, Class, Function, NativeGlueCode, ManagedGlueCode);
 		}
@@ -1079,7 +1112,7 @@ void FKlawrCodeGenerator::ExportClass(
 	for (TFieldIterator<UProperty> PropertyIt(Class); PropertyIt; ++PropertyIt)
 	{
 		UProperty* Property = *PropertyIt;
-		if (CanExportProperty(ClassNameCPP, Class, Property))
+		if (CanExportProperty(Class, Property))
 		{
 			UE_LOG(LogScriptGenerator, Log, TEXT("  %s %s"), *Property->GetClass()->GetName(), *Property->GetName());
 			ExportProperty(ClassNameCPP, Class, Property, NativeGlueCode, ManagedGlueCode);
