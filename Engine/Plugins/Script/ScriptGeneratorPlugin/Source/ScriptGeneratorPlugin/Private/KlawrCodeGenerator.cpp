@@ -184,8 +184,11 @@ void FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 
 bool FKlawrCodeGenerator::CanExportClass(const UClass* Class)
 {
-	// skip classes that don't export DLL symbols
-	bool bCanExport = Class->HasAnyClassFlags(CLASS_RequiredAPI | CLASS_MinimalAPI);
+	bool bCanExport = 
+		// skip classes that don't export DLL symbols
+		Class->HasAnyClassFlags(CLASS_RequiredAPI | CLASS_MinimalAPI)
+		// don't export the UObject class itself
+		&& (Class != UObject::StaticClass());
 
 	if (bCanExport)
 	{
@@ -1013,7 +1016,6 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 {
 	FString ClassNameCPP = FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *Class->GetName());
 	FString ClassDecl = FString::Printf(TEXT("public class %s"), *ClassNameCPP);
-	FString ConstructorDecl = FString::Printf(TEXT("public %s(IntPtr nativeObject)"), *ClassNameCPP);
 	// mirror the inheritance in the managed wrapper class while skipping base classes that haven't
 	// been exported (this may change in the future)
 	UClass* SuperClass = nullptr;
@@ -1032,7 +1034,6 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 		ClassDecl += FString::Printf(
 			TEXT(" : %s%s"), SuperClass->GetPrefixCPP(), *SuperClass->GetName()
 		);
-		ConstructorDecl += TEXT(" : base(nativeObject)");
 	}
 		
 	GeneratedGlue 
@@ -1044,57 +1045,48 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 
 		// declare namespace
 		<< TEXT("namespace Klawr.UnrealEngine") 
-		<< FKlawrCodeFormatter::OpenBrace()
-		
-		// declare class
-		<< ClassDecl 
 		<< FKlawrCodeFormatter::OpenBrace();
-	
-	if (!SuperClass)
-	{
+
+	if (Class != UObject::StaticClass())
+	{ 
 		GeneratedGlue
-			// declare the wrapped native object
-			<< TEXT("protected IntPtr _nativeObject;")
-			<< FKlawrCodeFormatter::LineTerminator()
-			// and a read-only property to access it externally
-			<< TEXT("public IntPtr NativeObject")
+			// declare class
+			<< ClassDecl 
 			<< FKlawrCodeFormatter::OpenBrace()
-				<< TEXT("get { return _nativeObject; }")
-			<< FKlawrCodeFormatter::CloseBrace();
+
+				// constructor
+				<< FString::Printf(
+					TEXT("public %s(IntPtr nativeObject) : base(nativeObject)"), *ClassNameCPP
+				)
+	
+			<< FKlawrCodeFormatter::OpenBrace()
+			<< FKlawrCodeFormatter::CloseBrace()
+			<< FKlawrCodeFormatter::LineTerminator();
 	}
-
-	// constructor
-	GeneratedGlue
-		<< ConstructorDecl
-		<< FKlawrCodeFormatter::OpenBrace();
-
-	if (!SuperClass)
-	{
-		GeneratedGlue << TEXT("_nativeObject = nativeObject;");
-	}
-
-	GeneratedGlue
-		<< FKlawrCodeFormatter::CloseBrace()
-		<< FKlawrCodeFormatter::LineTerminator();
 }
 
 void FKlawrCodeGenerator::GenerateManagedGlueCodeFooter(
 	const UClass* Class, FKlawrCodeFormatter& GeneratedGlue
 )
 {
-	// define static constructor
-	GenerateManagedStaticConstructor(Class, GeneratedGlue);
-	// close the class
-	GeneratedGlue 
-		<< FKlawrCodeFormatter::CloseBrace()
-		<< FKlawrCodeFormatter::LineTerminator();
+	if (Class != UObject::StaticClass())
+	{
+		// define static constructor
+		GenerateManagedStaticConstructor(Class, GeneratedGlue);
+		// close the class
+		GeneratedGlue
+			<< FKlawrCodeFormatter::CloseBrace()
+			<< FKlawrCodeFormatter::LineTerminator();
+	}	
 	// Users should be allowed to subclass the generated wrapper class, but if the subclass is to be
 	// used via Blueprints it must implement the IScriptObject interface (which would be an abstract
 	// class if C# supported multiple inheritance). To simplify things an abstract class is
 	// generated that is derived from the wrapper class and implements the IScriptObject interface,
 	// the user can then simply subclass this abstract class.
 	// FIXME: GetBoolMetaDataHierarchical() is only available when WITH_EDITOR is defined, and it's
-	//        not defined when building this plugin :/
+	//        not defined when building this plugin :/. The non hierarchical version of GetMetaData()
+	//        should be available though (because HACK_HEADER_GENERATOR should be defined for this
+	//        plugin) so it is possible to what GetBoolMetaDataHierarchical() does.
 	//if (Class->GetBoolMetaDataHierarchical(FBlueprintMetadata::MD_IsBlueprintBase))
 	//{
 	GenerateManagedScriptObjectClass(Class, GeneratedGlue);
