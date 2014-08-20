@@ -120,12 +120,15 @@ void ClrHost::Shutdown()
 	}
 }
 
-void ClrHost::InitializeEngineAppDomain()
+void ClrHost::InitializeEngineAppDomain(const ObjectUtilsNativeInfo& info)
 {
 	_hostControl->GetDefaultAppDomainManager()->CreateEngineAppDomain();
 	auto engineAppDomainManager = _hostControl->GetEngineAppDomainManager();
 	if (engineAppDomainManager)
 	{
+		// pass all the native wrapper functions to the managed side of the CLR host so that they 
+		// can be hooked up to properties and methods of the generated C# wrapper classes (though 
+		// that will happen a bit later)
 		for (const auto& classWrapper : _classWrappers)
 		{
 			auto className = classWrapper.first.c_str();
@@ -136,6 +139,13 @@ void ClrHost::InitializeEngineAppDomain()
 			HRESULT hr = engineAppDomainManager->SetNativeFunctionPointers(className, safeArray);
 			assert(SUCCEEDED(hr));
 		}
+
+		// pass a few utility functions to the managed side to deal with native UObject instances
+		Klawr_ClrHost_Interfaces::ObjectUtilsNativeInfo interopInfo;
+		interopInfo.RemoveObjectRef = reinterpret_cast<INT_PTR>(info.RemoveObjectRef);
+		engineAppDomainManager->SetObjectUtilsNativeInfo(&interopInfo);
+
+		// now that everything the engine wrapper assembly needs is in place it can be loaded
 		engineAppDomainManager->LoadUnrealEngineWrapperAssembly();
 	}
 }
@@ -144,7 +154,7 @@ bool ClrHost::CreateScriptObject(const TCHAR* className, void* owner, ScriptObje
 {
 	Klawr_ClrHost_Interfaces::ScriptObjectInstanceInfo srcInfo;
 	bool created = !!_hostControl->GetEngineAppDomainManager()->CreateScriptObject(
-		className, reinterpret_cast<__int64>(owner), &srcInfo
+		className, reinterpret_cast<INT_PTR>(owner), &srcInfo
 	);
 	if (created)
 	{

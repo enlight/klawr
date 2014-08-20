@@ -38,6 +38,23 @@ namespace Klawr {
  */
 TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
 
+/** 
+ * @brief Contains pointers to native UObject management functions.
+ *
+ * These functions will be called by managed code.
+ *
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ *       the managed counterpart is also exposed to native code via COM under the 
+ *       Klawr_ClrHost_Interfaces namespace.
+ */
+struct ObjectUtilsNativeInfo
+{
+	typedef void (*RemoveObjectRefAction)(void*);
+
+	/** Native function to be called when a managed reference to a UObject instance is disposed. */
+	RemoveObjectRefAction RemoveObjectRef;
+};
+
 /**
  * @brief Contains native/managed interop information for a ScriptObject instance.
  * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
@@ -67,7 +84,7 @@ public:
 	/** Startup the CLR. */
 	virtual void Startup() = 0;
 	/** Load the engine wrapper assembly. */
-	virtual void InitializeEngineAppDomain() = 0;
+	virtual void InitializeEngineAppDomain(const ObjectUtilsNativeInfo&) = 0;
 	/** Shutdown the CLR. */
 	virtual void Shutdown() = 0;
 

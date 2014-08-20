@@ -20,6 +20,8 @@ mklink %ScriptGeneratorCodeLinkDir%\Private\pugiconfig.hpp %ScriptGeneratorCodeT
 mklink %ScriptGeneratorCodeLinkDir%\Private\pugixml.cpp %ScriptGeneratorCodeTargetDir%\Private\pugixml.cpp
 mklink %ScriptGeneratorCodeLinkDir%\Private\pugixml.hpp %ScriptGeneratorCodeTargetDir%\Private\pugixml.hpp
 
+mklink %ScriptPluginCodeLinkDir%\Private\KlawrObjectUtils.cpp %ScriptPluginCodeTargetDir%\Private\KlawrObjectUtils.cpp
+mklink %ScriptPluginCodeLinkDir%\Private\KlawrObjectUtils.h %ScriptPluginCodeTargetDir%\Private\KlawrObjectUtils.h
 mklink %ScriptPluginCodeLinkDir%\Private\KlawrScriptContext.cpp %ScriptPluginCodeTargetDir%\Private\KlawrScriptContext.cpp
 mklink %ScriptPluginCodeLinkDir%\Private\KlawrScriptContext.h %ScriptPluginCodeTargetDir%\Private\KlawrScriptContext.h
 pause

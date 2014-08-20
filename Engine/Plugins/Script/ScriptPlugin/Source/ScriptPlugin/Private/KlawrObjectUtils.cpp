@@ -21,48 +21,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //-------------------------------------------------------------------------------
-#pragma once
 
-#include "KlawrClrHostPCH.h"
-#include "KlawrClrHost.h"
-#include <comdef.h> // for _COM_SMARTPTR_TYPEDEF
-#include <map>
+#include "ScriptPluginPrivatePCH.h"
+#include "KlawrObjectUtils.h"
+#include "ScriptObjectReferencer.h"
 
-_COM_SMARTPTR_TYPEDEF(ICLRRuntimeHost, IID_ICLRRuntimeHost); // for ICLRRuntimeHostPtr
-
-namespace Klawr {
-
-/**
- * @brief The implementation of the public IClrHost interface.
- */
-class ClrHost : public IClrHost
+namespace KlawrObjectUtils 
 {
-public: // IClrHost interface
-	virtual void Startup() override;
-	virtual void InitializeEngineAppDomain(const ObjectUtilsNativeInfo& info) override;
-	virtual void Shutdown() override;
-
-	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) override
+	static void RemoveObjectRef(void* objectInstance)
 	{
-		_classWrappers[className] = { wrapperFunctions, numFunctions };
+		auto object = static_cast<UObject*>(objectInstance);
+		if (!object->IsA<UClass>())
+		{
+			FScriptObjectReferencer::Get().RemoveObjectReference(object);
+		}
 	}
+} // namespace KlawrObjectUtils
 
-	virtual bool CreateScriptObject(const TCHAR* className, void* owner, ScriptObjectInstanceInfo& info) override;
-	virtual void DestroyScriptObject(__int64 instanceID) override;
-
-public:
-	ClrHost() : _hostControl(nullptr) {}
-
-private:
-	class ClrHostControl* _hostControl;
-	ICLRRuntimeHostPtr _runtimeHost;
-
-	struct ClassWrapperInfo
-	{
-		void** functionPointers;
-		int numFunctions;
-	};
-	std::map<tstring, ClassWrapperInfo> _classWrappers;
+Klawr::ObjectUtilsNativeInfo FKlawrObjectUtils::Info =
+{
+	KlawrObjectUtils::RemoveObjectRef
 };
-
-} // namespace Klawr

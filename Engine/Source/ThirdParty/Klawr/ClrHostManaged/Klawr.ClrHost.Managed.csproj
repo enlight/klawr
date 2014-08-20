@@ -41,6 +41,8 @@
   <ItemGroup>
     <Compile Include="DefaultAppDomainManager.cs" />
     <Compile Include="EngineAppDomainManager.cs" />
+    <Compile Include="ObjectHandle.cs" />
+    <Compile Include="ObjectUtils.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

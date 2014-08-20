@@ -46,6 +46,7 @@ namespace Klawr.ClrHost.Interfaces
         /// </summary>
         /// <param name="nativeClassName">Name of C++ class to retrieve function pointers for.</param>
         /// <returns>Array of pointers to native functions.</returns>
+        [ComVisible(false)]
         IntPtr[] GetNativeFunctionPointers(string nativeClassName);
 
         /// <summary>
@@ -68,5 +69,14 @@ namespace Klawr.ClrHost.Interfaces
         /// </summary>
         /// <param name="scriptObjectInstanceID">The ID of the ScriptObject instance to destroy.</param>
         void DestroyScriptObject(long scriptObjectInstanceID);
+
+        /// <summary>
+        /// The native side of the CLR host will use this method to pass a set of native object 
+        /// management functions to the managed side of the CLR host. This method must be called
+        /// during initialization of the engine app domain, before any native UObject instance is 
+        /// passed to the managed side.
+        /// </summary>
+        /// <param name="info"></param>
+        void SetObjectUtilsNativeInfo(ref ObjectUtilsNativeInfo info);
     }
 }

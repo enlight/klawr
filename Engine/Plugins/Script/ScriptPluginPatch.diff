@@ -1,18 +1,41 @@
+diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp
+index bb8106c..1462f7a 100644
+--- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp
++++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp
+@@ -3,6 +3,8 @@
+ #include "ScriptBlueprintGeneratedClass.h"
+ #if WITH_LUA
+ #include "LuaIntegration.h"
++#elif WITH_KLAWR
++#include "KlawrScriptContext.h"
+ #endif
+ 
+ /////////////////////////////////////////////////////
+@@ -128,6 +130,8 @@ FScriptContextBase* FScriptContextBase::CreateContext(const FString& SourceCode,
+ 	FScriptContextBase* NewContext = NULL;
+ #if WITH_LUA
+ 	NewContext = new FLuaContext();
++#elif WITH_KLAWR
++	NewContext = new FKlawrContext();
+ #endif
+ 	if (NewContext)
+ 	{
 diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
-index 9a40829..d18501a 100644
+index 9a40829..60d7c05 100644
 --- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
 +++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
-@@ -2,6 +2,9 @@
+@@ -2,6 +2,10 @@
  
  #include "ScriptPluginPrivatePCH.h"
  #include "ScriptObjectReferencer.h"
 +#ifdef WITH_KLAWR
 +#include "KlawrClrHost.h"
++#include "KlawrObjectUtils.h"
 +#endif // WITH_KLAWR
  
  UProperty* FindScriptPropertyHelper(UClass* Class, FName PropertyName)
  {
-@@ -33,10 +36,19 @@ IMPLEMENT_MODULE(FScriptPlugin, ScriptPlugin)
+@@ -33,10 +37,19 @@ IMPLEMENT_MODULE(FScriptPlugin, ScriptPlugin)
  void FScriptPlugin::StartupModule()
  {
  	FScriptObjectReferencer::Init();
@@ -22,7 +45,7 @@ index 9a40829..d18501a 100644
 +	// defined in GeneratedScriptLibraries.inl
 +	void Klawr::NativeGlue::RegisterWrapperClasses();
 +	Klawr::NativeGlue::RegisterWrapperClasses();
-+	Klawr::IClrHost::Get()->InitializeEngineAppDomain();
++	Klawr::IClrHost::Get()->InitializeEngineAppDomain(FKlawrObjectUtils::Info);
 +#endif // WITH_KLAWR
  }
  
