@@ -46,6 +46,7 @@ const FString FKlawrCodeGenerator::MarshalBoolParameterAsUint8Attribute =
 	TEXT("[MarshalAs(UnmanagedType.U1)]");
 
 const FString FKlawrCodeGenerator::ClrHostInterfacesAssemblyName = "Klawr.ClrHost.Interfaces";
+const FString FKlawrCodeGenerator::ClrHostManagedAssemblyName = "Klawr.ClrHost.Managed";
 
 FKlawrCodeGenerator::FKlawrCodeGenerator(
 	const FString& RootLocalPath, const FString& RootBuildPath, const FString& OutputDirectory, 
@@ -1041,6 +1042,7 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 		<< TEXT("using System;")
 		<< TEXT("using System.Runtime.InteropServices;")
 		<< TEXT("using Klawr.ClrHost.Interfaces;")
+		<< TEXT("using Klawr.ClrHost.Managed;")
 		<< FKlawrCodeFormatter::LineTerminator()
 
 		// declare namespace
@@ -1235,16 +1237,31 @@ void FKlawrCodeGenerator::GenerateManagedWrapperProject()
 		auto ReferencesNode = XmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
 		if (ReferencesNode)
 		{
-			FString ClrHostInterfacesAssemblyPath = 
+			FString AssemblyPath = 
 				FPaths::RootDir() 
 				/ TEXT("Engine/Source/ThirdParty/Klawr/ClrHostInterfaces/bin/$(Configuration)") 
 				/ ClrHostInterfacesAssemblyName + TEXT(".dll");
-			FPaths::MakePathRelativeTo(ClrHostInterfacesAssemblyPath, *ProjectOutputFilename);
-			FPaths::MakePlatformFilename(ClrHostInterfacesAssemblyPath);
+			FPaths::MakePathRelativeTo(AssemblyPath, *ProjectOutputFilename);
+			FPaths::MakePlatformFilename(AssemblyPath);
 
 			auto RefNode = ReferencesNode.append_child(TEXT("Reference"));
 			RefNode.append_attribute(TEXT("Include")) = *ClrHostInterfacesAssemblyName;
-			RefNode.append_child(TEXT("HintPath")).text() = *ClrHostInterfacesAssemblyPath;
+			RefNode.append_child(TEXT("HintPath")).text() = *AssemblyPath;
+		}
+
+		// add a reference to the CLR host managed assembly
+		if (ReferencesNode)
+		{
+			FString AssemblyPath =
+				FPaths::RootDir()
+				/ TEXT("Engine/Source/ThirdParty/Klawr/ClrHostManaged/bin/$(Configuration)")
+				/ ClrHostManagedAssemblyName + TEXT(".dll");
+			FPaths::MakePathRelativeTo(AssemblyPath, *ProjectOutputFilename);
+			FPaths::MakePlatformFilename(AssemblyPath);
+
+			auto RefNode = ReferencesNode.append_child(TEXT("Reference"));
+			RefNode.append_attribute(TEXT("Include")) = *ClrHostManagedAssemblyName;
+			RefNode.append_child(TEXT("HintPath")).text() = *AssemblyPath;
 		}
 
 		// include all the generated C# wrapper classes in the project file

@@ -70,6 +70,7 @@ private:
 	static const FString MarshalReturnedBoolAsUint8Attribute;
 	static const FString MarshalBoolParameterAsUint8Attribute;
 	static const FString ClrHostInterfacesAssemblyName;
+	static const FString ClrHostManagedAssemblyName;
 
 	struct FExportedProperty
 	{
