@@ -140,26 +140,43 @@ void FKlawrCodeGenerator::GenerateNativeReturnValueHandler(
 {
 	if (ReturnValue)
 	{
-		if (ReturnValue->IsA(UIntProperty::StaticClass()) || 
-			ReturnValue->IsA(UFloatProperty::StaticClass()) ||
-			ReturnValue->IsA(UBoolProperty::StaticClass()) ||
-			ReturnValue->IsA(UObjectPropertyBase::StaticClass()))
+		if (ReturnValue->IsA<UObjectPropertyBase>())
+		{
+			// TODO: the assumption here is that UClass instances will be kept alive anyway, so
+			//       no need to add a reference... but that's just be wishful thinking, need to 
+			//       investigate!
+			if (!ReturnValue->IsA<UClassProperty>())
+			{
+				GeneratedGlue
+					<< FString::Printf(TEXT("if (%s)"), *ReturnValueName)
+					<< FKlawrCodeFormatter::OpenBrace()
+						<< FString::Printf(
+							TEXT("FScriptObjectReferencer::Get().AddObjectReference(%s);"),
+							*ReturnValueName
+						)
+					<< FKlawrCodeFormatter::CloseBrace();
+			}
+			GeneratedGlue << FString::Printf(TEXT("return static_cast<UObject*>(%s);"), *ReturnValueName);
+		}
+		else if (ReturnValue->IsA<UIntProperty>() || 
+			ReturnValue->IsA<UFloatProperty>() ||
+			ReturnValue->IsA<UBoolProperty>())
 		{
 			GeneratedGlue << FString::Printf(TEXT("return %s;"), *ReturnValueName);
 		}
-		else if (ReturnValue->IsA(UStrProperty::StaticClass()))
+		else if (ReturnValue->IsA<UStrProperty>())
 		{
 			GeneratedGlue << FString::Printf(
 				TEXT("return MakeStringCopyForCLR(*%s);"), *ReturnValueName
 			);
 		}
-		else if (ReturnValue->IsA(UNameProperty::StaticClass()))
+		else if (ReturnValue->IsA<UNameProperty>())
 		{
 			GeneratedGlue << FString::Printf(
 				TEXT("return MakeStringCopyForCLR(*(%s.ToString()));"), *ReturnValueName
 			);
 		}
-		else if (ReturnValue->IsA(UStructProperty::StaticClass()))
+		else if (ReturnValue->IsA<UStructProperty>())
 		{
 			auto StructProp = CastChecked<UStructProperty>(ReturnValue);
 			if (IsStructPropertyTypeSupported(StructProp))
@@ -298,7 +315,7 @@ void FKlawrCodeGenerator::GenerateNativeWrapperFunction(
 	// call the wrapped UFunction
 	// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
 	//        regular function argument names.
-	GeneratedGlue << TEXT("UObject* Obj = (UObject*)self;");
+	GeneratedGlue << TEXT("UObject* Obj = static_cast<UObject*>(self);");
 	// FIXME: Super::GenerateFunctionDispatch() doesn't indent code properly, get rid of it!
 	// TODO: Maybe use an initializer list to FDispatchParams struct instead of the current multi-line init
 	GeneratedGlue << Super::GenerateFunctionDispatch(Function);
@@ -358,7 +375,7 @@ UProperty* FKlawrCodeGenerator::GetManagedWrapperArgsAndReturnType(
 	FString& OutFormalManagedArgs, FString& OutActualManagedArgs
 )
 {
-	OutFormalInteropArgs = TEXT("IntPtr self");
+	OutFormalInteropArgs = TEXT("UObjectHandle self");
 	OutActualInteropArgs = TEXT("_nativeObject");
 	OutFormalManagedArgs.Empty();
 	OutActualManagedArgs.Empty();
@@ -621,27 +638,31 @@ FString FKlawrCodeGenerator::GetPropertyNativeType(UProperty* Property)
 // FIXME: this method should be const, as should the argument, but Super::GetPropertyTypeCPP() isn't!
 FString FKlawrCodeGenerator::GetPropertyInteropType(UProperty* Property)
 {
-	if (IsPropertyTypePointer(Property))
+	if (Property->IsA<UObjectProperty>())
+	{
+		return TEXT("UObjectHandle");
+	}
+	else if (IsPropertyTypePointer(Property))
 	{
 		return TEXT("IntPtr");
 	}
-	else if (Property->IsA(UBoolProperty::StaticClass()))
+	else if (Property->IsA<UBoolProperty>())
 	{
 		return TEXT("bool");
 	}
-	else if (Property->IsA(UIntProperty::StaticClass()))
+	else if (Property->IsA<UIntProperty>())
 	{
 		return TEXT("int");
 	}
-	else if (Property->IsA(UFloatProperty::StaticClass()))
+	else if (Property->IsA<UFloatProperty>())
 	{
 		return TEXT("float");
 	}
-	else if (Property->IsA(UDoubleProperty::StaticClass()))
+	else if (Property->IsA<UDoubleProperty>())
 	{
 		return TEXT("double");
 	}
-	else if (Property->IsA(UStrProperty::StaticClass()) || Property->IsA(UNameProperty::StaticClass()))
+	else if (Property->IsA<UStrProperty>() || Property->IsA<UNameProperty>())
 	{
 		return TEXT("string");
 	}
@@ -753,7 +774,7 @@ void FKlawrCodeGenerator::GenerateNativePropertyGetterWrapper(
 		<< FKlawrCodeFormatter::OpenBrace()
 		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
 		//        regular function argument names.
-		<< TEXT("UObject* Obj = (UObject*)self;")
+		<< TEXT("UObject* Obj = static_cast<UObject*>(self);")
 		<< FString::Printf(
 			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"),
 			*ClassNameCPP, *Property->GetName()
@@ -789,7 +810,7 @@ void FKlawrCodeGenerator::GenerateNativePropertySetterWrapper(
 		<< FKlawrCodeFormatter::OpenBrace()
 		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
 		//        regular function argument names.
-		<< TEXT("UObject* Obj = (UObject*)self;")
+		<< TEXT("UObject* Obj = static_cast<UObject*>(self);")
 		<< FString::Printf(
 			TEXT("static UProperty* Property = FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\"));"), 
 			*ClassNameCPP, *Property->GetName()
@@ -840,13 +861,13 @@ void FKlawrCodeGenerator::GenerateManagedPropertyWrapper(
 		<< UnmanagedFunctionPointerAttribute
 		<< (bIsBoolProperty ? MarshalReturnedBoolAsUint8Attribute : FString())
 		<< FString::Printf(
-			TEXT("private delegate %s %s(IntPtr self);"),
+			TEXT("private delegate %s %s(UObjectHandle self);"),
 			*InteropTypeName, *ExportedProperty.GetterDelegateTypeName
 		)
 		// declare setter delegate type
 		<< UnmanagedFunctionPointerAttribute
 		<< FString::Printf(
-			TEXT("private delegate void %s(IntPtr self, %s %s);"),
+			TEXT("private delegate void %s(UObjectHandle self, %s %s);"),
 			*ExportedProperty.SetterDelegateTypeName, *SetterParamType, *Property->GetName()
 		)
 		// declare delegate instances that will be bound to the native wrapper functions
@@ -1058,7 +1079,7 @@ void FKlawrCodeGenerator::GenerateManagedGlueCodeHeader(
 
 				// constructor
 				<< FString::Printf(
-					TEXT("public %s(IntPtr nativeObject) : base(nativeObject)"), *ClassNameCPP
+					TEXT("public %s(UObjectHandle nativeObject) : base(nativeObject)"), *ClassNameCPP
 				)
 	
 			<< FKlawrCodeFormatter::OpenBrace()
@@ -1118,7 +1139,7 @@ void FKlawrCodeGenerator::GenerateManagedScriptObjectClass(
 			<< FKlawrCodeFormatter::LineTerminator()
 			// constructor
 			<< FString::Printf(
-				TEXT("public %sScriptObject(long instanceID, IntPtr nativeObject) : base(nativeObject)"),
+				TEXT("public %sScriptObject(long instanceID, UObjectHandle nativeObject) : base(nativeObject)"),
 				*ClassNameCPP
 			)
 			<< FKlawrCodeFormatter::OpenBrace()
@@ -1153,15 +1174,29 @@ void FKlawrCodeGenerator::ExportClass(
 	// still be used as a function parameter in a function that is exported by another class
 	Super::ExportedClasses.Add(Class->GetFName());
 	AllExportedClasses.Add(Class);
-
+	
 	FKlawrCodeFormatter NativeGlueCode(TEXT('\t'), 1);
 	FKlawrCodeFormatter ManagedGlueCode(TEXT(' '), 4);
 
 	bool bCanExport = CanExportClass(Class);
 	if (bCanExport)
 	{
-		AllSourceClassHeaders.Add(SourceHeaderFilename);
 		GenerateNativeGlueCodeHeader(Class, NativeGlueCode);
+	}
+
+	// some internal classes like UObjectProperty don't have an associated source header file,
+	// no native wrapper functions are generated for those types, and perhaps we should generate
+	// any C# wrappers for those either?
+	if (!SourceHeaderFilename.IsEmpty())
+	{
+		// NOTE: Ideally when no native wrapper functions are generated for a class the corresponding
+		//       header need not be included, however the class may still be referenced in the
+		//       wrapper functions of other classes and if the header isn't included the compilation
+		//       will fail. The compilation error is usually a cryptic error C2664, and occurs while 
+		//       attempting to upcast a pointer to the class into a UObject*, this fails because the
+		//       class is only forward declared at that point and as such the compiler is unaware that
+		//       the class is derived from UObject.
+		AllSourceClassHeaders.Add(SourceHeaderFilename);
 	}
 	
 	GenerateManagedGlueCodeHeader(Class, ManagedGlueCode);

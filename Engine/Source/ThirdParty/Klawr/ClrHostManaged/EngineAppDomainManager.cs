@@ -90,12 +90,17 @@ namespace Klawr.ClrHost.Managed
             var objType = FindScriptObjectTypeByName(className);
             if (objType != null)
             {
-                var constructor = objType.GetConstructor(new Type[] { typeof(long), typeof(IntPtr) });
+                var constructor = objType.GetConstructor(new Type[] { typeof(long), typeof(UObjectHandle) });
                 if (constructor != null)
                 {
                     var instanceID = GenerateScriptObjectID();
+                    // The handle created here is set not to release the native object when the
+                    // handle is disposed because that object is actually the owner of the script 
+                    // object created here, and no additional references are created to owners at
+                    // the moment so there is no reference to remove.
+                    var objectHandle = new UObjectHandle(nativeObject, false);
                     var obj = (IScriptObject)constructor.Invoke(
-                        new object[] { instanceID, nativeObject }
+                        new object[] { instanceID, objectHandle }
                     );
                     var objInfo = RegisterScriptObject(obj);
                     info.InstanceID = instanceID;
@@ -111,7 +116,8 @@ namespace Klawr.ClrHost.Managed
 
         public void DestroyScriptObject(long scriptObjectInstanceID)
         {
-            UnregisterScriptObject(scriptObjectInstanceID);
+            var instance = UnregisterScriptObject(scriptObjectInstanceID);
+            instance.Dispose();
         }
         
         /// <summary>
@@ -148,9 +154,12 @@ namespace Klawr.ClrHost.Managed
         /// The manager will remove the reference it previously held to the object.
         /// </summary>
         /// <param name="scriptObjectInstanceID">ID of a registered IScriptObject instance.</param>
-        public void UnregisterScriptObject(long scriptObjectInstanceID)
+        /// <returns>The script object matching the given ID.</returns>
+        public IScriptObject UnregisterScriptObject(long scriptObjectInstanceID)
         {
+            var instance = _scriptObjects[scriptObjectInstanceID].Instance;
             _scriptObjects.Remove(scriptObjectInstanceID);
+            return instance;
         }
 
         /// <summary>

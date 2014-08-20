@@ -22,6 +22,8 @@
 // SOFTWARE.
 //
 
+using System;
+
 namespace Klawr.ClrHost.Interfaces
 {
     /// <summary>
@@ -33,7 +35,7 @@ namespace Klawr.ClrHost.Interfaces
     /// 
     /// IScriptObject instances must only be created in an engine app domain.
     /// </summary>
-    public interface IScriptObject
+    public interface IScriptObject : IDisposable
     {
         /// <summary>
         /// Unique identifier for this instance that's guaranteed to be unique amongst all the
