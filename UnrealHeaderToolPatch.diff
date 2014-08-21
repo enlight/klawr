@@ -1,0 +1,13 @@
+diff --git a/Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs b/Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs
+index d6f9452..5fc1774 100644
+--- a/Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs
++++ b/Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs
+@@ -8,7 +8,7 @@ public class UnrealHeaderToolTarget : TargetRules
+ 	public UnrealHeaderToolTarget(TargetInfo Target)
+ 	{
+ 		Type = TargetType.Program;
+-		AdditionalPlugins.Add("ScriptGeneratorPlugin");
++		AdditionalPlugins.Add("KlawrCodeGeneratorPlugin");
+ 	}
+ 
+ 	//

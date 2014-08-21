@@ -23,8 +23,10 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
+namespace Klawr {
+
 /** Automatically indents and terminates lines of code. */
-class FKlawrCodeFormatter
+class FCodeFormatter
 {
 public:
 	/** Keeps track of the indentation level in generated code. */
@@ -74,7 +76,7 @@ public:
 	/** The formatted code. */
 	FString Content;
 
-	FKlawrCodeFormatter(TCHAR InSpace, int32 InTabSize)
+	FCodeFormatter(TCHAR InSpace, int32 InTabSize)
 		: Indent(InSpace, InTabSize)
 	{
 	}
@@ -83,7 +85,7 @@ public:
 	 * Append the given line of code.
 	 * The text will be indented according to the current indentation level, and line terminated.
 	 */
-	FKlawrCodeFormatter& operator<<(const FString& Text)
+	FCodeFormatter& operator<<(const FString& Text)
 	{
 		if (!Text.IsEmpty())
 		{
@@ -96,7 +98,7 @@ public:
 	 * Append the given line of code.
 	 * The text will be indented according to the current indentation level, and line terminated.
 	 */
-	FKlawrCodeFormatter& operator<<(const TCHAR* Text)
+	FCodeFormatter& operator<<(const TCHAR* Text)
 	{
 		Content += Indent.Text + Text + LINE_TERMINATOR;
 		return *this;
@@ -107,7 +109,7 @@ public:
 	 * A line terminator will be appended after the brace, and the indentation level will be 
 	 * increased by one.
 	 */
-	FKlawrCodeFormatter& operator<<(const OpenBrace&)
+	FCodeFormatter& operator<<(const OpenBrace&)
 	{
 		Content += Indent.Text + TEXT("{") LINE_TERMINATOR;
 		++Indent;
@@ -119,7 +121,7 @@ public:
 	 * The indentation level will be decreased by one, and a line terminator will be appended after
 	 * the brace.
 	 */
-	FKlawrCodeFormatter& operator<<(const CloseBrace&)
+	FCodeFormatter& operator<<(const CloseBrace&)
 	{
 		--Indent;
 		Content += Indent.Text + TEXT("}") LINE_TERMINATOR;
@@ -127,9 +129,11 @@ public:
 	}
 
 	/** Append a line terminator. */
-	FKlawrCodeFormatter& operator<<(const LineTerminator&)
+	FCodeFormatter& operator<<(const LineTerminator&)
 	{
 		Content += LINE_TERMINATOR;
 		return *this;
 	}
 };
+
+} // namespace

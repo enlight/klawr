@@ -1,0 +1,22 @@
+{
+	"FileVersion" : 3,
+	
+	"FriendlyName" : "Klawr Code Generator Plugin",
+	"Version" : 1,
+	"VersionName" : "0.1",
+	"CreatedBy" : "Vadim Macagon",
+	"CreatedByURL" : "https://github.com/enlight/klawr",
+	"EngineVersion" : "4.4.0",
+	"Description" : "Generates glue code to expose the Unreal Engine 4 API to any CLI language running on the MS CLR.",
+	"Category" : "UnrealHeaderTool.Code Generator.Klawr",
+	"EnabledByDefault" : true,
+
+	"Modules" :
+	[
+		{
+			"Name" : "KlawrCodeGeneratorPlugin",
+			"Type" : "Program",
+			"LoadingPhase" : "PostConfigInit"
+		}
+	]
+}
