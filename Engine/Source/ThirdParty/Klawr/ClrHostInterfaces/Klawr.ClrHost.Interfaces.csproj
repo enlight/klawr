@@ -55,7 +55,7 @@
     <VisualStudio AllowExistingFolder="true" />
   </ProjectExtensions>
   <PropertyGroup>
-    <PostBuildEvent>call "$(DevEnvDir)..\..\VC\vcvarsall.bat" x64
+    <PostBuildEvent>call "$(DevEnvDir)..\..\VC\vcvarsall.bat" x86_amd64
 tlbexp $(TargetFileName) /asmpath:$(TargetDir)</PostBuildEvent>
   </PropertyGroup>
 </Project>
