@@ -77,6 +77,6 @@ namespace Klawr.ClrHost.Interfaces
         /// passed to the managed side.
         /// </summary>
         /// <param name="info"></param>
-        void SetObjectUtilsNativeInfo(ref ObjectUtilsNativeInfo info);
+        void BindObjectUtils(ref ObjectUtilsNativeInfo info);
     }
 }

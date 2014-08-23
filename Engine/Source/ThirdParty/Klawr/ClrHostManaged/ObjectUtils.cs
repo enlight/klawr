@@ -30,29 +30,38 @@ namespace Klawr.ClrHost.Managed
 {
     internal class ObjectUtils
     {
-        private ObjectUtilsNativeInfo.RemoveObjectRefAction RemoveObjectRef_Native;
-        
-        public ObjectUtils(ref ObjectUtilsNativeInfo info)
+        private static ObjectUtilsNativeInfo _native;
+                
+        public static void BindToNativeFunctions(ref ObjectUtilsNativeInfo info)
         {
-            RemoveObjectRef_Native = info.RemoveObjectRef;
+            _native = info;
+        }
+
+        public static UObjectHandle GetClassByName(string nativeClassName)
+        {
+            return _native.GetClassByName(nativeClassName);
+        }
+
+        public static string GetClassName(UObjectHandle nativeClass)
+        {
+            return _native.GetClassName(nativeClass);
+        }
+
+        public static bool IsClassChildOf(UObjectHandle derivedClass, UObjectHandle baseClass)
+        {
+            return _native.IsClassChildOf(derivedClass, baseClass);
         }
 
         /// <summary>
         /// Release a reference to a native UObject instance.
         /// </summary>
         /// <param name="handle">Pointer to a native UObject instance.</param>
-        public void ReleaseObject(IntPtr nativeObject)
+        public static void ReleaseObject(IntPtr nativeObject)
         {
-            if (RemoveObjectRef_Native != null)
+            if (_native.RemoveObjectRef != null)
             {
-                RemoveObjectRef_Native(nativeObject);
+               _native.RemoveObjectRef(nativeObject);
             }
-        }
-
-        // TODO: move this somewhere more appropriate, maybe make it an extension method for Marshal
-        public static TDelegate GetDelegateFromFunctionPointer<TDelegate>(IntPtr functionPointer) where TDelegate : class /* Delegate */
-        {
-            return Marshal.GetDelegateForFunctionPointer(functionPointer, typeof(TDelegate)) as TDelegate;
         }
     }
 }

@@ -47,7 +47,10 @@ public: // IClrHost interface
 		_classWrappers[className] = { wrapperFunctions, numFunctions };
 	}
 
-	virtual bool CreateScriptObject(const TCHAR* className, void* owner, ScriptObjectInstanceInfo& info) override;
+	virtual bool CreateScriptObject(
+		const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
+	) override;
+
 	virtual void DestroyScriptObject(__int64 instanceID) override;
 
 public:

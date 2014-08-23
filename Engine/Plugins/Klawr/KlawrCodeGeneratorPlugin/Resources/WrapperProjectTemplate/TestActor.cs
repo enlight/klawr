@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using Klawr.ClrHost.Managed;
+using Klawr.ClrHost.Interfaces;
 
 namespace Klawr.UnrealEngine
 {
@@ -15,6 +16,11 @@ namespace Klawr.UnrealEngine
         {
             Console.WriteLine("BeginPlay()");
 			var world = K2_GetWorld();
+			var worldClass = UWorld.StaticClass();
+            bool isWorldClass = world.IsA(worldClass);
+            var anotherWorldClass = (UClass)typeof(UWorld);
+            bool isSameClass = worldClass == anotherWorldClass;
+            bool isWorldClassDerivedFromObjectClass = worldClass.IsChildOf(UObject.StaticClass());
             world.Dispose();
         }
 

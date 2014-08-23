@@ -142,15 +142,20 @@ void ClrHost::InitializeEngineAppDomain(const ObjectUtilsNativeInfo& info)
 
 		// pass a few utility functions to the managed side to deal with native UObject instances
 		Klawr_ClrHost_Interfaces::ObjectUtilsNativeInfo interopInfo;
+		interopInfo.GetClassByName = reinterpret_cast<INT_PTR>(info.GetClassByName);
+		interopInfo.GetClassName = reinterpret_cast<INT_PTR>(info.GetClassName);
+		interopInfo.IsClassChildOf = reinterpret_cast<INT_PTR>(info.IsClassChildOf);
 		interopInfo.RemoveObjectRef = reinterpret_cast<INT_PTR>(info.RemoveObjectRef);
-		engineAppDomainManager->SetObjectUtilsNativeInfo(&interopInfo);
+		engineAppDomainManager->BindObjectUtils(&interopInfo);
 
 		// now that everything the engine wrapper assembly needs is in place it can be loaded
 		engineAppDomainManager->LoadUnrealEngineWrapperAssembly();
 	}
 }
 
-bool ClrHost::CreateScriptObject(const TCHAR* className, void* owner, ScriptObjectInstanceInfo& info)
+bool ClrHost::CreateScriptObject(
+	const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
+)
 {
 	Klawr_ClrHost_Interfaces::ScriptObjectInstanceInfo srcInfo;
 	bool created = !!_hostControl->GetEngineAppDomainManager()->CreateScriptObject(

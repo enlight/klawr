@@ -39,19 +39,28 @@ namespace Klawr {
 TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
 
 /** 
- * @brief Contains pointers to native UObject management functions.
+ * @brief Contains pointers to native UObject and UClass utility functions.
  *
- * These functions will be called by managed code.
+ * These native functions will be called by managed code.
  *
  * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
  *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr_ClrHost_Interfaces namespace.
+ *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library).
  */
 struct ObjectUtilsNativeInfo
 {
-	typedef void (*RemoveObjectRefAction)(void*);
+	typedef class UClass* (*GetClassByNameFunc)(const TCHAR* nativeClassName);
+	typedef const TCHAR* (*GetClassNameFunc)(class UClass* nativeClass);
+	typedef unsigned char (*IsClassChildOfFunc)(class UClass* derivedClass, class UClass* baseClass);
+	typedef void (*RemoveObjectRefAction)(class UObject* nativeObject);
 
-	/** Native function to be called when a managed reference to a UObject instance is disposed. */
+	/** Get a UClass instance matching the given name (excluding U/A prefix). */
+	GetClassByNameFunc GetClassByName;
+	/** Get the name (excluding U/A prefix) of a UClass instance. */
+	GetClassNameFunc GetClassName;
+	/** Determine if one UClass is derived from another. */
+	IsClassChildOfFunc IsClassChildOf;
+	/** Called when a managed reference to a UObject instance is disposed. */
 	RemoveObjectRefAction RemoveObjectRef;
 };
 
@@ -59,7 +68,7 @@ struct ObjectUtilsNativeInfo
  * @brief Contains native/managed interop information for a ScriptObject instance.
  * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
  *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr_ClrHost_Interfaces namespace.
+ *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library).
  */
 struct ScriptObjectInstanceInfo
 {
@@ -96,7 +105,10 @@ public:
 	 */
 	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) = 0;
 
-	virtual bool CreateScriptObject(const TCHAR* className, void* owner, ScriptObjectInstanceInfo& info) = 0;
+	virtual bool CreateScriptObject(
+		const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
+	) = 0;
+
 	virtual void DestroyScriptObject(__int64 instanceID) = 0;
 
 public:

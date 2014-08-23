@@ -51,7 +51,6 @@ namespace Klawr.ClrHost.Managed
         private long _lastScriptObjectID = 0;
         // cache of previously created script object types
         private Dictionary<string /*Full Type Name*/, Type> _scriptObjectTypeCache = new Dictionary<string, Type>();
-        private ObjectUtils _objectUtils;
 
         // NOTE: the base implementation of this method does nothing, so no need to call it
         public override void InitializeNewDomain(AppDomainSetup appDomainInfo)
@@ -203,18 +202,10 @@ namespace Klawr.ClrHost.Managed
                 .FirstOrDefault(t => t.FullName.Equals(typeName));
         }
 
-        public void SetObjectUtilsNativeInfo(ref ObjectUtilsNativeInfo info)
+        public void BindObjectUtils(ref ObjectUtilsNativeInfo info)
         {
-            if (_objectUtils != null)
-            {
-                throw new InvalidOperationException("ObjectUtilsNativeInfo already set!");
-            }
-            _objectUtils = new ObjectUtils(ref info);
-        }
-
-        internal ObjectUtils GetObjectUtils()
-        {
-            return _objectUtils;
+            ObjectUtils.BindToNativeFunctions(ref info);
+            UObjectHandle.ReleaseHandleCallback = new Action<IntPtr>(ObjectUtils.ReleaseObject);
         }
     }
 }

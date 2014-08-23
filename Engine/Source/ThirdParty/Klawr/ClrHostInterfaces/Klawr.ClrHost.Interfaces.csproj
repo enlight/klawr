@@ -46,6 +46,7 @@
     <Compile Include="IDefaultAppDomainManager.cs" />
     <Compile Include="IEngineAppDomainManager.cs" />
     <Compile Include="IScriptObject.cs" />
+    <Compile Include="ObjectHandle.cs" />
     <Compile Include="ObjectUtilsNativeInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ScriptObjectInstanceInfo.cs" />

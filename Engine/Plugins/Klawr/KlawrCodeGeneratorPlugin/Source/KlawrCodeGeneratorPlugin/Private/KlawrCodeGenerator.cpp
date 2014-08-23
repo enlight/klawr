@@ -47,8 +47,9 @@ const FString FCodeGenerator::MarshalReturnedBoolAsUint8Attribute =
 const FString FCodeGenerator::MarshalBoolParameterAsUint8Attribute =
 	TEXT("[MarshalAs(UnmanagedType.U1)]");
 
-const FString FCodeGenerator::ClrHostInterfacesAssemblyName = "Klawr.ClrHost.Interfaces";
-const FString FCodeGenerator::ClrHostManagedAssemblyName = "Klawr.ClrHost.Managed";
+const FString FCodeGenerator::ClrHostInterfacesAssemblyName = TEXT("Klawr.ClrHost.Interfaces");
+const FString FCodeGenerator::ClrHostManagedAssemblyName = TEXT("Klawr.ClrHost.Managed");
+const FString FCodeGenerator::NativeThisPointer = TEXT("(UObjectHandle)this");
 
 FCodeGenerator::FCodeGenerator(
 	const FString& InRootLocalPath, const FString& InRootBuildPath, 
@@ -92,8 +93,16 @@ FString FCodeGenerator::GetPropertyCPPType(const UProperty* Property)
 	{
 		// strip class keyword
 		CPPTypeName = TEXT("TSubclassOf<") + CPPTypeName.Mid(CPPTypeName.Find(Space) + 1);
+		// Passing around TSubclassOf<UObject> doesn't really provide any more type safety than
+		// passing around UClass (so far only UObjects can cross the native/managed boundary),
+		// and TSubclassOf<> lacks the reference equality UClass has.
+		if (CPPTypeName.StartsWith(TEXT("TSubclassOf<UObject>")))
+		{
+			CPPTypeName = TEXT("UClass*");
+		}
 	}
-
+	// some type names end with a space, strip it away
+	CPPTypeName.RemoveFromEnd(Space);
 	return CPPTypeName;
 }
 
@@ -104,15 +113,15 @@ FString FCodeGenerator::GenerateFunctionDispatchParamInitializer(const UProperty
 		FString ParamName = Param->GetName();
 		FString Initializer;
 
-		if (Param->IsA(UClassProperty::StaticClass()))
+		if (Param->IsA<UClassProperty>())
 		{
-			Initializer = FString::Printf(TEXT("(UClass*)%s"), *ParamName);
+			Initializer = FString::Printf(TEXT("static_cast<UClass*>(%s)"), *ParamName);
 		}
-		else if (Param->IsA(UObjectPropertyBase::StaticClass()))
+		else if (Param->IsA<UObjectPropertyBase>())
 		{
-			Initializer = FString::Printf(TEXT("(%s)%s"), *GetPropertyCPPType(Param), *ParamName);
+			Initializer = FString::Printf(TEXT("static_cast<%s>(%s)"), *GetPropertyCPPType(Param), *ParamName);
 		}
-		else if (Param->IsA(UStrProperty::StaticClass()) || Param->IsA(UNameProperty::StaticClass()))
+		else if (Param->IsA<UStrProperty>() || Param->IsA<UNameProperty>())
 		{
 			Initializer = ParamName;
 		}
@@ -125,12 +134,11 @@ FString FCodeGenerator::GenerateFunctionDispatchParamInitializer(const UProperty
 				ParamName = FString::Printf(TEXT("(*%s)"), *ParamName);
 			}
 
-			if (Param->IsA(UIntProperty::StaticClass()) ||
-				Param->IsA(UFloatProperty::StaticClass()))
+			if (Param->IsA<UIntProperty>() || Param->IsA<UFloatProperty>())
 			{
 				Initializer = ParamName;
 			}
-			else if (Param->IsA(UBoolProperty::StaticClass()))
+			else if (Param->IsA<UBoolProperty>())
 			{
 				if (CastChecked<UBoolProperty>(Param)->IsNativeBool())
 				{
@@ -142,7 +150,7 @@ FString FCodeGenerator::GenerateFunctionDispatchParamInitializer(const UProperty
 					Initializer = ParamName;
 				}
 			}
-			else if (Param->IsA(UStructProperty::StaticClass()))
+			else if (Param->IsA<UStructProperty>())
 			{
 				auto StructProp = CastChecked<UStructProperty>(Param);
 				if (IsStructPropertyTypeSupported(StructProp))
@@ -304,8 +312,9 @@ bool FCodeGenerator::CanExportClass(const UClass* Class)
 	bool bCanExport = 
 		// skip classes that don't export DLL symbols
 		Class->HasAnyClassFlags(CLASS_RequiredAPI | CLASS_MinimalAPI)
-		// don't export the UObject class itself
-		&& (Class != UObject::StaticClass());
+		// these have a custom wrappers, so no need to generate code for them
+		&& (Class != UObject::StaticClass())
+		&& (Class != UClass::StaticClass());
 
 	if (bCanExport)
 	{
@@ -474,7 +483,7 @@ UProperty* FCodeGenerator::GetManagedWrapperArgsAndReturnType(
 )
 {
 	OutFormalInteropArgs = TEXT("UObjectHandle self");
-	OutActualInteropArgs = TEXT("_nativeObject");
+	OutActualInteropArgs = NativeThisPointer;
 	OutFormalManagedArgs.Empty();
 	OutActualManagedArgs.Empty();
 	UProperty* ReturnValue = nullptr;
@@ -508,12 +517,19 @@ UProperty* FCodeGenerator::GetManagedWrapperArgsAndReturnType(
 				TEXT(" %s %s"), *ArgInteropType, *ArgName
 			);
 
-			OutActualInteropArgs += FString::Printf(TEXT(", %s %s"), *ArgMods, *ArgName);
-			if (Param->IsA<UObjectProperty>() && !Param->IsA<UClassProperty>())
+			OutActualInteropArgs += TEXT(",");
+			if (!ArgMods.IsEmpty())
 			{
-				OutActualInteropArgs += TEXT(".NativeObject");
+				OutActualInteropArgs += TEXT(" ");
+				OutActualInteropArgs += ArgMods;
 			}
-						
+			OutActualInteropArgs += TEXT(" ");
+			if (Param->IsA<UObjectProperty>())
+			{
+				OutActualInteropArgs += TEXT("(UObjectHandle)");
+			}
+			OutActualInteropArgs += ArgName;
+									
 			if (!OutFormalManagedArgs.IsEmpty())
 			{
 				OutFormalManagedArgs += TEXT(", ");
@@ -540,7 +556,11 @@ FString FCodeGenerator::GenerateManagedReturnValueHandler(const UProperty* Retur
 {
 	if (ReturnValue)
 	{
-		if (ReturnValue->IsA<UObjectProperty>() && !ReturnValue->IsA<UClassProperty>())
+		if (ReturnValue->IsA<UClassProperty>())
+		{
+			return TEXT("return (UClass)value;");
+		}
+		else if (ReturnValue->IsA<UObjectProperty>())
 		{
 			FString WrapperTypeName = GetPropertyCPPType(ReturnValue);
 			WrapperTypeName.RemoveFromEnd(TEXT("*"));
@@ -668,7 +688,6 @@ bool FCodeGenerator::IsPropertyTypeSupported(const UProperty* Property)
 		!Property->IsA<UFloatProperty>() &&
 		!Property->IsA<UBoolProperty>() &&
 		!Property->IsA<UObjectPropertyBase>() &&
-		!Property->IsA<UClassProperty>() &&
 		!Property->IsA<UNameProperty>())
 	{
 		bSupported = false;
@@ -683,9 +702,7 @@ bool FCodeGenerator::IsPropertyTypeSupported(const UProperty* Property)
 
 bool FCodeGenerator::IsPropertyTypePointer(const UProperty* Property)
 {
-	return Property->IsA(UObjectPropertyBase::StaticClass()) 
-		|| Property->IsA(UClassProperty::StaticClass())
-		|| Property->IsA(ULazyObjectProperty::StaticClass());
+	return Property->IsA<UObjectPropertyBase>() || Property->IsA<ULazyObjectProperty>();
 }
 
 bool FCodeGenerator::IsStructPropertyTypeSupported(const UStructProperty* Property)
@@ -771,8 +788,7 @@ FString FCodeGenerator::GetPropertyInteropType(const UProperty* Property)
 
 FString FCodeGenerator::GetPropertyManagedType(const UProperty* Property)
 {
-	// TODO: deal with TSubclassOf<>, UClass properties
-	if (Property->IsA<UObjectProperty>() && !Property->IsA<UClassProperty>())
+	if (Property->IsA<UObjectProperty>())
 	{
 		static FString Pointer(TEXT("*"));
 		FString TypeName = GetPropertyCPPType(Property);
@@ -943,10 +959,17 @@ void FCodeGenerator::GenerateManagedPropertyWrapper(
 	}
 	FString GetterValue(TEXT("value"));
 	FString SetterValue(TEXT("value"));
-	if (Property->IsA<UObjectProperty>() && !Property->IsA<UClassProperty>())
+	if (Property->IsA<UObjectProperty>())
 	{
-		GetterValue = FString::Printf(TEXT("new %s(value)"), *ManagedTypeName);
-		SetterValue = TEXT("value.NativeObject");
+		if (Property->IsA<UClassProperty>())
+		{
+			GetterValue = TEXT("(UClass)value");
+		}
+		else
+		{
+			GetterValue = FString::Printf(TEXT("new %s(value)"), *ManagedTypeName);
+		}
+		SetterValue = TEXT("(UObjectHandle)value");
 	}
 	
 	GeneratedGlue
@@ -978,14 +1001,14 @@ void FCodeGenerator::GenerateManagedPropertyWrapper(
 		<< FCodeFormatter::OpenBrace()
 			<< TEXT("get")
 			<< FCodeFormatter::OpenBrace()
-				<< FString::Printf(TEXT("var value = %s(_nativeObject);"), 
-					*ExportedProperty.GetterDelegateName
+				<< FString::Printf(TEXT("var value = %s(%s);"), 
+					*ExportedProperty.GetterDelegateName, *NativeThisPointer
 				)
 				<< GenerateManagedReturnValueHandler(Property)
 			<< FCodeFormatter::CloseBrace()
 			<< FString::Printf(
-				TEXT("set { %s(_nativeObject, %s); }"), 
-				*ExportedProperty.SetterDelegateName, *SetterValue
+				TEXT("set { %s(%s, %s); }"), 
+				*ExportedProperty.SetterDelegateName, *NativeThisPointer, *SetterValue
 			)
 		<< FCodeFormatter::CloseBrace()
 		<< FCodeFormatter::LineTerminator();
@@ -1125,6 +1148,23 @@ void FCodeGenerator::GenerateManagedStaticConstructor(
 	GeneratedGlue << FCodeFormatter::CloseBrace();
 }
 
+bool FCodeGenerator::ShouldGenerateManagedWrapper(const UClass* Class)
+{
+	return (Class != UObject::StaticClass())
+		&& (Class != UClass::StaticClass());
+}
+
+bool FCodeGenerator::ShouldGenerateScriptObjectClass(const UClass* Class)
+{
+	return (Class != UClass::StaticClass());
+
+	// FIXME: GetBoolMetaDataHierarchical() is only available when WITH_EDITOR is defined, and it's
+	//        not defined when building this plugin :/. The non hierarchical version of GetMetaData()
+	//        should be available though (because HACK_HEADER_GENERATOR should be defined for this
+	//        plugin) so it is possible to do what GetBoolMetaDataHierarchical() does.
+	//return Class->GetBoolMetaDataHierarchical(FBlueprintMetadata::MD_IsBlueprintBase);
+}
+
 void FCodeGenerator::GenerateManagedGlueCodeHeader(
 	const UClass* Class, FCodeFormatter& GeneratedGlue
 ) const
@@ -1163,7 +1203,7 @@ void FCodeGenerator::GenerateManagedGlueCodeHeader(
 		<< TEXT("namespace Klawr.UnrealEngine") 
 		<< FCodeFormatter::OpenBrace();
 
-	if (Class != UObject::StaticClass())
+	if (ShouldGenerateManagedWrapper(Class))
 	{ 
 		GeneratedGlue
 			// declare class
@@ -1174,9 +1214,15 @@ void FCodeGenerator::GenerateManagedGlueCodeHeader(
 				<< FString::Printf(
 					TEXT("public %s(UObjectHandle nativeObject) : base(nativeObject)"), *ClassNameCPP
 				)
+				<< FCodeFormatter::OpenBrace()
+				<< FCodeFormatter::CloseBrace()
 	
-			<< FCodeFormatter::OpenBrace()
-			<< FCodeFormatter::CloseBrace()
+				// StaticClass()
+				<< TEXT("public new static UClass StaticClass()")
+				<< FCodeFormatter::OpenBrace()
+					<< FString::Printf(TEXT("return (UClass)typeof(%s);"), *ClassNameCPP)
+				<< FCodeFormatter::CloseBrace()
+			
 			<< FCodeFormatter::LineTerminator();
 	}
 }
@@ -1185,7 +1231,7 @@ void FCodeGenerator::GenerateManagedGlueCodeFooter(
 	const UClass* Class, FCodeFormatter& GeneratedGlue
 )
 {
-	if (Class != UObject::StaticClass())
+	if (ShouldGenerateManagedWrapper(Class))
 	{
 		// define static constructor
 		GenerateManagedStaticConstructor(Class, GeneratedGlue);
@@ -1194,19 +1240,12 @@ void FCodeGenerator::GenerateManagedGlueCodeFooter(
 			<< FCodeFormatter::CloseBrace()
 			<< FCodeFormatter::LineTerminator();
 	}	
-	// Users should be allowed to subclass the generated wrapper class, but if the subclass is to be
-	// used via Blueprints it must implement the IScriptObject interface (which would be an abstract
-	// class if C# supported multiple inheritance). To simplify things an abstract class is
-	// generated that is derived from the wrapper class and implements the IScriptObject interface,
-	// the user can then simply subclass this abstract class.
-	// FIXME: GetBoolMetaDataHierarchical() is only available when WITH_EDITOR is defined, and it's
-	//        not defined when building this plugin :/. The non hierarchical version of GetMetaData()
-	//        should be available though (because HACK_HEADER_GENERATOR should be defined for this
-	//        plugin) so it is possible to what GetBoolMetaDataHierarchical() does.
-	//if (Class->GetBoolMetaDataHierarchical(FBlueprintMetadata::MD_IsBlueprintBase))
-	//{
-	GenerateManagedScriptObjectClass(Class, GeneratedGlue);
-	//}
+	
+	if (ShouldGenerateScriptObjectClass(Class))
+	{
+		GenerateManagedScriptObjectClass(Class, GeneratedGlue);
+	}
+	
 	// close the namespace
 	GeneratedGlue << FCodeFormatter::CloseBrace();
 }
@@ -1215,6 +1254,12 @@ void FCodeGenerator::GenerateManagedScriptObjectClass(
 	const UClass* Class, FCodeFormatter& GeneratedGlue
 )
 {
+	// Users should be allowed to subclass the generated wrapper class, but if the subclass is to be
+	// used via Blueprints it must implement the IScriptObject interface (which would be an abstract
+	// class if C# supported multiple inheritance). To simplify things an abstract class is
+	// generated that is derived from the wrapper class and implements the IScriptObject interface,
+	// the user can then simply subclass this abstract class.
+
 	FString ClassNameCPP = FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *Class->GetName());
 	GeneratedGlue
 		<< FString::Printf(
@@ -1278,7 +1323,7 @@ void FCodeGenerator::ExportClass(
 	}
 
 	// some internal classes like UObjectProperty don't have an associated source header file,
-	// no native wrapper functions are generated for those types, and perhaps we should generate
+	// no native wrapper functions are generated for those types, and perhaps we shouldn't generate
 	// any C# wrappers for those either?
 	if (!SourceHeaderFilename.IsEmpty())
 	{

@@ -24,11 +24,29 @@
 
 #include "ScriptPluginPrivatePCH.h"
 #include "KlawrObjectUtils.h"
+#include "KlawrClrHost.h"
 #include "ScriptObjectReferencer.h"
 
 namespace KlawrObjectUtils 
 {
-	static void RemoveObjectRef(void* objectInstance)
+	static UClass* GetClassByName(const TCHAR* nativeClassName)
+	{
+		return Cast<UClass>(StaticFindObject(UClass::StaticClass(), ANY_PACKAGE, nativeClassName, true));
+	}
+
+	static const TCHAR* GetClassName(UClass* nativeClass)
+	{
+		FString className;
+		static_cast<UClass*>(nativeClass)->GetName(className);
+		return Klawr::MakeStringCopyForCLR(*className);
+	}
+
+	static uint8 IsClassChildOf(UClass* derivedClass, UClass* baseClass)
+	{
+		return static_cast<UClass*>(derivedClass)->IsChildOf(static_cast<UClass*>(baseClass));
+	}
+
+	static void RemoveObjectRef(UObject* objectInstance)
 	{
 		auto object = static_cast<UObject*>(objectInstance);
 		if (!object->IsA<UClass>())
@@ -40,5 +58,8 @@ namespace KlawrObjectUtils
 
 Klawr::ObjectUtilsNativeInfo FKlawrObjectUtils::Info =
 {
+	KlawrObjectUtils::GetClassByName,
+	KlawrObjectUtils::GetClassName,
+	KlawrObjectUtils::IsClassChildOf,
 	KlawrObjectUtils::RemoveObjectRef
 };

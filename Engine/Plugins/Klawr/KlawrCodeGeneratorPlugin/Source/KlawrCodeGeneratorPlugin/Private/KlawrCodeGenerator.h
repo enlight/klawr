@@ -62,6 +62,7 @@ private:
 	static const FString MarshalBoolParameterAsUint8Attribute;
 	static const FString ClrHostInterfacesAssemblyName;
 	static const FString ClrHostManagedAssemblyName;
+	static const FString NativeThisPointer;
 
 	struct FExportedProperty
 	{
@@ -183,6 +184,8 @@ private:
 	void GenerateManagedStaticConstructor(const UClass* Class, FCodeFormatter& GeneratedGlue);
 	static void GenerateNativeGlueCodeHeader(const UClass* Class, FCodeFormatter& GeneratedGlue);
 	void GenerateNativeGlueCodeFooter(const UClass* Class, FCodeFormatter& GeneratedGlue) const;
+	static bool ShouldGenerateManagedWrapper(const UClass* Class);
+	static bool ShouldGenerateScriptObjectClass(const UClass* Class);
 	void GenerateManagedGlueCodeHeader(const UClass* Class, FCodeFormatter& GeneratedGlue) const;
 	void GenerateManagedGlueCodeFooter(const UClass* Class, FCodeFormatter& GeneratedGlue);
 	void GenerateManagedScriptObjectClass(const UClass* Class, FCodeFormatter& GeneratedGlue);
