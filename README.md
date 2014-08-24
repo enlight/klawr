@@ -14,6 +14,8 @@ Building
 
 The build process is a bit convoluted at the moment, the goal is to simplify it once the project reaches a semi-functional state. Meanwhile here are some notes:
 
+ScriptPlugin and ScriptEditorPlugin will only be built with Klawr support enabled if the directory **Engine\Source\ThirdParty\Klawr** exists at the time of the build (this is the expected location of the Klawr CLR host library projects).
+
 The Unreal Header Tool project can be configured to build KlawrCodeGeneratorPlugin automatically, to do so specify **"KlawrCodeGeneratorPlugin"** as one of the **AdditionalPlugins** in **UnrealHeaderTool.Target.cs**
 
 To get Unreal Header Tool to actually use KlawrCodeGeneratorPlugin you have to add/edit the **Plugins** section in **Engine\Programs\UnrealHeaderTool\Saved\Config\Windows\Engine.ini**:
