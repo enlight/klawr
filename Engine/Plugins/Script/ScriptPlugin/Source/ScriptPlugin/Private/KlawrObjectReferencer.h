@@ -21,46 +21,53 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //-------------------------------------------------------------------------------
+#pragma once
 
-#include "ScriptPluginPrivatePCH.h"
-#include "KlawrObjectUtils.h"
-#include "KlawrClrHost.h"
-#include "KlawrObjectReferencer.h"
+namespace Klawr {
 
-namespace KlawrObjectUtils 
+/** 
+ * @brief Keeps alive native UObject instances referenced by managed code.
+ * 
+ * FObjectReferencer lets the garbage collector know which native UObject instances are currently
+ * referenced by managed code so that they aren't garbage collected. Multiple managed objects may
+ * reference a single native UObject so a reference count is maintained for each UObject that 
+ * crosses the native/managed code boundary.
+ */
+class FObjectReferencer : public FGCObject
 {
-	static UClass* GetClassByName(const TCHAR* nativeClassName)
-	{
-		return Cast<UClass>(StaticFindObject(UClass::StaticClass(), ANY_PACKAGE, nativeClassName, true));
-	}
+public:
+	static void Startup();
+	static void Shutdown();
 
-	static const TCHAR* GetClassName(UClass* nativeClass)
-	{
-		FString className;
-		static_cast<UClass*>(nativeClass)->GetName(className);
-		return Klawr::MakeStringCopyForCLR(*className);
-	}
+	static void AddObjectRef(UObject* obj);
+	static void RemoveObjectRef(UObject* obj);
 
-	static uint8 IsClassChildOf(UClass* derivedClass, UClass* baseClass)
-	{
-		return static_cast<UClass*>(derivedClass)->IsChildOf(static_cast<UClass*>(baseClass));
-	}
+	
+public: // FGCObject interface
+	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 
-	static void RemoveObjectRef(UObject* obj)
+private:
+	/** An annotation containing a reference count. */
+	struct FRefCountAnnotation
 	{
-		// NOTE: currently UClass instances aren't reference counted, under the assumption they 
-		// won't be garbage collected... it's probably a bad assumption!
-		if (!obj->IsA<UClass>())
+		/** Current number of references to a native UObject instance in managed code. */
+		uint32 Count;
+
+		/** Construct an annotation with the default value. */
+		FRefCountAnnotation()
+			: Count(0)
 		{
-			Klawr::FObjectReferencer::RemoveObjectRef(obj);
 		}
-	}
-} // namespace KlawrObjectUtils
 
-Klawr::ObjectUtilsNativeInfo FKlawrObjectUtils::Info =
-{
-	KlawrObjectUtils::GetClassByName,
-	KlawrObjectUtils::GetClassName,
-	KlawrObjectUtils::IsClassChildOf,
-	KlawrObjectUtils::RemoveObjectRef
+		/** Check if this annotation contains the default value. */
+		bool IsDefault() const
+		{
+			return (Count == 0);
+		}
+	};
+
+	FUObjectAnnotationSparse<FRefCountAnnotation, false /*bAutoRemove*/> ObjectRefs;
+	static FObjectReferencer* Singleton;
 };
+
+} // namespace Klawr

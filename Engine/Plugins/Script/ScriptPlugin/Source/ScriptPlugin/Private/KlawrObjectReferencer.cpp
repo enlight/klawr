@@ -23,44 +23,61 @@
 //-------------------------------------------------------------------------------
 
 #include "ScriptPluginPrivatePCH.h"
-#include "KlawrObjectUtils.h"
-#include "KlawrClrHost.h"
 #include "KlawrObjectReferencer.h"
 
-namespace KlawrObjectUtils 
+namespace Klawr {
+
+FObjectReferencer* FObjectReferencer::Singleton = nullptr;
+
+void FObjectReferencer::Startup()
 {
-	static UClass* GetClassByName(const TCHAR* nativeClassName)
-	{
-		return Cast<UClass>(StaticFindObject(UClass::StaticClass(), ANY_PACKAGE, nativeClassName, true));
-	}
+	check(!Singleton);
 
-	static const TCHAR* GetClassName(UClass* nativeClass)
-	{
-		FString className;
-		static_cast<UClass*>(nativeClass)->GetName(className);
-		return Klawr::MakeStringCopyForCLR(*className);
-	}
+	Singleton = new FObjectReferencer();
+}
 
-	static uint8 IsClassChildOf(UClass* derivedClass, UClass* baseClass)
+void FObjectReferencer::Shutdown()
+{
+	if (Singleton)
 	{
-		return static_cast<UClass*>(derivedClass)->IsChildOf(static_cast<UClass*>(baseClass));
+		delete Singleton;
+		Singleton = nullptr;
 	}
+}
 
-	static void RemoveObjectRef(UObject* obj)
+void FObjectReferencer::AddObjectRef(UObject* obj)
+{
+	check(Singleton);
+
+	auto annotation = Singleton->ObjectRefs.GetAnnotation(obj);
+	++annotation.Count;
+	Singleton->ObjectRefs.AddAnnotation(obj, annotation);
+}
+
+void FObjectReferencer::RemoveObjectRef(UObject* obj)
+{
+	check(Singleton);
+
+	auto annotation = Singleton->ObjectRefs.GetAnnotation(obj);
+	if (annotation.Count > 0)
 	{
-		// NOTE: currently UClass instances aren't reference counted, under the assumption they 
-		// won't be garbage collected... it's probably a bad assumption!
-		if (!obj->IsA<UClass>())
-		{
-			Klawr::FObjectReferencer::RemoveObjectRef(obj);
-		}
+		--annotation.Count;
 	}
+	Singleton->ObjectRefs.AddAnnotation(obj, annotation);
+}
+
+void FObjectReferencer::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	// don't want the collector to NULL pointers to UObject(s) marked for destruction
+	Collector.AllowEliminatingReferences(false);
+	for (auto& Iterator : ObjectRefs.GetAnnotationMap())
+	{
+		// annotations with a ref count of zero shouldn't be in the map
+		check(Iterator.Value.Count > 0);
+		UObjectBase* obj = const_cast<UObjectBase*>(Iterator.Key);
+		Collector.AddReferencedObject(obj);
+	}
+	Collector.AllowEliminatingReferences(true);
+}
+
 } // namespace KlawrObjectUtils
-
-Klawr::ObjectUtilsNativeInfo FKlawrObjectUtils::Info =
-{
-	KlawrObjectUtils::GetClassByName,
-	KlawrObjectUtils::GetClassName,
-	KlawrObjectUtils::IsClassChildOf,
-	KlawrObjectUtils::RemoveObjectRef
-};

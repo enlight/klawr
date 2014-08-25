@@ -83,6 +83,11 @@ namespace Klawr.ClrHost.Interfaces
             return true;
         }
 
+        /// <summary>
+        /// Equality is determined by the equality of the encapsulated IntPtr.
+        /// </summary>
+        /// <param name="obj">UObjectHandle to compare with.</param>
+        /// <returns>true if specified UObjectHandle is equal to this one, false otherwise</returns>
         public override bool Equals(object obj)
         {
             return handle.Equals(obj);

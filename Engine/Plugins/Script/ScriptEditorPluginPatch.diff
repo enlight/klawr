@@ -1,17 +1,95 @@
-diff --git a/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp b/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp
-index ebafa1b..2f071ee 100644
---- a/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp
-+++ b/Engine/Plugins/Script/ScriptEditorPlugin/Source/ScriptEditorPlugin/Private/ScriptFactory.cpp
-@@ -7,8 +7,12 @@ UScriptFactory::UScriptFactory(const FPostConstructInitializeProperties& PCIP)
- 	SupportedClass = UScriptBlueprint::StaticClass();
- 	ParentClass = AActor::StaticClass();
- 
-+#ifdef WITH_LUA
- 	Formats.Add(TEXT("txt;Script"));
- 	Formats.Add(TEXT("lua;Script"));
+diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp
+index bb8106c..1462f7a 100644
+--- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp
++++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptBlueprintGeneratedClass.cpp
+@@ -3,6 +3,8 @@
+ #include "ScriptBlueprintGeneratedClass.h"
+ #if WITH_LUA
+ #include "LuaIntegration.h"
 +#elif WITH_KLAWR
-+	Formats.Add(TEXT("cs;Script"));
-+#endif
++#include "KlawrScriptContext.h"
+ #endif
  
- 	bCreateNew = false;
- 	bEditorImport = true;
+ /////////////////////////////////////////////////////
+@@ -128,6 +130,8 @@ FScriptContextBase* FScriptContextBase::CreateContext(const FString& SourceCode,
+ 	FScriptContextBase* NewContext = NULL;
+ #if WITH_LUA
+ 	NewContext = new FLuaContext();
++#elif WITH_KLAWR
++	NewContext = new FKlawrContext();
+ #endif
+ 	if (NewContext)
+ 	{
+diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
+index 9a40829..06ef378 100644
+--- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
++++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp
+@@ -2,6 +2,10 @@
+ 
+ #include "ScriptPluginPrivatePCH.h"
+ #include "ScriptObjectReferencer.h"
++#ifdef WITH_KLAWR
++#include "KlawrClrHost.h"
++#include "KlawrObjectUtils.h"
++#endif // WITH_KLAWR
+ 
+ UProperty* FindScriptPropertyHelper(UClass* Class, FName PropertyName)
+ {
+@@ -16,7 +20,11 @@ UProperty* FindScriptPropertyHelper(UClass* Class, FName PropertyName)
+ 	return NULL;
+ }
+ 
++#ifdef WITH_KLAWR
++#include "KlawrGeneratedNativeWrappers.inl"
++#else
+ #include "GeneratedScriptLibraries.inl"
++#endif // WITH_KLAWR
+ 
+ DEFINE_LOG_CATEGORY(LogScriptPlugin);
+ 
+@@ -31,12 +39,25 @@ IMPLEMENT_MODULE(FScriptPlugin, ScriptPlugin)
+ 
+ 
+ void FScriptPlugin::StartupModule()
+-{
++{	
++#ifdef WITH_KLAWR
++	Klawr::FObjectReferencer::Startup();
++	Klawr::IClrHost::Get()->Startup();
++	// defined in KlawrGeneratedNativeWrappers.inl
++	void Klawr::NativeGlue::RegisterWrapperClasses();
++	Klawr::NativeGlue::RegisterWrapperClasses();
++	Klawr::IClrHost::Get()->InitializeEngineAppDomain(FKlawrObjectUtils::Info);
++#else
+ 	FScriptObjectReferencer::Init();
+-
++#endif // WITH_KLAWR
+ }
+ 
+ void FScriptPlugin::ShutdownModule()
+ {
++#ifdef WITH_KLAWR
++	Klawr::IClrHost::Get()->Shutdown();
++	Klawr::FObjectReferencer::Shutdown();
++#else
+ 	FScriptObjectReferencer::Shutdown();
++#endif // WITH_KLAWR
+ }
+diff --git a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs
+index 26813c9..aa08524 100644
+--- a/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs
++++ b/Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/ScriptPlugin.Build.cs
+@@ -66,6 +66,13 @@ namespace UnrealBuildTool.Rules
+ 					Definitions.Add("WITH_LUA=1");
+ 					PrivateIncludePaths.Add(Path.Combine("ScriptPlugin", "lua-5.2.3", "src"));
+ 				}
++
++                var KlawrPath = Path.Combine(UEBuildConfiguration.UEThirdPartySourceDirectory, "Klawr");
++                if (Directory.Exists(KlawrPath))
++                {
++                    Definitions.Add("WITH_KLAWR=1");
++                    PrivateDependencyModuleNames.Add("KlawrClrHostNative");
++                }
+ 			}
+ 		}
+ 	}

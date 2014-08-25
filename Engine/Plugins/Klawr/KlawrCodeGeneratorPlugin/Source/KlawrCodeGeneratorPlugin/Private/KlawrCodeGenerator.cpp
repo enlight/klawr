@@ -258,8 +258,7 @@ void FCodeGenerator::GenerateNativeReturnValueHandler(
 					<< FString::Printf(TEXT("if (%s)"), *ReturnValueName)
 					<< FCodeFormatter::OpenBrace()
 						<< FString::Printf(
-							TEXT("FScriptObjectReferencer::Get().AddObjectReference(%s);"),
-							*ReturnValueName
+							TEXT("FObjectReferencer::AddObjectRef(%s);"), *ReturnValueName
 						)
 					<< FCodeFormatter::CloseBrace();
 			}
