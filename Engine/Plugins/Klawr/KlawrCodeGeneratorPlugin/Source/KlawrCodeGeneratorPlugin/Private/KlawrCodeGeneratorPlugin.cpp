@@ -58,19 +58,24 @@ public:	// IScriptGeneratorPlugin interface
 		if (bCanExport)
 		{
 			// only export functions from selected modules
-			static struct FSupportedModules
+			static struct FConfig
 			{
-				TArray<FString> SupportedScriptModules;
-				FSupportedModules()
+				TArray<FString> SupportedModules;
+				TArray<FString> ExcludedModules;
+				FConfig()
 				{
 					GConfig->GetArray(
-						TEXT("Plugins"), TEXT("ScriptSupportedModules"), SupportedScriptModules, 
+						TEXT("Plugins"), TEXT("ScriptSupportedModules"), SupportedModules, 
+						GEngineIni
+					);
+					GConfig->GetArray(
+						TEXT("Plugins"), TEXT("ScriptExcludedModules"), ExcludedModules,
 						GEngineIni
 					);
 				}
-			} SupportedModules;
-			bCanExport = (SupportedModules.SupportedScriptModules.Num() == 0) 
-				|| SupportedModules.SupportedScriptModules.Contains(ModuleName);
+			} Config;
+			bCanExport = !Config.ExcludedModules.Contains(ModuleName) 
+				&& ((Config.SupportedModules.Num() == 0) || Config.SupportedModules.Contains(ModuleName));
 		}
 		return bCanExport;
 	}
