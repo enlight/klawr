@@ -23,16 +23,16 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
-#include "ScriptBlueprintGeneratedClass.h"
 #include "KlawrClrHost.h"
+#include "IKlawrScriptContext.h"
 
-class FKlawrContext : public FScriptContextBase
+namespace Klawr {
+
+class FScriptContext : public IKlawrScriptContext
 {
 public:
-	FKlawrContext();
-	virtual ~FKlawrContext();
-
-public: // FScriptContextBase interface
+	FScriptContext();
+	virtual ~FScriptContext();
 
 	virtual bool Initialize(const FString& Code, UObject* Owner) override;
 	virtual void BeginPlay() override;
@@ -40,24 +40,13 @@ public: // FScriptContextBase interface
 	virtual void Destroy() override;
 	virtual bool CanTick() override;
 	virtual bool CallFunction(const FString& FunctionName) override;
-	virtual bool SetFloatProperty(const FString& PropertyName, float NewValue) override;
-	virtual float GetFloatProperty(const FString& PropertyName) override;
-	virtual bool SetIntProperty(const FString& PropertyName, int32 NewValue) override;
-	virtual int32 GetIntProperty(const FString& PropertyName) override;
-	virtual bool SetObjectProperty(const FString& PropertyName, UObject* NewValue) override;
-	virtual UObject* GetObjectProperty(const FString& PropertyName) override;
-	virtual bool SetBoolProperty(const FString& PropertyName, bool NewValue) override;
-	virtual bool GetBoolProperty(const FString& PropertyName) override;
-	virtual bool SetStringProperty(const FString& PropertyName, const FString& NewValue) override;
-	virtual FString GetStringProperty(const FString& PropertyName) override;
 	virtual void InvokeScriptFunction(FFrame& Stack, RESULT_DECL) override;
-#if WITH_EDITOR
-	virtual void GetScriptDefinedFields(TArray<FScriptField>& OutFields) override;
-#endif // WITH_EDITOR
 
 private:
 	void DestroyScriptObject();
 
 private:
-	Klawr::ScriptObjectInstanceInfo ScriptObjectInfo;
+	ScriptObjectInstanceInfo ScriptObjectInfo;
 };
+
+} // namespace Klawr

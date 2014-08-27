@@ -47,7 +47,7 @@ public: // IModuleInterface interface
 public:	// IScriptGeneratorPlugin interface
 	virtual FString GetGeneratedCodeModuleName() const override
 	{
-		return TEXT("ScriptPlugin"); 
+		return TEXT("KlawrRuntimePlugin");
 	}
 	
 	virtual bool ShouldExportClassesForModule(

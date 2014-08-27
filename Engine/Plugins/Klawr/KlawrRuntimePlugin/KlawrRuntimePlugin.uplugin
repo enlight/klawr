@@ -1,0 +1,34 @@
+{
+	"FileVersion" : 3,
+	
+	"FriendlyName" : "Klawr Runtime Plugin",
+	"Version" : 1,
+	"VersionName" : "0.1",
+	"CreatedBy" : "Vadim Macagon",
+	"CreatedByURL" : "https://github.com/enlight/klawr",
+	"EngineVersion" : "4.4.0",
+	"Description" : "Provides runtime support for Blueprints scripted using C#, F#, or any other CLI language.",
+	"Category" : "Script",
+	"EnabledByDefault" : true,
+	
+	"Modules" :
+	[
+		{
+			"Name" : "KlawrRuntimePlugin",
+			"Type" : "Runtime",
+			"LoadingPhase" : "PreDefault",
+			"BlacklistPlatforms" : 
+			[ 
+				"Mac",
+				"XboxOne",
+				"PS4",
+				"IOS",
+				"Android",
+				"WinRT",
+				"WinRT_ARM",
+				"HTML5",
+				"Linux"
+			]
+		}
+	]
+}

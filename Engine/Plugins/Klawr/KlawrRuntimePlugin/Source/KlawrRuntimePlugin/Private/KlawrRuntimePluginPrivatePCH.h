@@ -21,46 +21,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //-------------------------------------------------------------------------------
+#pragma once
 
-#include "ScriptPluginPrivatePCH.h"
-#include "KlawrObjectUtils.h"
-#include "KlawrClrHost.h"
-#include "KlawrObjectReferencer.h"
+#include "IKlawrRuntimePlugin.h"
+#include "CoreUObject.h"
+#include "ModuleManager.h"
+#include "Engine.h"
 
-namespace KlawrObjectUtils 
-{
-	static UClass* GetClassByName(const TCHAR* nativeClassName)
-	{
-		return Cast<UClass>(StaticFindObject(UClass::StaticClass(), ANY_PACKAGE, nativeClassName, true));
-	}
+#if WITH_EDITOR
+#include "UnrealEd.h"
+#endif
 
-	static const TCHAR* GetClassName(UClass* nativeClass)
-	{
-		FString className;
-		static_cast<UClass*>(nativeClass)->GetName(className);
-		return Klawr::MakeStringCopyForCLR(*className);
-	}
-
-	static uint8 IsClassChildOf(UClass* derivedClass, UClass* baseClass)
-	{
-		return static_cast<UClass*>(derivedClass)->IsChildOf(static_cast<UClass*>(baseClass));
-	}
-
-	static void RemoveObjectRef(UObject* obj)
-	{
-		// NOTE: currently UClass instances aren't reference counted, under the assumption they 
-		// won't be garbage collected... it's probably a bad assumption!
-		if (!obj->IsA<UClass>())
-		{
-			Klawr::FObjectReferencer::RemoveObjectRef(obj);
-		}
-	}
-} // namespace KlawrObjectUtils
-
-Klawr::ObjectUtilsNativeInfo FKlawrObjectUtils::Info =
-{
-	KlawrObjectUtils::GetClassByName,
-	KlawrObjectUtils::GetClassName,
-	KlawrObjectUtils::IsClassChildOf,
-	KlawrObjectUtils::RemoveObjectRef
-};
+DECLARE_LOG_CATEGORY_EXTERN(LogKlawrRuntimePlugin, Log, All);

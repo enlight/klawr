@@ -21,11 +21,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //-------------------------------------------------------------------------------
-#pragma once
 
-#include "KlawrClrHost.h"
+#include "KlawrRuntimePluginPrivatePCH.h"
+#include "KlawrBlueprintGeneratedClass.h"
 
-struct FKlawrObjectUtils
+UKlawrBlueprintGeneratedClass::UKlawrBlueprintGeneratedClass(const FPostConstructInitializeProperties& PCIP)
+	: Super(PCIP)
 {
-	static Klawr::ObjectUtilsNativeInfo Info;
-};
+}

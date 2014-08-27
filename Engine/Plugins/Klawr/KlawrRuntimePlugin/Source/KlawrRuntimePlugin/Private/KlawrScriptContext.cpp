@@ -22,20 +22,22 @@
 // SOFTWARE.
 //-------------------------------------------------------------------------------
 
-#include "ScriptPluginPrivatePCH.h"
+#include "KlawrRuntimePluginPrivatePCH.h"
 #include "KlawrScriptContext.h"
 
-FKlawrContext::FKlawrContext()
+namespace Klawr {
+
+FScriptContext::FScriptContext()
 {
 	ScriptObjectInfo.InstanceID = 0;
 }
 
-FKlawrContext::~FKlawrContext()
+FScriptContext::~FScriptContext()
 {
 	DestroyScriptObject();
 }
 
-bool FKlawrContext::Initialize(const FString& Code, UObject* Owner)
+bool FScriptContext::Initialize(const FString& Code, UObject* Owner)
 {
 	// TODO:
 	// [editor-only] save the code out to a file
@@ -46,19 +48,19 @@ bool FKlawrContext::Initialize(const FString& Code, UObject* Owner)
 	// [editor-only] reload the engine app domain
 
 	// create an instance of the managed class
-	return Klawr::IClrHost::Get()->CreateScriptObject(TEXT("Klawr.UnrealEngine.TestActor"), Owner, ScriptObjectInfo);
+	return IClrHost::Get()->CreateScriptObject(TEXT("Klawr.UnrealEngine.TestActor"), Owner, ScriptObjectInfo);
 }
 
-void FKlawrContext::DestroyScriptObject()
+void FScriptContext::DestroyScriptObject()
 {
 	if (ScriptObjectInfo.InstanceID != 0)
 	{
-		Klawr::IClrHost::Get()->DestroyScriptObject(ScriptObjectInfo.InstanceID);
+		IClrHost::Get()->DestroyScriptObject(ScriptObjectInfo.InstanceID);
 		ScriptObjectInfo.InstanceID = 0;
 	}
 }
 
-void FKlawrContext::BeginPlay()
+void FScriptContext::BeginPlay()
 {
 	if (ScriptObjectInfo.BeginPlay)
 	{
@@ -66,7 +68,7 @@ void FKlawrContext::BeginPlay()
 	}
 }
 
-void FKlawrContext::Tick(float DeltaTime)
+void FScriptContext::Tick(float DeltaTime)
 {
 	if (ScriptObjectInfo.Tick)
 	{
@@ -74,7 +76,7 @@ void FKlawrContext::Tick(float DeltaTime)
 	}
 }
 
-void FKlawrContext::Destroy()
+void FScriptContext::Destroy()
 {
 	// clean up anything created in BeginPlay/Tick
 	if (ScriptObjectInfo.Destroy)
@@ -85,86 +87,21 @@ void FKlawrContext::Destroy()
 	DestroyScriptObject();
 }
 
-bool FKlawrContext::CanTick()
+bool FScriptContext::CanTick()
 {
 	return ScriptObjectInfo.Tick != nullptr;
 }
 
-bool FKlawrContext::CallFunction(const FString& FunctionName)
+bool FScriptContext::CallFunction(const FString& FunctionName)
 {
 	// TODO:
 	return false;
 }
 
-bool FKlawrContext::SetFloatProperty(const FString& PropertyName, float NewValue)
-{
-	// TODO:
-	return false;
-}
-
-float FKlawrContext::GetFloatProperty(const FString& PropertyName)
-{
-	// TODO:
-	return 0.0f;
-}
-
-bool FKlawrContext::SetIntProperty(const FString& PropertyName, int32 NewValue)
-{
-	// TODO:
-	return false;
-}
-
-int32 FKlawrContext::GetIntProperty(const FString& PropertyName)
-{
-	// TODO:
-	return 0;
-}
-
-bool FKlawrContext::SetObjectProperty(const FString& PropertyName, UObject* NewValue)
-{
-	// TODO:
-	return false;
-}
-
-UObject* FKlawrContext::GetObjectProperty(const FString& PropertyName)
-{
-	// TODO:
-	return nullptr;
-}
-
-bool FKlawrContext::SetBoolProperty(const FString& PropertyName, bool NewValue)
-{
-	// TODO:
-	return false;
-}
-
-bool FKlawrContext::GetBoolProperty(const FString& PropertyName)
-{
-	// TODO:
-	return false;
-}
-
-bool FKlawrContext::SetStringProperty(const FString& PropertyName, const FString& NewValue)
-{
-	// TODO:
-	return false;
-}
-
-FString FKlawrContext::GetStringProperty(const FString& PropertyName)
-{
-	// TODO:
-	return FString();
-}
-
-void FKlawrContext::InvokeScriptFunction(FFrame& Stack, RESULT_DECL)
+void FScriptContext::InvokeScriptFunction(FFrame& Stack, RESULT_DECL)
 {
 	P_FINISH;
 	CallFunction(Stack.CurrentNativeFunction->GetName());
 }
 
-#if WITH_EDITOR
-void FKlawrContext::GetScriptDefinedFields(TArray<FScriptField>& OutFields)
-{
-	// TODO
-}
-#endif // WITH_EDITOR
+} // namespace Klawr

@@ -22,7 +22,7 @@
 // SOFTWARE.
 //-------------------------------------------------------------------------------
 
-#include "ScriptPluginPrivatePCH.h"
+#include "KlawrRuntimePluginPrivatePCH.h"
 #include "KlawrObjectReferencer.h"
 
 namespace Klawr {

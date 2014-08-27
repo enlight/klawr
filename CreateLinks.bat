@@ -3,19 +3,10 @@
 @echo off
 set BATCH_FILE_LOCATION=%~dp0
 set ENGINE_SOURCE_LOCATION=C:\Projects\UE4\UnrealEngine\
-set CodeGeneratorLinkDir=%ENGINE_SOURCE_LOCATION%Engine\Plugins\Klawr\KlawrCodeGeneratorPlugin
-set CodeGeneratorBaseTargetDir=%BATCH_FILE_LOCATION%Engine\Plugins\Klawr\KlawrCodeGeneratorPlugin
-set ScriptPluginCodeLinkDir=%ENGINE_SOURCE_LOCATION%Engine\Plugins\Script\ScriptPlugin\Source\ScriptPlugin
-set ScriptPluginCodeTargetDir=%BATCH_FILE_LOCATION%Engine\Plugins\Script\ScriptPlugin\Source\ScriptPlugin
 @echo on
 
 mklink /J %ENGINE_SOURCE_LOCATION%Engine\Source\ThirdParty\Klawr %BATCH_FILE_LOCATION%Engine\Source\ThirdParty\Klawr
-mklink /J %CodeGeneratorLinkDir% %CodeGeneratorBaseTargetDir%
+mklink /J %ENGINE_SOURCE_LOCATION%Engine\Plugins\Klawr\KlawrCodeGeneratorPlugin %BATCH_FILE_LOCATION%Engine\Plugins\Klawr\KlawrCodeGeneratorPlugin
+mklink /J %ENGINE_SOURCE_LOCATION%Engine\Plugins\Klawr\KlawrRuntimePlugin %BATCH_FILE_LOCATION%Engine\Plugins\Klawr\KlawrRuntimePlugin
 
-mklink %ScriptPluginCodeLinkDir%\Private\KlawrObjectReferencer.cpp %ScriptPluginCodeTargetDir%\Private\KlawrObjectReferencer.cpp
-mklink %ScriptPluginCodeLinkDir%\Private\KlawrObjectReferencer.h %ScriptPluginCodeTargetDir%\Private\KlawrObjectReferencer.h
-mklink %ScriptPluginCodeLinkDir%\Private\KlawrObjectUtils.cpp %ScriptPluginCodeTargetDir%\Private\KlawrObjectUtils.cpp
-mklink %ScriptPluginCodeLinkDir%\Private\KlawrObjectUtils.h %ScriptPluginCodeTargetDir%\Private\KlawrObjectUtils.h
-mklink %ScriptPluginCodeLinkDir%\Private\KlawrScriptContext.cpp %ScriptPluginCodeTargetDir%\Private\KlawrScriptContext.cpp
-mklink %ScriptPluginCodeLinkDir%\Private\KlawrScriptContext.h %ScriptPluginCodeTargetDir%\Private\KlawrScriptContext.h
 pause
