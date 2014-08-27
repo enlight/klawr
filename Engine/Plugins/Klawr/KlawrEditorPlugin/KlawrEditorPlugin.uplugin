@@ -1,0 +1,33 @@
+{
+	"FileVersion" : 3,
+	
+	"FriendlyName" : "Klawr Editor Plugin",
+	"Version" : 1,
+	"VersionName" : "0.1",
+	"CreatedBy" : "Vadim Macagon",
+	"CreatedByURL" : "https://github.com/enlight/klawr",
+	"EngineVersion" : "4.4.0",
+	"Description" : "Enables creation and editing of Klawr script components.",
+	"Category" : "Script",
+	"EnabledByDefault" : true,
+	
+	"Modules" :
+	[
+		{
+			"Name" : "KlawrEditorPlugin",
+			"Type" : "Editor",
+			"BlacklistPlatforms" :
+            [ 
+                "Mac",
+				"XboxOne",
+				"PS4",
+				"IOS",
+				"Android",
+				"WinRT",
+				"WinRT_ARM",
+				"HTML5",
+				"Linux"
+			]
+		}
+	]
+}
