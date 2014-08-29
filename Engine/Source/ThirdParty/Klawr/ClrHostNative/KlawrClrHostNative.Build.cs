@@ -3,14 +3,14 @@ using System.IO;
 
 public class KlawrClrHostNative : ModuleRules
 {
-	public KlawrClrHostNative(TargetInfo Target)
-	{
+    public KlawrClrHostNative(TargetInfo Target)
+    {
         // This module is built externally, just need to let UBT know the include and library paths
         // that should be passed through to any targets that depend on this module.
-		Type = ModuleType.External;
+        Type = ModuleType.External;
 
         var moduleName = this.GetType().Name;
-		// path to directory containing this Build.cs file
+        // path to directory containing this Build.cs file
         var basePath = Path.GetDirectoryName(RulesCompiler.GetModuleFilename(moduleName));
         
         string architecture = null;
@@ -39,8 +39,8 @@ public class KlawrClrHostNative : ModuleRules
         if ((architecture != null) && (configuration != null))
         {
             PublicIncludePaths.Add(Path.Combine(basePath, "Public"));
-			var libName = "Klawr.ClrHost.Native-" + architecture + "-" + configuration + ".lib";
-			PublicLibraryPaths.Add(Path.Combine(basePath, "..", "Build"));
+            var libName = "Klawr.ClrHost.Native-" + architecture + "-" + configuration + ".lib";
+            PublicLibraryPaths.Add(Path.Combine(basePath, "..", "Build"));
             PublicAdditionalLibraries.Add(libName);
         }
                 
@@ -86,5 +86,5 @@ public class KlawrClrHostNative : ModuleRules
             Path.Combine(binariesDir, hostInterfacesAssemblyPDB),
             bOverwrite
         );
-	}
+    }
 }
