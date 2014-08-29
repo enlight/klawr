@@ -127,6 +127,12 @@ namespace Klawr.UnrealEngine
             return (UClass)typeof(UClass);
         }
 
+        // Hide UObject.IsA(), IsChildOf() should be used instead when dealing with UClass instances.
+        private new bool IsA(UClass baseClass)
+        {
+            return base.IsA(baseClass);
+        }
+
         /// <summary>
         /// Check if this UE type is derived from the specified UE type.
         /// </summary>
