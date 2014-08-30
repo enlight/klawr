@@ -26,6 +26,7 @@
 #include "KlawrBlueprint.h"
 #include "KlawrBlueprintCompiler.h"
 #include "KismetCompilerModule.h"
+#include "AssetTypeActions_KlawrBlueprint.h"
 
 DEFINE_LOG_CATEGORY(LogKlawrEditorPlugin);
 
@@ -33,6 +34,8 @@ namespace Klawr {
 
 class FEditorPlugin : public IKlawrEditorPlugin
 {
+	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
+
 	/** Called by the Blueprint compiler. */
 	FReply CompileBlueprint(
 		UBlueprint* Blueprint, const FKismetCompilerOptions& CompileOptions,
@@ -49,10 +52,18 @@ class FEditorPlugin : public IKlawrEditorPlugin
 		return FReply::Unhandled();
 	}
 
+	void RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action)
+	{
+		AssetTools.RegisterAssetTypeActions(Action);
+		RegisteredAssetTypeActions.Add(Action);
+	}
+
 public: // IModuleInterface interface
 	virtual void StartupModule() override
 	{
-		// TODO: register asset types
+		// register asset types
+		auto& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+		AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_KlawrBlueprint));
 		
 		// register Blueprint compiler
 		auto& CompilerModule = FModuleManager::LoadModuleChecked<IKismetCompilerInterface>("KismetCompiler");
@@ -63,6 +74,17 @@ public: // IModuleInterface interface
 
 	virtual void ShutdownModule() override
 	{
+		// at this point the editor may have already unloaded the AssetTools module, 
+		// in that case there's no need to unregister the previously registered asset types
+		auto AssetToolsModule = FModuleManager::GetModulePtr<FAssetToolsModule>("AssetTools");
+		if (AssetToolsModule)
+		{
+			auto& AssetTools = AssetToolsModule->Get();
+			for (auto Action : RegisteredAssetTypeActions)
+			{
+				AssetTools.UnregisterAssetTypeActions(Action);
+			}
+		}
 	}
 };
 
