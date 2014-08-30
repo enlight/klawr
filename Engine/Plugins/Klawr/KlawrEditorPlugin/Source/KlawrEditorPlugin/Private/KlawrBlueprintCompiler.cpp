@@ -26,6 +26,7 @@
 #include "KlawrBlueprintCompiler.h"
 #include "KlawrBlueprintGeneratedClass.h"
 #include "KismetReinstanceUtilities.h"
+#include "KlawrScriptComponent.h"
 
 namespace Klawr {
 
@@ -86,6 +87,14 @@ void FBlueprintCompiler::CleanAndSanitizeClass(UBlueprintGeneratedClass* ClassTo
 
 void FBlueprintCompiler::FinishCompilingClass(UClass* GeneratedClass)
 {
+	// allow classes generated from Blueprints of Klawr script components to be used in other 
+	// Blueprints
+	if (Super::Blueprint->ParentClass->IsChildOf(UKlawrScriptComponent::StaticClass()) && 
+		(GeneratedClass != Blueprint->SkeletonGeneratedClass))
+	{
+		GeneratedClass->SetMetaData(TEXT("BlueprintSpawnableComponent"), TEXT("true"));
+	}
+
 	Super::FinishCompilingClass(GeneratedClass);
 }
 
