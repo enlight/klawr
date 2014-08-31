@@ -86,6 +86,43 @@ struct ScriptObjectInstanceInfo
 	DestroyAction Destroy;
 };
 
+/**
+ * @brief A native proxy for a managed UKlawrScriptComponent instance.
+ * 
+ * The function pointers in the proxy are bound to the methods of a managed UKlawrScriptComponent 
+ * instance. Managed UKlawrScriptComponent subclasses may not implement all methods, so some
+ * of the function pointers may be null.
+ *
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ *       the managed counterpart is also exposed to native code via COM under the 
+ *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library). 
+ *       The size and layout of the two structures must remain identical.
+ */
+struct ScriptComponentProxy
+{
+	typedef void (*OnComponentCreatedAction)();
+	typedef void (*OnComponentDestroyedAction)();
+	typedef void (*OnRegisterAction)();
+	typedef void (*OnUnregisterAction)();
+	typedef void (*InitializeComponentAction)();
+	typedef void (*TickComponentAction)(float);
+
+	/** Unique ID of the managed UKlawrScriptComponent instance this proxy represents. */
+	__int64 InstanceID;
+	/** Bound to UKlawrScriptComponent.OnComponentCreated() (may be null). */
+	OnComponentCreatedAction OnComponentCreated;
+	/** Bound to UKlawrScriptComponent.OnComponentDestroyed() (may be null). */
+	OnComponentDestroyedAction OnComponentDestroyed;
+	/** Bound to UKlawrScriptComponent.OnRegister() (may be null). */
+	OnRegisterAction OnRegister;
+	/** Bound to UKlawrScriptComponent.OnUnregister() (may be null). */
+	OnUnregisterAction OnUnregister;
+	/** Bound to UKlawrScriptComponent.InitializeComponent() (may be null). */
+	InitializeComponentAction InitializeComponent;
+	/** Bound to UKlawrScriptComponent.TickComponent() (may be null). */
+	TickComponentAction TickComponent;
+};
+
 /** This public interface can be used to pass native wrapper functions to the CLR host. */
 class IClrHost
 {
@@ -110,6 +147,21 @@ public:
 	) = 0;
 
 	virtual void DestroyScriptObject(__int64 instanceID) = 0;
+
+	/**
+	 * @brief Create an instance of a managed UKlawrScriptComponent subclass.
+	 * @param className The name of a managed UKlawrScriptComponent subclass.
+	 * @param nativeComponent The native UKlawrScriptComponent instance to associate with the 
+	 *                        managed instance.
+	 * @param proxy If the managed instance is created successfully the function pointers in this
+	 *              structure will be bound to the corresponding methods of the managed instance.
+	 * @return true if the managed script component instance was created successfully, false otherwise
+	 */
+	virtual bool CreateScriptComponent(
+		const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
+	) = 0;
+
+	virtual void DestroyScriptComponent(__int64 instanceID) = 0;
 
 public:
 	/** Get the singleton instance. */

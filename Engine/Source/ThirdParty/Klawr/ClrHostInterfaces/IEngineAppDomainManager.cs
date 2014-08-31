@@ -78,5 +78,11 @@ namespace Klawr.ClrHost.Interfaces
         /// </summary>
         /// <param name="info"></param>
         void BindObjectUtils(ref ObjectUtilsNativeInfo info);
+
+        bool CreateScriptComponent(
+            string className, IntPtr nativeComponent, ref ScriptComponentProxy proxy
+        );
+
+        void DestroyScriptComponent(long scriptComponentID);
     }
 }

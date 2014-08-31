@@ -23,8 +23,12 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
-#include "IKlawrScriptContext.h"
 #include "KlawrScriptComponent.generated.h"
+
+namespace Klawr
+{
+	struct ScriptComponentProxy;
+} // namespace Klawr
 
 /**
  * A component whose functionality is implemented in C# or any other CLI language.
@@ -35,11 +39,39 @@ class KLAWRRUNTIMEPLUGIN_API UKlawrScriptComponent : public UActorComponent
 	GENERATED_UCLASS_BODY()
 
 public: // UActorComponent interface
-	virtual void OnRegister() override;
-	virtual void InitializeComponent() override;
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	virtual void OnUnregister() override;
+	
+	/** 
+	 * Called when the component is created (not loaded), before OnRegister().
+	 * @note This doesn't appear to get called in PIE.
+	 */
+	virtual void OnComponentCreated() override;
 
-protected:
-	IKlawrScriptContext* ScriptContext;
+	/** Called when the component is being destroyed, after OnUnregister(). */
+	virtual void OnComponentDestroyed() override;
+	
+	/** 
+	 * Called after OnComponentCreated() has been called for all default (native) components 
+	 * attached to the actor.
+	 */
+	virtual void OnRegister() override;
+	
+	/** Called before OnComponentDestroyed() if the component is registered. */
+	virtual void OnUnregister() override;
+	
+	/**
+	 * Begin gameplay.
+	 * At this point OnComponentCreated() and OnRegister() have been called for all components
+	 * attached to the actor.
+	 */
+	virtual void InitializeComponent() override;
+	
+	/** Update the state of the component. */
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+private:
+	void CreateScriptComponentProxy();
+	void DestroyScriptComponentProxy();
+
+private:
+	Klawr::ScriptComponentProxy* Proxy;
 };

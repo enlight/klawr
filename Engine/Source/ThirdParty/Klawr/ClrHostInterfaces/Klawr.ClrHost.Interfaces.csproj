@@ -49,6 +49,7 @@
     <Compile Include="ObjectHandle.cs" />
     <Compile Include="ObjectUtilsNativeInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ScriptComponentProxy.cs" />
     <Compile Include="ScriptObjectInstanceInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSHARP.Targets" />

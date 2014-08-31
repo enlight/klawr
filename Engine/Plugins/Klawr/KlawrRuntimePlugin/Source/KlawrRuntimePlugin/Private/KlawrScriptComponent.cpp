@@ -24,25 +24,120 @@
 
 #include "KlawrRuntimePluginPrivatePCH.h"
 #include "KlawrScriptComponent.h"
+#include "KlawrClrHost.h"
 
 UKlawrScriptComponent::UKlawrScriptComponent(const FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
+	, Proxy(nullptr)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = false;
 	bAutoActivate = true;
 	bWantsInitializeComponent = true;
-	ScriptContext = nullptr;
+}
+
+void UKlawrScriptComponent::CreateScriptComponentProxy()
+{
+	check(!Proxy);
+
+	Proxy = new Klawr::ScriptComponentProxy();
+	bool bCreated = Klawr::IClrHost::Get()->CreateScriptComponent(
+		TEXT("Klawr.UnrealEngine.TestComponent"), this, *Proxy
+	);
+
+	if (!bCreated)
+	{
+		delete Proxy;
+		Proxy = nullptr;
+	}
+	else
+	{
+		check(Proxy->InstanceID != 0);
+	}
+}
+
+void UKlawrScriptComponent::DestroyScriptComponentProxy()
+{
+	check(Proxy);
+
+	if (Proxy->InstanceID != 0)
+	{
+		Klawr::IClrHost::Get()->DestroyScriptComponent(Proxy->InstanceID);
+	}
+
+	delete Proxy;
+	Proxy = nullptr;
+}
+
+void UKlawrScriptComponent::OnComponentCreated()
+{
+	Super::OnComponentCreated();
+		
+	if (!HasAnyFlags(RF_ClassDefaultObject))
+	{
+		CreateScriptComponentProxy();
+		if (Proxy && Proxy->OnComponentCreated)
+		{
+			Proxy->OnComponentCreated();
+		}
+	}
+}
+
+void UKlawrScriptComponent::OnComponentDestroyed()
+{
+	if (Proxy)
+	{
+		if (Proxy->OnComponentDestroyed)
+		{
+			Proxy->OnComponentDestroyed();
+		}
+
+		DestroyScriptComponentProxy();
+	}
+
+	Super::OnComponentDestroyed();
 }
 
 void UKlawrScriptComponent::OnRegister()
 {
 	Super::OnRegister();
+
+	if (!Proxy && !HasAnyFlags(RF_ClassDefaultObject))
+	{
+		CreateScriptComponentProxy();
+	}
+
+	if (Proxy && Proxy->OnRegister)
+	{
+		Proxy->OnRegister();
+	}
+}
+
+void UKlawrScriptComponent::OnUnregister()
+{
+	if (Proxy && Proxy->OnUnregister)
+	{
+		Proxy->OnUnregister();
+	}
+
+	// bHasBeenCreated should only be true if OnComponentCreated() was called, in which case
+	// the proxy should only be destroyed in OnComponentDestroyed()
+	if (!Super::bHasBeenCreated)
+	{
+		DestroyScriptComponentProxy();
+	}
+
+	Super::OnUnregister();
 }
 
 void UKlawrScriptComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
+
+	if (Proxy && Proxy->InitializeComponent)
+	{
+		Proxy->InitializeComponent();
+	}
 }
 
 void UKlawrScriptComponent::TickComponent(
@@ -50,9 +145,9 @@ void UKlawrScriptComponent::TickComponent(
 )
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-}
 
-void UKlawrScriptComponent::OnUnregister()
-{
-	Super::OnUnregister();
+	if (Proxy && Proxy->TickComponent)
+	{
+		Proxy->TickComponent(DeltaTime);
+	}
 }

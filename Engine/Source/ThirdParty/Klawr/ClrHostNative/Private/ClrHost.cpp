@@ -176,4 +176,27 @@ void ClrHost::DestroyScriptObject(__int64 instanceID)
 	_hostControl->GetEngineAppDomainManager()->DestroyScriptObject(instanceID);
 }
 
+bool ClrHost::CreateScriptComponent(
+	const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
+)
+{
+	// these two structures must have the same size and layout (but can't test layout that easily)
+	bool proxiesSameSize = sizeof(Klawr_ClrHost_Interfaces::ScriptComponentProxy) == sizeof(ScriptComponentProxy);
+	assert(proxiesSameSize);
+	if (!proxiesSameSize)
+	{
+		return false;
+	}
+
+	return !!_hostControl->GetEngineAppDomainManager()->CreateScriptComponent(
+		className, reinterpret_cast<INT_PTR>(nativeComponent), 
+		reinterpret_cast<Klawr_ClrHost_Interfaces::ScriptComponentProxy*>(&proxy)
+	);
+}
+
+void ClrHost::DestroyScriptComponent(__int64 instanceID)
+{
+	_hostControl->GetEngineAppDomainManager()->DestroyScriptComponent(instanceID);
+}
+
 } // namespace Klawr

@@ -28,6 +28,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Linq.Expressions;
 
 namespace Klawr.ClrHost.Managed
 {
@@ -43,6 +45,36 @@ namespace Klawr.ClrHost.Managed
             public ScriptObjectInstanceInfo.TickAction Tick;
             public ScriptObjectInstanceInfo.DestroyAction Destroy;
         }
+
+        public struct ScriptComponentInfo
+        {
+            public IDisposable Instance;
+            public ScriptComponentProxy Proxy;
+        }
+
+        private delegate void SetProxyDelegateAction(ref ScriptComponentProxy proxy, Delegate value);
+
+        private struct ScriptComponentProxyMethodInfo
+        {
+            public string Name;
+            public Type DelegateType;
+            public Type[] ParameterTypes;
+            public SetProxyDelegateAction BindToProxy;
+        }
+
+        private struct ScriptComponentMethodInfo
+        {
+            public Type DelegateType;
+            public MethodInfo Method;
+            public SetProxyDelegateAction BindToProxy;
+        }
+
+        private struct ScriptComponentTypeInfo
+        {
+            public ConstructorInfo Constructor;
+            public ScriptComponentMethodInfo[] Methods;
+        }
+
         // only set for the engine app domain manager
         private Dictionary<string /*Native Class*/, IntPtr[]> _nativeFunctionPointers = new Dictionary<string, IntPtr[]>();
         // all currently registered script objects
@@ -51,6 +83,12 @@ namespace Klawr.ClrHost.Managed
         private long _lastScriptObjectID = 0;
         // cache of previously created script object types
         private Dictionary<string /*Full Type Name*/, Type> _scriptObjectTypeCache = new Dictionary<string, Type>();
+
+        private ScriptComponentProxyMethodInfo[] _scriptComponentProxyMethods;
+        // all currently registered script components
+        private Dictionary<long /*Instance ID*/, ScriptComponentInfo> _scriptComponents = new Dictionary<long, ScriptComponentInfo>();
+        // cache of previously created script component types
+        private Dictionary<string /*Full Type Name*/, ScriptComponentTypeInfo> _scriptComponentTypeCache = new Dictionary<string, ScriptComponentTypeInfo>();
 
         // NOTE: the base implementation of this method does nothing, so no need to call it
         public override void InitializeNewDomain(AppDomainSetup appDomainInfo)
@@ -79,6 +117,9 @@ namespace Klawr.ClrHost.Managed
 
         public void LoadUnrealEngineWrapperAssembly()
         {
+            // TODO: this may not be the best place to call it
+            CacheScriptComponentProxyInfo();
+
             AssemblyName wrapperAssembly = new AssemblyName();
             wrapperAssembly.Name = "Klawr.UnrealEngine";
             Assembly.Load(wrapperAssembly);
@@ -129,6 +170,7 @@ namespace Klawr.ClrHost.Managed
         {
             return Interlocked.Increment(ref _lastScriptObjectID);
         }
+
         /// <summary>
         /// Register the given IScriptObject instance with the manager.
         /// 
@@ -206,6 +248,186 @@ namespace Klawr.ClrHost.Managed
         {
             ObjectUtils.BindToNativeFunctions(ref info);
             UObjectHandle.ReleaseHandleCallback = new Action<IntPtr>(ObjectUtils.ReleaseObject);
+        }
+
+        public bool CreateScriptComponent(
+            string className, IntPtr nativeComponent, ref ScriptComponentProxy proxy
+        )
+        {
+            ScriptComponentTypeInfo componentTypeInfo;
+            if (FindScriptComponentTypeByName(className, out componentTypeInfo))
+            {
+                if (componentTypeInfo.Constructor != null)
+                {
+                    var instanceID = GenerateScriptObjectID();
+                    // The handle created here is set not to release the native object when the
+                    // handle is disposed because that object is actually the owner of the script 
+                    // object created here, and no additional references are created to owners at
+                    // the moment so there is no reference to remove.
+                    var objectHandle = new UObjectHandle(nativeComponent, false);
+                    var component = (IDisposable)componentTypeInfo.Constructor.Invoke(
+                        new object[] { instanceID, objectHandle }
+                    );
+                    // initialize the script component proxy
+                    proxy.InstanceID = instanceID;
+                    foreach (var methodInfo in componentTypeInfo.Methods)
+                    {
+                        methodInfo.BindToProxy(
+                            ref proxy,
+                            Delegate.CreateDelegate(
+                                methodInfo.DelegateType, component, methodInfo.Method
+                            )
+                        );
+                    }
+                    // keep anything that may be called from native code alive
+                    RegisterScriptComponent(instanceID, component, proxy);
+                    return true;
+                }
+            }
+            // TODO: log an error
+            return false;
+        }
+
+        public void DestroyScriptComponent(long instanceID)
+        {
+            var instance = UnregisterScriptComponent(instanceID);
+            instance.Dispose();
+        }
+
+        private void RegisterScriptComponent(
+            long instanceID, IDisposable scriptComponent, ScriptComponentProxy proxy
+        )
+        {
+            ScriptComponentInfo componentInfo;
+            componentInfo.Instance = scriptComponent;
+            componentInfo.Proxy = proxy;
+            _scriptComponents.Add(instanceID, componentInfo);
+        }
+
+        private IDisposable UnregisterScriptComponent(long instanceID)
+        {
+            var instance = _scriptComponents[instanceID].Instance;
+            _scriptComponents.Remove(instanceID);
+            return instance;
+        }
+
+        /// <summary>
+        /// Search all loaded (non-dynamic) assemblies for a Type matching the given name, the Type
+        /// should be derived from UKlawrScriptComponent (but this is not enforced yet).
+        /// </summary>
+        /// <param name="typeName">The full name of a type (including the namespace).</param>
+        /// <param name="componentTypeInfo">Structure to be filled in with type information.</param>
+        /// <returns>true if type information matching the given type name was found, false otherwise</returns>
+        private bool FindScriptComponentTypeByName(
+            string typeName, out ScriptComponentTypeInfo componentTypeInfo
+        )
+        {
+            if (!_scriptComponentTypeCache.TryGetValue(typeName, out componentTypeInfo))
+            {
+                var componentType = FindTypeByName(typeName);
+                if (componentType != null)
+                {
+                    componentTypeInfo = GetComponentTypeInfo(componentType);
+                    // cache the result to speed up future searches
+                    _scriptComponentTypeCache.Add(typeName, componentTypeInfo);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private ScriptComponentTypeInfo GetComponentTypeInfo(Type componentType)
+        {
+            ScriptComponentTypeInfo typeInfo;
+            typeInfo.Constructor = componentType.GetConstructor(
+                new Type[] { typeof(long), typeof(UObjectHandle) }
+            );
+
+            // Currently all script component classes must directly subclass UKlawScriptComponent, 
+            // they cannot subclass another script component. The virtual methods in 
+            // UKlawScriptComponent have default implementations that do nothing, these can be 
+            // overridden in subclasses, but if they're not then they should never be called from 
+            // native code to avoid a pointless native/managed transition. BindingFlags.DeclaredOnly
+            // is sufficient to detect if a method has been overridden in a subclass for now, but
+            // this will have to be revisited if script classes are allowed to subclass other
+            // script classes in the future.
+            BindingFlags bindingFlags = BindingFlags.DeclaredOnly
+                | BindingFlags.Instance
+                | BindingFlags.Public
+                | BindingFlags.NonPublic;
+
+            var implementedMethodList = new List<ScriptComponentMethodInfo>();
+            foreach (var proxyMethod in _scriptComponentProxyMethods)
+            {
+                // FIXME: catch and log exceptions
+                ScriptComponentMethodInfo methodInfo;
+                var method = componentType.GetMethod(
+                    proxyMethod.Name, bindingFlags, null, proxyMethod.ParameterTypes, null
+                );
+                if (method != null)
+                {
+                    methodInfo.DelegateType = proxyMethod.DelegateType;
+                    methodInfo.Method = method;
+                    methodInfo.BindToProxy = proxyMethod.BindToProxy;
+                    implementedMethodList.Add(methodInfo);
+                }
+            }
+            typeInfo.Methods = implementedMethodList.ToArray();
+            return typeInfo;
+        }
+
+        private void CacheScriptComponentProxyInfo()
+        {
+            // grab all the public delegate instance fields
+            var fields = typeof(ScriptComponentProxy)
+                .GetFields(BindingFlags.Public | BindingFlags.Instance)
+                .Where(field => field.FieldType.IsSubclassOf(typeof(Delegate)))
+                .ToArray();
+
+            // store the info that will be useful later on
+            _scriptComponentProxyMethods = new ScriptComponentProxyMethodInfo[fields.Length];
+            for (int i = 0; i < fields.Length; i++)
+            {
+                var fieldInfo = fields[i];
+                var methodInfo = fieldInfo.FieldType.GetMethod("Invoke");
+                var parameters = methodInfo.GetParameters();
+
+                ScriptComponentProxyMethodInfo info;
+                info.Name = fieldInfo.Name;
+                info.DelegateType = fieldInfo.FieldType;
+                info.ParameterTypes = new Type[parameters.Length];
+                for (int j = 0; j < parameters.Length; j++)
+                {
+                    info.ParameterTypes[j] = parameters[j].ParameterType;
+                }
+                info.BindToProxy = BuildProxyDelegateSetter(fieldInfo);
+                _scriptComponentProxyMethods[i] = info;
+            }
+        }
+
+        /// <summary>
+        /// Build a delegate that sets one of the delegate fields in ScriptComponentProxy.
+        /// 
+        /// Setting a field on struct could've been done via reflection, but this is faster, and 
+        /// works without boxing/unboxing or using undocumented features like __makeref().
+        /// </summary>
+        /// <param name="field">The field whose value the delegate should set when invoked.</param>
+        /// <returns>A delegate.</returns>
+        private SetProxyDelegateAction BuildProxyDelegateSetter(FieldInfo field)
+        {
+            var proxyExpr = Expression.Parameter(typeof(ScriptComponentProxy).MakeByRefType());
+            var valueExpr = Expression.Parameter(typeof(Delegate), "value");
+            var lambdaExpr = Expression.Lambda<SetProxyDelegateAction>(
+                Expression.Assign(
+                    Expression.Field(proxyExpr, field),
+                    Expression.Convert(valueExpr, field.FieldType)
+                ),
+                proxyExpr, valueExpr
+            );
+            return lambdaExpr.Compile();
         }
     }
 }

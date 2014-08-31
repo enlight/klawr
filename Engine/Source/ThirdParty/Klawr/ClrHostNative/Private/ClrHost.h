@@ -53,6 +53,12 @@ public: // IClrHost interface
 
 	virtual void DestroyScriptObject(__int64 instanceID) override;
 
+	virtual bool CreateScriptComponent(
+		const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
+	) override;
+
+	virtual void DestroyScriptComponent(__int64 instanceID) override;
+
 public:
 	ClrHost() : _hostControl(nullptr) {}
 
