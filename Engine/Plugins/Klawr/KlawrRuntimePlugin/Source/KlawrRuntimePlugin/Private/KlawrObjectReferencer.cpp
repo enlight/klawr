@@ -45,26 +45,67 @@ void FObjectReferencer::Shutdown()
 	}
 }
 
-void FObjectReferencer::AddObjectRef(UObject* obj)
+void FObjectReferencer::AddObjectRef(const UObject* Object)
 {
-	check(Singleton);
-
-	auto annotation = Singleton->ObjectRefs.GetAnnotation(obj);
-	++annotation.Count;
-	Singleton->ObjectRefs.AddAnnotation(obj, annotation);
-}
-
-void FObjectReferencer::RemoveObjectRef(UObject* obj)
-{
-	check(Singleton);
-
-	auto annotation = Singleton->ObjectRefs.GetAnnotation(obj);
-	if (annotation.Count > 0)
+	if (ensure(Singleton))
 	{
-		--annotation.Count;
+		auto Annotation = Singleton->ObjectRefs.GetAnnotation(Object);
+		++Annotation.Count;
+#if WITH_EDITOR
+		auto AppDomainID = IKlawrRuntimePlugin::Get().GetObjectAppDomainID(Object);
+		// a native UObject instance should only be referenced from a single app domain
+		check((Annotation.AppDomainID == 0) || (Annotation.AppDomainID == AppDomainID));
+		Annotation.AppDomainID = AppDomainID;
+#endif // WITH_EDITOR
+		Singleton->ObjectRefs.AddAnnotation(Object, Annotation);
 	}
-	Singleton->ObjectRefs.AddAnnotation(obj, annotation);
 }
+
+void FObjectReferencer::RemoveObjectRef(const UObject* Object)
+{
+	if (ensure(Singleton))
+	{
+		auto Annotation = Singleton->ObjectRefs.GetAnnotation(Object);
+		if (Annotation.Count > 0)
+		{
+			--Annotation.Count;
+		}
+		Singleton->ObjectRefs.AddAnnotation(Object, Annotation);
+	}
+}
+
+#if WITH_EDITOR
+
+int32 FObjectReferencer::RemoveAllObjectRefsInAppDomain(int AppDomainID)
+{
+	TArray<const UObjectBase*> AppDomainRefs;
+
+	if (ensure(Singleton))
+	{
+		auto& ObjectRefs = Singleton->ObjectRefs;
+
+		// collect all the objects referenced in the specified app domain
+		for (auto& KeyValuePair : ObjectRefs.GetAnnotationMap())
+		{
+			// annotations with a ref count of zero shouldn't be in the map
+			check(KeyValuePair.Value.Count > 0);
+			if (KeyValuePair.Value.AppDomainID == AppDomainID)
+			{
+				AppDomainRefs.Add(KeyValuePair.Key);
+			}
+		}
+
+		// release all the collected objects
+		for (auto Object : AppDomainRefs)
+		{
+			ObjectRefs.RemoveAnnotation(Object);
+		}
+	}
+
+	return AppDomainRefs.Num();
+}
+
+#endif // WITH_EDITOR
 
 void FObjectReferencer::AddReferencedObjects(FReferenceCollector& Collector)
 {
@@ -74,8 +115,8 @@ void FObjectReferencer::AddReferencedObjects(FReferenceCollector& Collector)
 	{
 		// annotations with a ref count of zero shouldn't be in the map
 		check(Iterator.Value.Count > 0);
-		UObjectBase* obj = const_cast<UObjectBase*>(Iterator.Key);
-		Collector.AddReferencedObject(obj);
+		UObjectBase* Object = const_cast<UObjectBase*>(Iterator.Key);
+		Collector.AddReferencedObject(Object);
 	}
 	Collector.AllowEliminatingReferences(true);
 }

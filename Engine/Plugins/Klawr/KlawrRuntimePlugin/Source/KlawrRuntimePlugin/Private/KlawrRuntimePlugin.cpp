@@ -53,6 +53,79 @@ void RegisterWrapperClasses();
 
 class FRuntimePlugin : public IKlawrRuntimePlugin
 {
+	int _primaryEngineAppDomain;
+
+#if WITH_EDITOR
+
+	int _PIEAppDomain;
+
+public:
+
+	FRuntimePlugin()
+		: _primaryEngineAppDomain(0)
+		, _PIEAppDomain(0)
+	{
+	}
+
+	virtual int GetObjectAppDomainID(const UObject* Object) const override
+	{
+		return (Object->GetOutermost()->PackageFlags & PKG_PlayInEditor) ?
+			_PIEAppDomain : _primaryEngineAppDomain;
+	}
+
+	virtual void OnBeginPIE(bool bIsSimulating) override
+	{
+		UE_LOG(LogKlawrRuntimePlugin, Display, TEXT("Creating a new app domain for PIE."));
+		if (ensure(_PIEAppDomain == 0))
+		{
+			if (!IClrHost::Get()->CreateEngineAppDomain(FObjectUtils::Info, _PIEAppDomain))
+			{
+				UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to create PIE app domain!"));
+			}
+		}
+	}
+
+	virtual void OnEndPIE(bool bIsSimulating) override
+	{
+		UE_LOG(LogKlawrRuntimePlugin, Display, TEXT("Unloading PIE app domain."));
+		if (ensure(_PIEAppDomain != 0))
+		{
+			if (!IClrHost::Get()->DestroyEngineAppDomain(_PIEAppDomain))
+			{
+				UE_LOG(
+					LogKlawrRuntimePlugin, Warning,	TEXT("Failed to unload PIE app domain!")
+				);
+			}
+			// hopefully the PIE app domain was unloaded successfully and all references to native 
+			// objects within that app domain were released, but in case something went wrong the
+			// remaining references need to be cleared out so that UnrealEd can get rid of all the
+			// objects it created for PIE
+			int32 NumReleased = FObjectReferencer::RemoveAllObjectRefsInAppDomain(_PIEAppDomain);
+			if (NumReleased > 0)
+			{
+				UE_LOG(
+					LogKlawrRuntimePlugin, Warning, 
+					TEXT("%d object(s) still referenced in PIE app domain."), NumReleased
+				);
+			}
+			_PIEAppDomain = 0;
+		}
+	}
+
+#elif // standalone build
+
+	FRuntimePlugin()
+		: _primaryEngineAppDomain(0)
+	{
+	}
+
+	virtual int GetObjectAppDomainID(const UObject* Object) const override
+	{
+		return _primaryEngineAppDomain;
+	}
+
+#endif // WITH_EDITOR
+
 public: // IModuleInterface interface
 	
 	virtual void StartupModule() override
@@ -60,7 +133,10 @@ public: // IModuleInterface interface
 		FObjectReferencer::Startup();
 		IClrHost::Get()->Startup();
 		NativeGlue::RegisterWrapperClasses();
-		IClrHost::Get()->InitializeEngineAppDomain(FObjectUtils::Info);
+		if (!IClrHost::Get()->CreateEngineAppDomain(FObjectUtils::Info, _primaryEngineAppDomain))
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to create primary engine app domain!"));
+		}
 	}
 	
 	virtual void ShutdownModule() override

@@ -39,8 +39,14 @@ public:
 	static void Startup();
 	static void Shutdown();
 
-	static void AddObjectRef(UObject* obj);
-	static void RemoveObjectRef(UObject* obj);
+	static void AddObjectRef(const UObject* Object);
+	static void RemoveObjectRef(const UObject* Object);
+
+#if WITH_EDITOR
+
+	static int32 RemoveAllObjectRefsInAppDomain(int AppDomainID);
+
+#endif // WITH_EDITOR
 
 	
 public: // FGCObject interface
@@ -53,10 +59,18 @@ private:
 		/** Current number of references to a native UObject instance in managed code. */
 		uint32 Count;
 
+#if WITH_EDITOR
+		/** ID of the app domain within which the native UObject is referenced. */
+		int AppDomainID;
+#endif // WITH_EDITOR
+
 		/** Construct an annotation with the default value. */
 		FRefCountAnnotation()
 			: Count(0)
 		{
+#if WITH_EDITOR
+			AppDomainID = 0;
+#endif // WITH_EDITOR
 		}
 
 		/** Check if this annotation contains the default value. */

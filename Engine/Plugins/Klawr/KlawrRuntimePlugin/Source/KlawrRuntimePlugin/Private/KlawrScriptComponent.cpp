@@ -42,6 +42,7 @@ void UKlawrScriptComponent::CreateScriptComponentProxy()
 
 	Proxy = new Klawr::ScriptComponentProxy();
 	bool bCreated = Klawr::IClrHost::Get()->CreateScriptComponent(
+		IKlawrRuntimePlugin::Get().GetObjectAppDomainID(this),
 		TEXT("Klawr.UnrealEngine.TestComponent"), this, *Proxy
 	);
 
@@ -62,7 +63,9 @@ void UKlawrScriptComponent::DestroyScriptComponentProxy()
 
 	if (Proxy->InstanceID != 0)
 	{
-		Klawr::IClrHost::Get()->DestroyScriptComponent(Proxy->InstanceID);
+		Klawr::IClrHost::Get()->DestroyScriptComponent(
+			IKlawrRuntimePlugin::Get().GetObjectAppDomainID(this), Proxy->InstanceID
+		);
 	}
 
 	delete Proxy;

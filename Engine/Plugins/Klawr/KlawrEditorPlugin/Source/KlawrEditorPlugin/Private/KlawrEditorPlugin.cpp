@@ -27,6 +27,7 @@
 #include "KlawrBlueprintCompiler.h"
 #include "KismetCompilerModule.h"
 #include "AssetTypeActions_KlawrBlueprint.h"
+#include "IKlawrRuntimePlugin.h"
 
 DEFINE_LOG_CATEGORY(LogKlawrEditorPlugin);
 
@@ -58,6 +59,16 @@ class FEditorPlugin : public IKlawrEditorPlugin
 		RegisteredAssetTypeActions.Add(Action);
 	}
 
+	void OnBeginPIE(const bool bIsSimulating)
+	{
+		IKlawrRuntimePlugin::Get().OnBeginPIE(bIsSimulating);
+	}
+
+	void OnEndPIE(const bool bIsSimulating)
+	{
+		IKlawrRuntimePlugin::Get().OnEndPIE(bIsSimulating);
+	}
+
 public: // IModuleInterface interface
 	virtual void StartupModule() override
 	{
@@ -70,10 +81,16 @@ public: // IModuleInterface interface
 		FBlueprintCompileDelegate CompileDelegate;
 		CompileDelegate.BindRaw(this, &FEditorPlugin::CompileBlueprint);
 		CompilerModule.GetCompilers().Add(CompileDelegate);
+
+		FEditorDelegates::BeginPIE.AddRaw(this, &FEditorPlugin::OnBeginPIE);
+		FEditorDelegates::EndPIE.AddRaw(this, &FEditorPlugin::OnEndPIE);
 	}
 
 	virtual void ShutdownModule() override
 	{
+		FEditorDelegates::BeginPIE.RemoveAll(this);
+		FEditorDelegates::EndPIE.RemoveAll(this);
+
 		// at this point the editor may have already unloaded the AssetTools module, 
 		// in that case there's no need to unregister the previously registered asset types
 		auto AssetToolsModule = FModuleManager::GetModulePtr<FAssetToolsModule>("AssetTools");

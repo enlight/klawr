@@ -27,6 +27,39 @@
 
 namespace Klawr {
 
+IEngineAppDomainManager* ClrHostControl::GetEngineAppDomainManager(int appDomainID)
+{
+	auto it = _engineAppDomainManagers.find(appDomainID);
+	return (it != _engineAppDomainManagers.end()) ? it->second.GetInterfacePtr() : nullptr;
+}
+
+bool ClrHostControl::DestroyEngineAppDomain(int appDomainID)
+{
+	auto it = _engineAppDomainManagers.find(appDomainID);
+	if (it != _engineAppDomainManagers.end())
+	{
+		_engineAppDomainManagers.erase(it);
+	}
+
+	if (_defaultAppDomainManager)
+	{
+		return _defaultAppDomainManager->DestroyEngineAppDomain(appDomainID);
+	}
+
+	return false;
+}
+
+void ClrHostControl::Shutdown()
+{
+	_engineAppDomainManagers.clear();
+
+	if (_defaultAppDomainManager)
+	{
+		_defaultAppDomainManager->DestroyAllEngineAppDomains();
+		_defaultAppDomainManager = nullptr;
+	}
+}
+
 HRESULT STDMETHODCALLTYPE ClrHostControl::GetHostManager(REFIID riid, void** ppObject)
 {
 	// no custom managers have been implemented yet
@@ -45,7 +78,12 @@ HRESULT STDMETHODCALLTYPE ClrHostControl::SetAppDomainManager(
 	}
 	else
 	{
-		hr = pUnkAppDomainManager->QueryInterface(IID_PPV_ARGS(&_engineAppDomainManager));
+		IEngineAppDomainManagerPtr engineAppDomainManager;
+		hr = pUnkAppDomainManager->QueryInterface(IID_PPV_ARGS(&engineAppDomainManager));
+		if (SUCCEEDED(hr))
+		{
+			_engineAppDomainManagers[dwAppDomainID] = engineAppDomainManager;
+		}
 	}
 	assert(SUCCEEDED(hr));
 	return hr;

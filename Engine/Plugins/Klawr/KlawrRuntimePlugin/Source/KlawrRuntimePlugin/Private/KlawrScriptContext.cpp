@@ -48,14 +48,15 @@ bool FScriptContext::Initialize(const FString& Code, UObject* Owner)
 	// [editor-only] reload the engine app domain
 
 	// create an instance of the managed class
-	return IClrHost::Get()->CreateScriptObject(TEXT("Klawr.UnrealEngine.TestActor"), Owner, ScriptObjectInfo);
+	//return IClrHost::Get()->CreateScriptObject(TEXT("Klawr.UnrealEngine.TestActor"), Owner, ScriptObjectInfo);
+	return false;
 }
 
 void FScriptContext::DestroyScriptObject()
 {
 	if (ScriptObjectInfo.InstanceID != 0)
 	{
-		IClrHost::Get()->DestroyScriptObject(ScriptObjectInfo.InstanceID);
+		//IClrHost::Get()->DestroyScriptObject(ScriptObjectInfo.InstanceID);
 		ScriptObjectInfo.InstanceID = 0;
 	}
 }

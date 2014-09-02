@@ -39,7 +39,8 @@ class ClrHost : public IClrHost
 {
 public: // IClrHost interface
 	virtual void Startup() override;
-	virtual void InitializeEngineAppDomain(const ObjectUtilsNativeInfo& info) override;
+	virtual bool CreateEngineAppDomain(const ObjectUtilsNativeInfo& objectUtils, int& outAppDomainID) override;
+	virtual bool DestroyEngineAppDomain(int appDomainID);
 	virtual void Shutdown() override;
 
 	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) override
@@ -48,16 +49,16 @@ public: // IClrHost interface
 	}
 
 	virtual bool CreateScriptObject(
-		const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
+		int appDomainID, const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
 	) override;
 
-	virtual void DestroyScriptObject(__int64 instanceID) override;
+	virtual void DestroyScriptObject(int appDomainID, __int64 instanceID) override;
 
 	virtual bool CreateScriptComponent(
-		const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
+		int appDomainID, const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
 	) override;
 
-	virtual void DestroyScriptComponent(__int64 instanceID) override;
+	virtual void DestroyScriptComponent(int appDomainID, __int64 instanceID) override;
 
 public:
 	ClrHost() : _hostControl(nullptr) {}

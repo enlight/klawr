@@ -24,6 +24,7 @@
 
 using Klawr.ClrHost.Interfaces;
 using System;
+using System.Collections.Generic;
 
 namespace Klawr.ClrHost.Managed
 {
@@ -32,8 +33,8 @@ namespace Klawr.ClrHost.Managed
     /// </summary>
     public sealed class DefaultAppDomainManager : AppDomainManager, IDefaultAppDomainManager
     {
-        // only set for the default app domain manager
-        private AppDomain _engineAppDomain;
+        private Dictionary<int /* Domain ID */, AppDomain> _engineAppDomains =
+            new Dictionary<int, AppDomain>();
 
         // NOTE: the base implementation of this method does nothing, so no need to call it
         public override void InitializeNewDomain(AppDomainSetup appDomainInfo)
@@ -42,39 +43,63 @@ namespace Klawr.ClrHost.Managed
             this.InitializationFlags = AppDomainManagerInitializationOptions.RegisterWithHost;
         }
         
-        public void CreateEngineAppDomain()
+        public int CreateEngineAppDomain()
         {
-            if (_engineAppDomain != null)
+            var currentSetup = AppDomain.CurrentDomain.SetupInformation;
+            var setup = new AppDomainSetup()
             {
-                throw new InvalidOperationException("Engine app domain already exists!");
-            }
-            else
-            {
-                var currentSetup = AppDomain.CurrentDomain.SetupInformation;
-                var setup = new AppDomainSetup()
-                {
-                    AppDomainManagerAssembly = "Klawr.ClrHost.Managed",
-                    AppDomainManagerType = "Klawr.ClrHost.Managed.EngineAppDomainManager",
-                    ApplicationName = "Klawr.UnrealEngine",
-                    ApplicationBase = currentSetup.ApplicationBase,
-                    PrivateBinPath = currentSetup.PrivateBinPath
-                };
-                // this will instantiate a new app domain manager and call InitializeNewDomain()
-                _engineAppDomain = AppDomain.CreateDomain("EngineDomain", null, setup);
-            }
+                AppDomainManagerAssembly = "Klawr.ClrHost.Managed",
+                AppDomainManagerType = "Klawr.ClrHost.Managed.EngineAppDomainManager",
+                ApplicationName = "Klawr.UnrealEngine",
+                ApplicationBase = currentSetup.ApplicationBase,
+                PrivateBinPath = currentSetup.PrivateBinPath
+            };
+            // this will instantiate a new app domain manager and call InitializeNewDomain()
+            var engineAppDomain = AppDomain.CreateDomain("EngineDomain", null, setup);
+            var domainId = engineAppDomain.Id;
+            _engineAppDomains.Add(domainId, engineAppDomain);
+            return domainId;
         }
 
-        public void DestroyEngineAppDomain()
+        public bool DestroyEngineAppDomain(int domainId)
         {
-            if (_engineAppDomain == null)
+            AppDomain appDomain;
+            if (!_engineAppDomains.TryGetValue(domainId, out appDomain))
             {
-                throw new InvalidOperationException("Engine app domain doesn't exist!");
+                throw new InvalidOperationException(
+                    String.Format("Engine app domain with ID {0} doesn't exist!", domainId)
+                );
             }
             else
             {
-                AppDomain.Unload(_engineAppDomain);
-                _engineAppDomain = null;
+                try
+                {
+                    _engineAppDomains.Remove(domainId);
+                    AppDomain.Unload(appDomain);
+                    return true;
+                }
+                catch (AppDomainUnloadedException)
+                {
+                    // ho hum, log an error maybe?
+                }
             }
+            return false;
+        }
+
+        public void DestroyAllEngineAppDomains()
+        {
+            foreach (var appDomain in _engineAppDomains.Values)
+            {
+                try
+                {
+                    AppDomain.Unload(appDomain);
+                }
+                catch (AppDomainUnloadedException)
+                {
+                    // oh well
+                }
+            }
+            _engineAppDomains.Clear();
         }
     }
 }

@@ -50,4 +50,16 @@ public:
 	{
 		return FModuleManager::Get().IsModuleLoaded("KlawrRuntimePlugin");
 	}
+
+	/**
+	 * Get the ID of the app domain in which the given object is referenced.
+	 */
+	virtual int GetObjectAppDomainID(const UObject* Object) const = 0;
+
+#if WITH_EDITOR
+
+	virtual void OnBeginPIE(bool bIsSimulating) = 0;
+	virtual void OnEndPIE(bool bIsSimulating) = 0;
+
+#endif // WITH_EDITOR
 };

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "KlawrClrHostInterfaces.h"
+#include <map>
 
 namespace Klawr {
 
@@ -32,11 +33,10 @@ using Klawr_ClrHost_Interfaces::IDefaultAppDomainManagerPtr;
 using Klawr_ClrHost_Interfaces::IEngineAppDomainManager;
 using Klawr_ClrHost_Interfaces::IEngineAppDomainManagerPtr;
 
-/*
+/**
  * Keeps track of app domain managers (created from managed code) on the unmanaged side.
  *
- * Unmanaged code can interact with these app domain managers via the IKlawrAppDomainManager
- * interface.
+ * There is only one default app domain manager, and multiple engine app domain managers. The
  */
 class ClrHostControl : public IHostControl
 {
@@ -51,13 +51,28 @@ public:
 		return _defaultAppDomainManager.GetInterfacePtr();
 	}
 
-	IEngineAppDomainManager* GetEngineAppDomainManager()
-	{
-		return _engineAppDomainManager.GetInterfacePtr();
-	}
+	IEngineAppDomainManager* GetEngineAppDomainManager(int appDomainID);
+
+	/**
+	 * Unload an engine app domain and release the internal reference to its app domain manager. 
+	 * @return true if the app domain was successfully unloaded, false otherwise
+	 */
+	bool DestroyEngineAppDomain(int appDomainID);
+
+	/**
+	 * Unload all engine app domains and release all internal references to any app domain managers.
+	 * @note This should be called only before the CLR is stopped.
+	 */
+	void Shutdown();
 
 public: // IHostControl interface
 	virtual HRESULT STDMETHODCALLTYPE GetHostManager(REFIID riid, void** ppObject) override;
+
+	/**
+	 * Called from managed code every time a new app domain is created.
+	 * @param dwAppDomainID The ID of the new app domain.
+	 * @param pUnkAppDomainManager The manager for the new app domain.
+	 */
 	virtual HRESULT STDMETHODCALLTYPE SetAppDomainManager(
 		DWORD dwAppDomainID, IUnknown* pUnkAppDomainManager
 	) override;
@@ -97,8 +112,8 @@ private:
 	volatile ULONG _refCount;
 	// the app domain manager for the default app domain (that can't be unloaded while the CLR is running)
 	IDefaultAppDomainManagerPtr _defaultAppDomainManager;
-	// the app domain manager for the engine app domain (that can be unloaded while the CLR is running)
-	IEngineAppDomainManagerPtr _engineAppDomainManager;
+	// app domain managers for engine app domains (that can be unloaded while the CLR is running)
+	std::map<DWORD /* App Domain ID */, IEngineAppDomainManagerPtr> _engineAppDomainManagers;
 };
 
 } // namespace Klawr

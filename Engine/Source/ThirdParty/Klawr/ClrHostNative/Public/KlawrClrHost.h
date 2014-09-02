@@ -129,8 +129,21 @@ class IClrHost
 public:
 	/** Startup the CLR. */
 	virtual void Startup() = 0;
-	/** Load the engine wrapper assembly. */
-	virtual void InitializeEngineAppDomain(const ObjectUtilsNativeInfo&) = 0;
+
+	/**
+	 * @brief Create a new engine app domain and initialize it. 
+	 * @param outAppDomainID Will be set to the ID of the newly created engine app domain.
+	 * @return true if the app domain was created and initialized successfully, false otherwise
+	 */
+	virtual bool CreateEngineAppDomain(const ObjectUtilsNativeInfo& objectUtils, int& outAppDomainID) = 0;
+	
+	/**
+	 * @brief Destroy an engine app domain.
+	 * @param appDomainID The ID of the engine app domain to destroy.
+	 * @return true if the app domain was destroyed successfully, false otherwise
+	 */
+	virtual bool DestroyEngineAppDomain(int appDomainID) = 0;
+	
 	/** Shutdown the CLR. */
 	virtual void Shutdown() = 0;
 
@@ -143,10 +156,10 @@ public:
 	virtual void AddClass(const TCHAR* className, void** wrapperFunctions, int numFunctions) = 0;
 
 	virtual bool CreateScriptObject(
-		const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
+		int appDomainID, const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
 	) = 0;
 
-	virtual void DestroyScriptObject(__int64 instanceID) = 0;
+	virtual void DestroyScriptObject(int appDomainID, __int64 instanceID) = 0;
 
 	/**
 	 * @brief Create an instance of a managed UKlawrScriptComponent subclass.
@@ -158,10 +171,10 @@ public:
 	 * @return true if the managed script component instance was created successfully, false otherwise
 	 */
 	virtual bool CreateScriptComponent(
-		const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
+		int appDomainID, const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
 	) = 0;
 
-	virtual void DestroyScriptComponent(__int64 instanceID) = 0;
+	virtual void DestroyScriptComponent(int appDomainID, __int64 instanceID) = 0;
 
 public:
 	/** Get the singleton instance. */

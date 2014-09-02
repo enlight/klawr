@@ -100,12 +100,8 @@ void ClrHost::Startup()
 
 void ClrHost::Shutdown()
 {
-	auto defaultAppDomainManager = _hostControl->GetDefaultAppDomainManager();
-	if (defaultAppDomainManager)
-	{
-		defaultAppDomainManager->DestroyEngineAppDomain();
-	}
-
+	_hostControl->Shutdown();
+	
 	// NOTE: There's a crash here while debugging with the Mixed mode debugger, but everything works
 	// fine when using the Auto mode debugger (which probably ends up using the Native debugger 
 	// since this project is native). Everything also works fine if you detach the Mixed debugger 
@@ -120,10 +116,10 @@ void ClrHost::Shutdown()
 	}
 }
 
-void ClrHost::InitializeEngineAppDomain(const ObjectUtilsNativeInfo& info)
+bool ClrHost::CreateEngineAppDomain(const ObjectUtilsNativeInfo& info, int& outAppDomainID)
 {
-	_hostControl->GetDefaultAppDomainManager()->CreateEngineAppDomain();
-	auto engineAppDomainManager = _hostControl->GetEngineAppDomainManager();
+	outAppDomainID = _hostControl->GetDefaultAppDomainManager()->CreateEngineAppDomain();
+	auto engineAppDomainManager = _hostControl->GetEngineAppDomainManager(outAppDomainID);
 	if (engineAppDomainManager)
 	{
 		// pass all the native wrapper functions to the managed side of the CLR host so that they 
@@ -151,14 +147,26 @@ void ClrHost::InitializeEngineAppDomain(const ObjectUtilsNativeInfo& info)
 		// now that everything the engine wrapper assembly needs is in place it can be loaded
 		engineAppDomainManager->LoadUnrealEngineWrapperAssembly();
 	}
+	return engineAppDomainManager != nullptr;
+}
+
+bool ClrHost::DestroyEngineAppDomain(int appDomainID)
+{
+	return _hostControl->DestroyEngineAppDomain(appDomainID);
 }
 
 bool ClrHost::CreateScriptObject(
-	const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
+	int appDomainID, const TCHAR* className, class UObject* owner, ScriptObjectInstanceInfo& info
 )
 {
+	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
+	if (!appDomainManager)
+	{
+		return false;
+	}
+
 	Klawr_ClrHost_Interfaces::ScriptObjectInstanceInfo srcInfo;
-	bool created = !!_hostControl->GetEngineAppDomainManager()->CreateScriptObject(
+	bool created = !!appDomainManager->CreateScriptObject(
 		className, reinterpret_cast<INT_PTR>(owner), &srcInfo
 	);
 	if (created)
@@ -171,13 +179,17 @@ bool ClrHost::CreateScriptObject(
 	return created;
 }
 
-void ClrHost::DestroyScriptObject(__int64 instanceID)
+void ClrHost::DestroyScriptObject(int appDomainID, __int64 instanceID)
 {
-	_hostControl->GetEngineAppDomainManager()->DestroyScriptObject(instanceID);
+	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
+	if (appDomainManager)
+	{
+		appDomainManager->DestroyScriptObject(instanceID);
+	}
 }
 
 bool ClrHost::CreateScriptComponent(
-	const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
+	int appDomainID, const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
 )
 {
 	// these two structures must have the same size and layout (but can't test layout that easily)
@@ -188,15 +200,25 @@ bool ClrHost::CreateScriptComponent(
 		return false;
 	}
 
-	return !!_hostControl->GetEngineAppDomainManager()->CreateScriptComponent(
-		className, reinterpret_cast<INT_PTR>(nativeComponent), 
+	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
+	if (!appDomainManager)
+	{
+		return false;
+	}
+
+	return !!appDomainManager->CreateScriptComponent(
+		className, reinterpret_cast<INT_PTR>(nativeComponent),
 		reinterpret_cast<Klawr_ClrHost_Interfaces::ScriptComponentProxy*>(&proxy)
 	);
 }
 
-void ClrHost::DestroyScriptComponent(__int64 instanceID)
+void ClrHost::DestroyScriptComponent(int appDomainID, __int64 instanceID)
 {
-	_hostControl->GetEngineAppDomainManager()->DestroyScriptComponent(instanceID);
+	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
+	if (appDomainManager)
+	{
+		appDomainManager->DestroyScriptComponent(instanceID);
+	}
 }
 
 } // namespace Klawr

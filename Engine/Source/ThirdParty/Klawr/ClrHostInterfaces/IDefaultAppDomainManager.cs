@@ -40,11 +40,19 @@ namespace Klawr.ClrHost.Interfaces
         /// <summary>
         /// Create an engine app domain that can be unloaded.
         /// </summary>
-        void CreateEngineAppDomain();
+        /// <returns>The identifier of the new engine app domain.</returns>
+        int CreateEngineAppDomain();
 
         /// <summary>
-        /// Unload the engine app domain.
+        /// Unload an engine app domain.
         /// </summary>
-        void DestroyEngineAppDomain();
+        /// <param name="domainId">The identifier of the engine app domain to be unloaded.</param>
+        /// <returns>true if the engine app domain was successfully unloaded, false otherwise</returns>
+        bool DestroyEngineAppDomain(int domainId);
+
+        /// <summary>
+        /// Unload all engine app domains.
+        /// </summary>
+        void DestroyAllEngineAppDomains();
     }
 }
