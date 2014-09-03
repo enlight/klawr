@@ -27,6 +27,7 @@
 #include "KlawrBlueprint.h"
 #include "KlawrBlueprintGeneratedClass.h"
 #include "KlawrScriptComponent.h"
+#include "SKlawrBlueprintFactoryConfig.h"
 
 UKlawrBlueprintFactory::UKlawrBlueprintFactory(const FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -45,11 +46,27 @@ bool UKlawrBlueprintFactory::DoesSupportClass(UClass* Class)
 	return Class == UKlawrBlueprint::StaticClass();
 }
 
+bool UKlawrBlueprintFactory::ConfigureProperties()
+{
+	TSharedRef<SKlawrBlueprintFactoryConfig> Widget = SNew(SKlawrBlueprintFactoryConfig);
+	if (Widget->ShowAsModalWindow())
+	{
+		ScriptName = Widget->GetSourceFilename();
+		ScriptLocation = Widget->GetSourceLocation();
+		return true;
+	}
+	return false;
+}
+
 UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context,
 	FFeedbackContext* Warn
 )
 {
+	GenerateScriptFile();
+	// TODO: store path to new file in the Blueprint
+	// TODO: store name of C# class in the Blueprint
+
 	auto NewBlueprint = CastChecked<UKlawrBlueprint>(
 		FKismetEditorUtilities::CreateBlueprint(
 			UKlawrScriptComponent::StaticClass(), InParent, InName, BPTYPE_Normal, 
@@ -61,4 +78,62 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	FKismetEditorUtilities::CompileBlueprint(NewBlueprint);
 	FEditorDelegates::OnAssetPostImport.Broadcast(this, NewBlueprint);
 	return NewBlueprint;
+}
+
+FString UKlawrBlueprintFactory::GetTemplatesDir()
+{
+	FString BaseDir = FPaths::EnginePluginsDir();
+	if (!BaseDir.IsEmpty())
+	{
+		FString CandidateDir = BaseDir / TEXT("Klawr/KlawrEditorPlugin/Resources/Templates");
+		if (IFileManager::Get().DirectoryExists(*CandidateDir))
+		{
+			return CandidateDir;
+		}
+		else
+		{
+			CandidateDir = BaseDir / TEXT("KlawrEditorPlugin/Resources/Templates");
+			if (IFileManager::Get().DirectoryExists(*CandidateDir))
+			{
+				return CandidateDir;
+			}
+		}
+	}
+	
+	BaseDir = FPaths::GamePluginsDir();
+	if (!BaseDir.IsEmpty())
+	{
+		FString CandidateDir = BaseDir / TEXT("Klawr/KlawrEditorPlugin/Resources/Templates");
+		if (!IFileManager::Get().DirectoryExists(*CandidateDir))
+		{
+			return CandidateDir;
+		}
+		else
+		{
+			CandidateDir = BaseDir / TEXT("KlawrEditorPlugin/Resources/Templates");
+			if (IFileManager::Get().DirectoryExists(*CandidateDir))
+			{
+				return CandidateDir;
+			}
+		}
+	}
+	
+	return FString();
+}
+
+void UKlawrBlueprintFactory::GenerateScriptFile()
+{
+	// copy a template from Resources folder to a location chosen by the user
+	FString TemplatePath = GetTemplatesDir();
+	if (TemplatePath.IsEmpty())
+	{
+		// TODO: display error
+	}
+
+	FString ScriptPath = FPaths::Combine(*ScriptLocation, *ScriptName);
+	if (ScriptName.EndsWith(TEXT(".cs")))
+	{
+		TemplatePath = FPaths::Combine(*TemplatePath, TEXT("NewScript.cs"));
+		// TODO: read in the template and replace the class name, then write it out to the new file
+	}
 }

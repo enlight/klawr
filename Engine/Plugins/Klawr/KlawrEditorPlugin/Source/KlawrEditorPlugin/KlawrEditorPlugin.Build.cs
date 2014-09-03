@@ -19,7 +19,14 @@ namespace UnrealBuildTool.Rules
 			PublicDependencyModuleNames.AddRange(
 				new string[]
 				{
-					"Core",
+					// ... add other public dependencies that you statically link with here ...
+				}
+			);
+
+			PrivateDependencyModuleNames.AddRange(
+				new string[]
+				{
+                    "Core",
 					"CoreUObject",
 					"Engine",
 					"InputCore",
@@ -29,14 +36,11 @@ namespace UnrealBuildTool.Rules
 					"ClassViewer",
 					"KismetCompiler",
 					"Kismet",
-					"BlueprintGraph"
-					// ... add other public dependencies that you statically link with here ...
-				}
-			);
-
-			PrivateDependencyModuleNames.AddRange(
-				new string[]
-				{
+					"BlueprintGraph",
+                    "Slate",
+                    "SlateCore",
+                    "EditorStyle",
+                    "DesktopPlatform",
 					// ... add private dependencies that you statically link with here ...
 				}
 			);
