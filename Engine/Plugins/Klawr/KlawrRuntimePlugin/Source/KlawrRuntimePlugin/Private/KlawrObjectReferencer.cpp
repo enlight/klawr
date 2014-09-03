@@ -121,4 +121,4 @@ void FObjectReferencer::AddReferencedObjects(FReferenceCollector& Collector)
 	Collector.AllowEliminatingReferences(true);
 }
 
-} // namespace KlawrObjectUtils
+} // namespace Klawr
