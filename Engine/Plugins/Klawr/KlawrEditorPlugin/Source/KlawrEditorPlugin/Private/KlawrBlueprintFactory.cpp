@@ -48,12 +48,21 @@ bool UKlawrBlueprintFactory::DoesSupportClass(UClass* Class)
 
 bool UKlawrBlueprintFactory::ConfigureProperties()
 {
+	// FIXME: First the user must enter the name of the script file here, and then they will have to
+	// enter a name for the new Blueprint before FactoryCreateNew() is called. Most of the time
+	// they'll probably prefer the Blueprint to have the same name as the script file, and having to
+	// enter the name twice would suck! So, perhaps it would be better to let the user select the
+	// type of the script file here (C#, F# etc.) and then when they enter the Blueprint name use
+	// the same name for the new script file... but what if instead we just pop up the configuration
+	// dialog in FactoryCreateNew() instead of before it?
 	TSharedRef<SKlawrBlueprintFactoryConfig> Widget = SNew(SKlawrBlueprintFactoryConfig);
 	if (Widget->ShowAsModalWindow())
 	{
-		ScriptName = Widget->GetSourceFilename();
-		ScriptLocation = Widget->GetSourceLocation();
-		return true;
+		SourceFilename = Widget->GetSourceFilename();
+		// convert the absolute path from the config dialog to be relative to the project root
+		FString AbsGameDir = FPaths::ConvertRelativePathToFull(FPaths::GameDir());
+		SourceLocation = Widget->GetSourceLocation();
+		return FPaths::MakePathRelativeTo(SourceLocation, *AbsGameDir);
 	}
 	return false;
 }
@@ -64,9 +73,7 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 )
 {
 	GenerateScriptFile();
-	// TODO: store path to new file in the Blueprint
-	// TODO: store name of C# class in the Blueprint
-
+	
 	auto NewBlueprint = CastChecked<UKlawrBlueprint>(
 		FKismetEditorUtilities::CreateBlueprint(
 			UKlawrScriptComponent::StaticClass(), InParent, InName, BPTYPE_Normal, 
@@ -74,6 +81,17 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 			"UKlawrBlueprintFactory"
 		)
 	);
+	
+	NewBlueprint->ScriptDefinedType = FString::Printf(
+		TEXT("%s.%s"), 
+		*FPaths::GetBaseFilename(FPaths::GetProjectFilePath()), 
+		*FPaths::GetBaseFilename(SourceFilename)
+	);
+	NewBlueprint->SourceFilePath = FPaths::Combine(*SourceLocation, *SourceFilename);
+	FString ResolvedSourceFilePath = 
+		FPaths::Combine(*FPaths::GameDir(), *NewBlueprint->SourceFilePath);
+	NewBlueprint->SourceTimeStamp = 
+		IFileManager::Get().GetTimeStamp(*ResolvedSourceFilePath).ToString();
 
 	FKismetEditorUtilities::CompileBlueprint(NewBlueprint);
 	FEditorDelegates::OnAssetPostImport.Broadcast(this, NewBlueprint);
@@ -128,12 +146,37 @@ void UKlawrBlueprintFactory::GenerateScriptFile()
 	if (TemplatePath.IsEmpty())
 	{
 		// TODO: display error
+		return;
 	}
 
-	FString ScriptPath = FPaths::Combine(*ScriptLocation, *ScriptName);
-	if (ScriptName.EndsWith(TEXT(".cs")))
+	FString ProjectName = FPaths::GetBaseFilename(FPaths::GetProjectFilePath());
+	// remove any spaces in the name
+	ProjectName.ReplaceInline(TEXT(" "), TEXT(""));
+
+	FString TemplateText;
+
+	if (SourceFilename.EndsWith(TEXT(".cs")))
 	{
-		TemplatePath = FPaths::Combine(*TemplatePath, TEXT("NewScript.cs"));
-		// TODO: read in the template and replace the class name, then write it out to the new file
+		TemplatePath = FPaths::Combine(*TemplatePath, TEXT("Template.cs"));
+		if (!FPaths::FileExists(TemplatePath))
+		{
+			// TODO: display error
+			return;
+		}
+
+		// read in the template and replace template variables
+		if (FFileHelper::LoadFileToString(TemplateText, *TemplatePath))
+		{
+			TemplateText.ReplaceInline(
+				TEXT("$ProjectName$"), *ProjectName, ESearchCase::CaseSensitive
+			);
+			TemplateText.ReplaceInline(
+				TEXT("$ScriptName$"), *FPaths::GetBaseFilename(SourceFilename), 
+				ESearchCase::CaseSensitive
+			);
+		}
 	}
+
+	FString ScriptPath = FPaths::Combine(*FPaths::GameDir(), *SourceLocation, *SourceFilename);
+	FFileHelper::SaveStringToFile(TemplateText, *ScriptPath);
 }

@@ -53,7 +53,7 @@ private:
 
 private:
 	// name of source file (including extension)
-	FString ScriptName;
+	FString SourceFilename;
 	// directory where source file is located (relative to the project root)
-	FString ScriptLocation;
+	FString SourceLocation;
 };

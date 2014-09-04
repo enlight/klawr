@@ -34,6 +34,24 @@ class KLAWRRUNTIMEPLUGIN_API UKlawrBlueprint : public UBlueprint
 {
 	GENERATED_UCLASS_BODY()
 
+	/** 
+	 * Name of the type defined in the source file.
+	 * For C# scripts this should be a fully qualified class name, e.g. MyProject.MyClass
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Script)
+	FString ScriptDefinedType;
+
+	/** 
+	 * Path to script file associated with this Blueprint.
+	 * This path is relative to FPaths::GameDir().
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Script)
+	FString SourceFilePath;
+
+	/** Date & time the script file was last imported. */
+	UPROPERTY(VisibleAnywhere, Category = Script)
+	FString SourceTimeStamp;
+
 public:
 #if WITH_EDITOR
 	static bool ValidateGeneratedClass(const UClass* Class);
