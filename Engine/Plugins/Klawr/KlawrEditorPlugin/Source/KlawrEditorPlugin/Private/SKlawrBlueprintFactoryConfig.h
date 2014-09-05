@@ -35,11 +35,21 @@ class SKlawrBlueprintFactoryConfig : public SCompoundWidget
 public:
 
 	SLATE_BEGIN_ARGS(SKlawrBlueprintFactoryConfig) {}
+
+		/** Initial value for Source Filename text-box. */
+		SLATE_TEXT_ARGUMENT(SourceFilename)
+
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs)
 	{
 		bUserConfirmed = false;
+		FString SourceFilename = InArgs._SourceFilename;
+		if (!SourceFilename.EndsWith(TEXT(".cs")))
+		{
+			SourceFilename.Append(FString(TEXT(".cs")));
+		}
+		SourceFilenameText = FText::FromString(SourceFilename);
 		SourceLocationText = FText::FromString(TEXT("Scripts"));
 		float UniformPadding = 5;
 

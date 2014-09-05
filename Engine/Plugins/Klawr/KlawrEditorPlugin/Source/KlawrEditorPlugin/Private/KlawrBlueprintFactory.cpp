@@ -46,32 +46,26 @@ bool UKlawrBlueprintFactory::DoesSupportClass(UClass* Class)
 	return Class == UKlawrBlueprint::StaticClass();
 }
 
-bool UKlawrBlueprintFactory::ConfigureProperties()
-{
-	// FIXME: First the user must enter the name of the script file here, and then they will have to
-	// enter a name for the new Blueprint before FactoryCreateNew() is called. Most of the time
-	// they'll probably prefer the Blueprint to have the same name as the script file, and having to
-	// enter the name twice would suck! So, perhaps it would be better to let the user select the
-	// type of the script file here (C#, F# etc.) and then when they enter the Blueprint name use
-	// the same name for the new script file... but what if instead we just pop up the configuration
-	// dialog in FactoryCreateNew() instead of before it?
-	TSharedRef<SKlawrBlueprintFactoryConfig> Widget = SNew(SKlawrBlueprintFactoryConfig);
-	if (Widget->ShowAsModalWindow())
-	{
-		SourceFilename = Widget->GetSourceFilename();
-		// convert the absolute path from the config dialog to be relative to the project root
-		FString AbsGameDir = FPaths::ConvertRelativePathToFull(FPaths::GameDir());
-		SourceLocation = Widget->GetSourceLocation();
-		return FPaths::MakePathRelativeTo(SourceLocation, *AbsGameDir);
-	}
-	return false;
-}
-
 UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context,
 	FFeedbackContext* Warn
 )
 {
+	TSharedRef<SKlawrBlueprintFactoryConfig> Widget = 
+		SNew(SKlawrBlueprintFactoryConfig)
+		.SourceFilename(InName.ToString());
+
+	if (!Widget->ShowAsModalWindow())
+	{
+		return nullptr;
+	}
+	
+	SourceFilename = Widget->GetSourceFilename();
+	// convert the absolute path from the config dialog to be relative to the project root
+	FString AbsGameDir = FPaths::ConvertRelativePathToFull(FPaths::GameDir());
+	SourceLocation = Widget->GetSourceLocation();
+	FPaths::MakePathRelativeTo(SourceLocation, *AbsGameDir);
+	
 	GenerateScriptFile();
 	
 	auto NewBlueprint = CastChecked<UKlawrBlueprint>(

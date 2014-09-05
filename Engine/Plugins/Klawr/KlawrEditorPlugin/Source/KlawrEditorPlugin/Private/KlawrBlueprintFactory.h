@@ -36,12 +36,6 @@ class UKlawrBlueprintFactory : public UFactory
 public: // UFactory interface
 	virtual bool DoesSupportClass(UClass* Class) override;
 
-	/** 
-	 * Display a settings dialog to allow users to configure the Blueprint that will be created.
-	 * @return true if the user confirmed the settings, false if the user canceled
-	 */
-	virtual bool ConfigureProperties() override;
-
 	virtual UObject* FactoryCreateNew(
 		UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, 
 		FFeedbackContext* Warn
