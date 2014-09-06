@@ -23,30 +23,17 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
-#include "KlawrBlueprintFactory.generated.h"
+namespace Klawr {
 
-/**
- * Creates Klawr Blueprints.
- */
-UCLASS()
-class UKlawrBlueprintFactory : public UFactory
+class FGameProjectBuilder
 {
-	GENERATED_UCLASS_BODY()
-
-public: // UFactory interface
-	virtual bool DoesSupportClass(UClass* Class) override;
-
-	virtual UObject* FactoryCreateNew(
-		UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, 
-		FFeedbackContext* Warn
-	) override;
-
-private:
-	void GenerateScriptFile();
-
-private:
-	// name of source file (including extension)
-	FString SourceFilename;
-	// directory where source file is located (relative to the project root)
-	FString SourceLocation;
+public:
+	static const FString& GetProjectFilename();
+	static bool GenerateProject();
+	static bool AddSourceFileToProject(const FString& SourceFilename);
+	static FString GetTemplatesDir();
+	static void GetSourceDirs(TArray<FString>& SourceDirs);
+	static FString GetProjectAssemblyName();
 };
+
+} // Klawr

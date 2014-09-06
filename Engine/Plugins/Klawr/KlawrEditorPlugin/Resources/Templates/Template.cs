@@ -1,7 +1,7 @@
 ﻿using Klawr.ClrHost.Interfaces;
 using Klawr.UnrealEngine;
 
-namespace $ProjectName$
+namespace $RootNamespace$
 {
     public class $ScriptName$ : UKlawrScriptComponent
     {

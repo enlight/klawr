@@ -23,30 +23,48 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
-#include "KlawrBlueprintFactory.generated.h"
+#include "pugixml.hpp"
+
+namespace Klawr {
 
 /**
- * Creates Klawr Blueprints.
+ * Allows for simple manipulation of C# project files (.csproj).
  */
-UCLASS()
-class UKlawrBlueprintFactory : public UFactory
+class FCSharpProject
 {
-	GENERATED_UCLASS_BODY()
+public:
+	static TSharedPtr<FCSharpProject> Load(const FString& InProjectFilename);
+	bool Save();
+	bool SaveAs(const FString& InProjectFilename);
 
-public: // UFactory interface
-	virtual bool DoesSupportClass(UClass* Class) override;
+	/**
+	 * Add a source file to the project.
+	 * @param SourceFilename Path to source file on disk.
+	 * @param LinkFilename Path under which the source file should be displayed in the project,
+	 *                     may be empty.
+	 * @note SourceFilename and LinkFilename don't have to match, e.g. SourceFilename could be 
+	 *       "../../Scripts/MyClass.cs" while LinkFilename is "MyScripts/MyClass.cs".
+	 */
+	void AddSourceFile(const FString& SourceFilename, const FString& LinkFilename);
 
-	virtual UObject* FactoryCreateNew(
-		UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, 
-		FFeedbackContext* Warn
-	) override;
+	void AddAssemblyReference(const FString& AssemblyFilename);
+
+	void SetProjectGuid(const FGuid& Guid);
+	void SetRootNamespace(const FString& RootNamespace);
+	void SetAssemblyName(const FString& AssemblyName);
 
 private:
-	void GenerateScriptFile();
+	// users should call the static Load() to obtain new instances
+	FCSharpProject() { }
+
+	bool LoadFromFile(const FString& InProjectFilename);
 
 private:
-	// name of source file (including extension)
-	FString SourceFilename;
-	// directory where source file is located (relative to the project root)
-	FString SourceLocation;
+	// absolute path to .csproj file
+	FString ProjectFilename;
+	pugi::xml_document XmlDoc;
+	pugi::xml_node SourceNode;
+	pugi::xml_node ReferencesNode;
 };
+
+} // namespace Klawr

@@ -28,6 +28,7 @@
 #include "KlawrBlueprintGeneratedClass.h"
 #include "KlawrScriptComponent.h"
 #include "SKlawrBlueprintFactoryConfig.h"
+#include "KlawrGameProjectBuilder.h"
 
 UKlawrBlueprintFactory::UKlawrBlueprintFactory(const FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -68,6 +69,17 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	
 	GenerateScriptFile();
 	
+	FString SourceFilePath = FPaths::Combine(*SourceLocation, *SourceFilename);
+	FString ResolvedSourceFilePath = FPaths::Combine(*FPaths::GameDir(), *SourceFilePath);
+
+	// update the .csproj
+	if (!Klawr::FGameProjectBuilder::AddSourceFileToProject(ResolvedSourceFilePath))
+	{
+		return nullptr;
+	}
+	// TOOD: build the .csproj
+	// TODO: reload the primary engine app domain
+
 	auto NewBlueprint = CastChecked<UKlawrBlueprint>(
 		FKismetEditorUtilities::CreateBlueprint(
 			UKlawrScriptComponent::StaticClass(), InParent, InName, BPTYPE_Normal, 
@@ -81,9 +93,7 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 		*FPaths::GetBaseFilename(FPaths::GetProjectFilePath()), 
 		*FPaths::GetBaseFilename(SourceFilename)
 	);
-	NewBlueprint->SourceFilePath = FPaths::Combine(*SourceLocation, *SourceFilename);
-	FString ResolvedSourceFilePath = 
-		FPaths::Combine(*FPaths::GameDir(), *NewBlueprint->SourceFilePath);
+	NewBlueprint->SourceFilePath = SourceFilePath;
 	NewBlueprint->SourceTimeStamp = 
 		IFileManager::Get().GetTimeStamp(*ResolvedSourceFilePath).ToString();
 
@@ -92,60 +102,15 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	return NewBlueprint;
 }
 
-FString UKlawrBlueprintFactory::GetTemplatesDir()
-{
-	FString BaseDir = FPaths::EnginePluginsDir();
-	if (!BaseDir.IsEmpty())
-	{
-		FString CandidateDir = BaseDir / TEXT("Klawr/KlawrEditorPlugin/Resources/Templates");
-		if (IFileManager::Get().DirectoryExists(*CandidateDir))
-		{
-			return CandidateDir;
-		}
-		else
-		{
-			CandidateDir = BaseDir / TEXT("KlawrEditorPlugin/Resources/Templates");
-			if (IFileManager::Get().DirectoryExists(*CandidateDir))
-			{
-				return CandidateDir;
-			}
-		}
-	}
-	
-	BaseDir = FPaths::GamePluginsDir();
-	if (!BaseDir.IsEmpty())
-	{
-		FString CandidateDir = BaseDir / TEXT("Klawr/KlawrEditorPlugin/Resources/Templates");
-		if (!IFileManager::Get().DirectoryExists(*CandidateDir))
-		{
-			return CandidateDir;
-		}
-		else
-		{
-			CandidateDir = BaseDir / TEXT("KlawrEditorPlugin/Resources/Templates");
-			if (IFileManager::Get().DirectoryExists(*CandidateDir))
-			{
-				return CandidateDir;
-			}
-		}
-	}
-	
-	return FString();
-}
-
 void UKlawrBlueprintFactory::GenerateScriptFile()
 {
 	// copy a template from Resources folder to a location chosen by the user
-	FString TemplatePath = GetTemplatesDir();
+	FString TemplatePath = Klawr::FGameProjectBuilder::GetTemplatesDir();
 	if (TemplatePath.IsEmpty())
 	{
 		// TODO: display error
 		return;
 	}
-
-	FString ProjectName = FPaths::GetBaseFilename(FPaths::GetProjectFilePath());
-	// remove any spaces in the name
-	ProjectName.ReplaceInline(TEXT(" "), TEXT(""));
 
 	FString TemplateText;
 
@@ -162,10 +127,11 @@ void UKlawrBlueprintFactory::GenerateScriptFile()
 		if (FFileHelper::LoadFileToString(TemplateText, *TemplatePath))
 		{
 			TemplateText.ReplaceInline(
-				TEXT("$ProjectName$"), *ProjectName, ESearchCase::CaseSensitive
+				TEXT("$RootNamespace$"), *Klawr::FGameProjectBuilder::GetProjectAssemblyName(), 
+				ESearchCase::CaseSensitive
 			);
 			TemplateText.ReplaceInline(
-				TEXT("$ScriptName$"), *FPaths::GetBaseFilename(SourceFilename), 
+				TEXT("$ScriptName$"), *FPaths::GetBaseFilename(SourceFilename),
 				ESearchCase::CaseSensitive
 			);
 		}
