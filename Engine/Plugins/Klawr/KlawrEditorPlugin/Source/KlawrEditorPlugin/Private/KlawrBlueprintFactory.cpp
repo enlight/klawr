@@ -77,7 +77,9 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	{
 		return nullptr;
 	}
-	// TOOD: build the .csproj
+	// build the .csproj
+	Klawr::FGameProjectBuilder::BuildProject(Warn);
+	
 	// TODO: reload the primary engine app domain
 
 	auto NewBlueprint = CastChecked<UKlawrBlueprint>(

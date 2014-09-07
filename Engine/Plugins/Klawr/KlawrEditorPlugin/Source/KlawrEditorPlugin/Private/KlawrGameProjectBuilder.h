@@ -34,6 +34,7 @@ public:
 	static FString GetTemplatesDir();
 	static void GetSourceDirs(TArray<FString>& SourceDirs);
 	static FString GetProjectAssemblyName();
+	static bool BuildProject(FFeedbackContext* Warn);
 };
 
 } // Klawr

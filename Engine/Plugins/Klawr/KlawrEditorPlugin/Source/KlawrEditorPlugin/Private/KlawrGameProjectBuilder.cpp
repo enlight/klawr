@@ -25,6 +25,7 @@
 #include "KlawrEditorPluginPrivatePCH.h"
 #include "KlawrGameProjectBuilder.h"
 #include "KlawrCSharpProject.h"
+#include "FeedbackContextMarkup.h"
 
 namespace Klawr {
 
@@ -225,6 +226,43 @@ FString FGameProjectBuilder::GetProjectAssemblyName()
 	FString ProjectName = FPaths::GetBaseFilename(FPaths::GetProjectFilePath());
 	// remove any spaces in the name
 	return ProjectName.Replace(TEXT(" "), TEXT(""));
+}
+
+bool FGameProjectBuilder::BuildProject(FFeedbackContext* Warn)
+{
+	FString EnvironmentSetupFilename;
+	if (!FPlatformMisc::GetVSComnTools(12 /* VS 2013 */, EnvironmentSetupFilename))
+	{
+		// TODO: log error
+		return false;
+	}
+	EnvironmentSetupFilename /= TEXT("../../VC/bin/x86_amd64/vcvarsx86_amd64.bat");
+	FPaths::CollapseRelativeDirectories(EnvironmentSetupFilename);
+	FPaths::MakePlatformFilename(EnvironmentSetupFilename);
+
+	if (!FPaths::FileExists(EnvironmentSetupFilename))
+	{
+		// TODO: log error
+		return false;
+	}
+
+	FString BuildFilename = FPaths::GetPath(GetProjectFilename()) / TEXT("Build.bat");
+	FPaths::CollapseRelativeDirectories(BuildFilename);
+	FPaths::MakePlatformFilename(BuildFilename);
+	FString Args = FString::Printf(
+		TEXT("\"%s\" %s"), 
+		*EnvironmentSetupFilename, *FPaths::GetCleanFilename(GetProjectFilename())
+	);
+
+	Warn->Log(TEXT("Compiling Scripts..."));
+	Warn->Logf(TEXT("Running %s %s"), *BuildFilename, *Args);
+
+	int32 ReturnCode = -1; // zero will indicate success
+	bool bBuildExecuted = FFeedbackContextMarkup::PipeProcessOutput(
+		NSLOCTEXT("KlawrGameProjectBuilder", "CompilingScripts", "Compiling Scripts..."), 
+		BuildFilename, Args, Warn, &ReturnCode
+	);
+	return bBuildExecuted && (ReturnCode == 0);
 }
 
 } // namespace Klawr
