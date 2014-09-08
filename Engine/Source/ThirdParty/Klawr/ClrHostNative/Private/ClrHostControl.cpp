@@ -43,7 +43,7 @@ bool ClrHostControl::DestroyEngineAppDomain(int appDomainID)
 
 	if (_defaultAppDomainManager)
 	{
-		return _defaultAppDomainManager->DestroyEngineAppDomain(appDomainID);
+		return _defaultAppDomainManager->DestroyEngineAppDomain(appDomainID) != VARIANT_FALSE;
 	}
 
 	return false;
