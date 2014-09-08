@@ -112,7 +112,7 @@ public:
 		}
 	}
 
-#elif // standalone build
+#else // standalone build
 
 	FRuntimePlugin()
 		: _primaryEngineAppDomain(0)
