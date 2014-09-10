@@ -53,122 +53,70 @@ void RegisterWrapperClasses();
 
 class FRuntimePlugin : public IKlawrRuntimePlugin
 {
-	int _primaryEngineAppDomain;
+	int PrimaryEngineAppDomainID;
 
 #if WITH_EDITOR
-
-	int _PIEAppDomain;
+	int PIEAppDomainID;
+#endif // WITH_EDITOR
 
 public:
 
 	FRuntimePlugin()
-		: _primaryEngineAppDomain(0)
-		, _PIEAppDomain(0)
+		: PrimaryEngineAppDomainID(0)
 	{
-	}
-
-	virtual int GetObjectAppDomainID(const UObject* Object) const override
-	{
-		return (Object->GetOutermost()->PackageFlags & PKG_PlayInEditor) ?
-			_PIEAppDomain : _primaryEngineAppDomain;
-	}
-
-	virtual void OnBeginPIE(bool bIsSimulating) override
-	{
-		UE_LOG(LogKlawrRuntimePlugin, Display, TEXT("Creating a new app domain for PIE."));
-		if (ensure(_PIEAppDomain == 0))
-		{
-			if (!IClrHost::Get()->CreateEngineAppDomain(FObjectUtils::Info, _PIEAppDomain))
-			{
-				UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to create PIE app domain!"));
-			}
-		}
-	}
-
-	virtual void OnEndPIE(bool bIsSimulating) override
-	{
-		UE_LOG(LogKlawrRuntimePlugin, Display, TEXT("Unloading PIE app domain."));
-		if (ensure(_PIEAppDomain != 0))
-		{
-			if (!IClrHost::Get()->DestroyEngineAppDomain(_PIEAppDomain))
-			{
-				UE_LOG(
-					LogKlawrRuntimePlugin, Warning,	TEXT("Failed to unload PIE app domain!")
-				);
-			}
-			// hopefully the PIE app domain was unloaded successfully and all references to native 
-			// objects within that app domain were released, but in case something went wrong the
-			// remaining references need to be cleared out so that UnrealEd can get rid of all the
-			// objects it created for PIE
-			int32 NumReleased = FObjectReferencer::RemoveAllObjectRefsInAppDomain(_PIEAppDomain);
-			if (NumReleased > 0)
-			{
-				UE_LOG(
-					LogKlawrRuntimePlugin, Warning, 
-					TEXT("%d object(s) still referenced in PIE app domain."), NumReleased
-				);
-			}
-			_PIEAppDomain = 0;
-		}
-	}
-
-#else // standalone build
-
-	FRuntimePlugin()
-		: _primaryEngineAppDomain(0)
-	{
-	}
-
-	virtual int GetObjectAppDomainID(const UObject* Object) const override
-	{
-		return _primaryEngineAppDomain;
-	}
-
+#if WITH_EDITOR
+		PIEAppDomainID = 0;
 #endif // WITH_EDITOR
+	}
+
+#if WITH_EDITOR
+	virtual void SetPIEAppDomainID(int AppDomainID)
+	{
+		PIEAppDomainID = AppDomainID;
+	}
+#endif // WITH_EDITOR
+
+	virtual int GetObjectAppDomainID(const UObject* Object) const override
+	{
+#if WITH_EDITOR
+		return (Object->GetOutermost()->PackageFlags & PKG_PlayInEditor) ?
+			PIEAppDomainID : PrimaryEngineAppDomainID;
+#else
+		return PrimaryEngineAppDomainID;
+#endif // WITH_EDITOR
+	}
 
 	virtual bool CreatePrimaryAppDomain() override
 	{
-		check(_primaryEngineAppDomain == 0);
+		bool bCreated = false;
 
-		bool bCreated = IClrHost::Get()->CreateEngineAppDomain(
-			FObjectUtils::Info, _primaryEngineAppDomain
-		);
-
-		if (!bCreated)
+		if (ensure(PrimaryEngineAppDomainID == 0))
 		{
-			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to create primary engine app domain!"));
+			bCreated = CreateAppDomain(PrimaryEngineAppDomainID);
+
+			if (!bCreated)
+			{
+				UE_LOG(
+					LogKlawrRuntimePlugin, Error, 
+					TEXT("Failed to create primary engine app domain!")
+				);
+			}
 		}
+		
 		return bCreated;
 	}
 
 	virtual bool DestroyPrimaryAppDomain() override
 	{
-		// nothing to destroy if it doesn't exist
-		if (_primaryEngineAppDomain == 0)
-		{
-			return true;
-		}
-
-		bool bDestroyed = IClrHost::Get()->DestroyEngineAppDomain(_primaryEngineAppDomain);
-
-		// hopefully the PIE app domain was unloaded successfully and all references to native 
-		// objects within that app domain were released, but in case something went wrong the
-		// remaining references need to be cleared out so that UnrealEd can get rid of all the
-		// objects it created for PIE
-		int32 NumReleased = FObjectReferencer::RemoveAllObjectRefsInAppDomain(_PIEAppDomain);
-		if (NumReleased > 0)
-		{
-			UE_LOG(
-				LogKlawrRuntimePlugin, Warning,
-				TEXT("%d object(s) still referenced in the primary engine app domain."), NumReleased
-			);
-		}
-
-		_primaryEngineAppDomain = 0;
+		bool bDestroyed = DestroyAppDomain(PrimaryEngineAppDomainID);
+		PrimaryEngineAppDomainID = 0;
 
 		if (!bDestroyed)
 		{
-			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to destroy primary engine app domain!"))
+			UE_LOG(
+				LogKlawrRuntimePlugin, Error, 
+				TEXT("Failed to destroy primary engine app domain!")
+			);
 		}
 		return bDestroyed;
 	}
@@ -181,6 +129,41 @@ public:
 		// designate the new engine app domain as the primary domain
 		
 		return false;
+	}
+
+	virtual bool CreateAppDomain(int& OutAppDomainID) override
+	{
+		return IClrHost::Get()->CreateEngineAppDomain(FObjectUtils::Info, OutAppDomainID);
+	}
+
+	virtual bool DestroyAppDomain(int AppDomainID) override
+	{
+		// nothing to destroy if it doesn't exist
+		if (AppDomainID == 0)
+		{
+			return true;
+		}
+
+		bool bDestroyed = IClrHost::Get()->DestroyEngineAppDomain(AppDomainID);
+
+#if WITH_EDITOR
+		// FIXME: This isn't very robust, need to improve!
+		// hopefully the app domain was unloaded successfully and all references to native 
+		// objects within that app domain were released, but in case something went wrong the
+		// remaining references need to be cleared out so that UnrealEd can garbage collect the
+		// native objects that were referenced in the app domain
+		int32 NumReleased = FObjectReferencer::RemoveAllObjectRefsInAppDomain(AppDomainID);
+		if (NumReleased > 0)
+		{
+			UE_LOG(
+				LogKlawrRuntimePlugin, Warning,
+				TEXT("%d object(s) still referenced in the engine app domain #%d."), 
+				NumReleased, AppDomainID
+			);
+		}
+#endif // WITH_EDITOR
+
+		return bDestroyed;
 	}
 
 public: // IModuleInterface interface
@@ -214,6 +197,8 @@ public: // IModuleInterface interface
 	
 	virtual void ShutdownModule() override
 	{
+		// the host will destroy all app domains on shutdown, there is no need to explicitly
+		// destroy the primary app domain
 		IClrHost::Get()->Shutdown();
 		FObjectReferencer::Shutdown();
 	}

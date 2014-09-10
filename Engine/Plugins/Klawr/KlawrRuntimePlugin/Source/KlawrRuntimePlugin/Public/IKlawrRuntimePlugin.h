@@ -55,15 +55,15 @@ public:
 	virtual bool DestroyPrimaryAppDomain() = 0;
 	virtual bool ReloadPrimaryAppDomain() = 0;
 
+	virtual bool CreateAppDomain(int& OutAppDomainID) = 0;
+	virtual bool DestroyAppDomain(int AppDomainID) = 0;
+
+#if WITH_EDITOR
+	virtual void SetPIEAppDomainID(int AppDomainID) = 0;
+#endif // WITH_EDITOR
+
 	/**
 	 * Get the ID of the app domain in which the given object is referenced.
 	 */
 	virtual int GetObjectAppDomainID(const UObject* Object) const = 0;
-
-#if WITH_EDITOR
-
-	virtual void OnBeginPIE(bool bIsSimulating) = 0;
-	virtual void OnEndPIE(bool bIsSimulating) = 0;
-
-#endif // WITH_EDITOR
 };

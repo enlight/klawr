@@ -36,8 +36,11 @@ namespace Klawr {
 
 class FEditorPlugin : public IKlawrEditorPlugin
 {
+private:
 	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
+	int PIEAppDomainID;
 
+private:
 	/** Called by the Blueprint compiler. */
 	FReply CompileBlueprint(
 		UBlueprint* Blueprint, const FKismetCompilerOptions& CompileOptions,
@@ -62,12 +65,42 @@ class FEditorPlugin : public IKlawrEditorPlugin
 
 	void OnBeginPIE(const bool bIsSimulating)
 	{
-		IKlawrRuntimePlugin::Get().OnBeginPIE(bIsSimulating);
+		UE_LOG(LogKlawrEditorPlugin, Display, TEXT("Creating a new app domain for PIE."));
+		if (ensure(PIEAppDomainID == 0))
+		{
+			auto& Runtime = IKlawrRuntimePlugin::Get();
+			if (Runtime.CreateAppDomain(PIEAppDomainID))
+			{
+				Runtime.SetPIEAppDomainID(PIEAppDomainID);
+			}
+			else
+			{
+				UE_LOG(LogKlawrEditorPlugin, Error, TEXT("Failed to create PIE app domain!"));
+			}
+		}
 	}
 
 	void OnEndPIE(const bool bIsSimulating)
 	{
-		IKlawrRuntimePlugin::Get().OnEndPIE(bIsSimulating);
+		UE_LOG(LogKlawrEditorPlugin, Display, TEXT("Unloading PIE app domain."));
+		if (ensure(PIEAppDomainID != 0))
+		{
+			auto& Runtime = IKlawrRuntimePlugin::Get();
+			if (!Runtime.DestroyAppDomain(PIEAppDomainID))
+			{
+				UE_LOG(
+					LogKlawrEditorPlugin, Warning, TEXT("Failed to unload PIE app domain!")
+				);
+			}
+			PIEAppDomainID = 0;
+			Runtime.SetPIEAppDomainID(PIEAppDomainID);
+		}
+	}
+
+public:
+	FEditorPlugin()
+		: PIEAppDomainID(0)
+	{
 	}
 
 public: // IModuleInterface interface
