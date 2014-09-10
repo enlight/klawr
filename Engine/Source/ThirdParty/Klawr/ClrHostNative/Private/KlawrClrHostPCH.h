@@ -16,7 +16,7 @@ typedef std::wstring tstring;
 typedef std::string tstring;
 #endif // _UNICODE
 
-#include <assert.h>
+#include "DebugMacros.h"
 
 #include <mscoree.h>
 

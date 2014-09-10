@@ -50,7 +50,7 @@ namespace FGameProjectBuilderInternal
 
 const FString& FGameProjectBuilder::GetProjectFilename()
 {
-	static FString ProjectFilename = FPaths::Combine(
+	static const FString ProjectFilename = FPaths::Combine(
 		*FPaths::GameIntermediateDir(), TEXT("ProjectFiles"), 
 		*FPaths::GetBaseFilename(FPaths::GetProjectFilePath()),
 		*FPaths::GetBaseFilename(FPaths::GetProjectFilePath())
@@ -105,17 +105,26 @@ bool FGameProjectBuilder::GenerateProject()
 	FGuid ProjectGuid;
 	FPlatformMisc::CreateGuid(ProjectGuid);
 	Project->SetProjectGuid(ProjectGuid);
-	Project->SetRootNamespace(GetProjectAssemblyName());
+	Project->SetRootNamespace(GetProjectRootNamespace());
 	Project->SetAssemblyName(GetProjectAssemblyName());
-	
+
+	// set the directory to which the game scripts assembly and pdb files will be output to
+	FString OutputPath = GetOutputDir();
+	FPaths::MakePathRelativeTo(OutputPath, *ProjectFilename);
+	FPaths::MakePlatformFilename(OutputPath);
+	Project->SetOutputPath(OutputPath);
+
 	Project->AddAssemblyReference(
-		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Interfaces.dll"))
+		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Interfaces.dll")),
+		false
 	);
 	Project->AddAssemblyReference(
-		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Managed.dll"))
+		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Managed.dll")),
+		false
 	);
 	Project->AddAssemblyReference(
-		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.UnrealEngine.dll"))
+		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.UnrealEngine.dll")),
+		false
 	);
 		
 	// TODO: scan for assemblies in the script source directories and add them to project references,
@@ -221,11 +230,38 @@ void FGameProjectBuilder::GetSourceDirs(TArray<FString>& OutSourceDirs)
 	}
 }
 
-FString FGameProjectBuilder::GetProjectAssemblyName()
+const FString& FGameProjectBuilder::GetProjectRootNamespace()
 {
-	FString ProjectName = FPaths::GetBaseFilename(FPaths::GetProjectFilePath());
-	// remove any spaces in the name
-	return ProjectName.Replace(TEXT(" "), TEXT(""));
+	static const FString RootNamespace = FPaths::GetBaseFilename(FPaths::GetProjectFilePath())
+		.Replace(TEXT(" "), TEXT("")); // remove any spaces in the name
+
+	return RootNamespace;
+}
+
+const FString& FGameProjectBuilder::GetProjectAssemblyName()
+{
+	static const FString AssemblyName = "GameScripts";
+	
+	return AssemblyName;
+}
+
+const FString& FGameProjectBuilder::GetProjectAssemblyFilename()
+{
+	static const FString AssemblyFilename = (GetOutputDir() / GetProjectAssemblyName())
+		.Append(FString(TEXT(".dll")));
+
+	return AssemblyFilename;
+}
+
+const FString& FGameProjectBuilder::GetOutputDir()
+{
+	static const FString OutputDir = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(
+			*FPaths::GameDir(), TEXT("Binaries"), FPlatformProcess::GetBinariesSubdirectory(),
+			TEXT("Klawr/ShadowCopy")
+		)
+	);
+	return OutputDir;
 }
 
 bool FGameProjectBuilder::BuildProject(FFeedbackContext* Warn)
@@ -262,7 +298,40 @@ bool FGameProjectBuilder::BuildProject(FFeedbackContext* Warn)
 		NSLOCTEXT("KlawrGameProjectBuilder", "CompilingScripts", "Compiling Scripts..."), 
 		BuildFilename, Args, Warn, &ReturnCode
 	);
-	return bBuildExecuted && (ReturnCode == 0);
+	bool bBuildSucceeded = bBuildExecuted && (ReturnCode == 0);
+
+	if (bBuildSucceeded)
+	{
+		CopyPrivateReferencedAssemblies();
+	}
+	return bBuildSucceeded;
+}
+
+void FGameProjectBuilder::CopyPrivateReferencedAssemblies()
+{
+	static const FString DestDir = FPaths::Combine(
+		*FPaths::GameDir(), TEXT("Binaries"), FPlatformProcess::GetBinariesSubdirectory(),
+		TEXT("Klawr/Assemblies")
+	);
+
+	auto& FileManager = IFileManager::Get();
+
+	// these assemblies don't need to be shadow copied, so they go into Klawr/Assemblies
+
+	FileManager.Copy(
+		*(DestDir / TEXT("Klawr.ClrHost.Interfaces.dll")),
+		*FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Interfaces.dll"))
+	);
+
+	FileManager.Copy(
+		*(DestDir / TEXT("Klawr.ClrHost.Managed.dll")),
+		*FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Managed.dll"))
+	);
+
+	FileManager.Copy(
+		*(DestDir / TEXT("Klawr.UnrealEngine.dll")),
+		*FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.UnrealEngine.dll"))
+	);
 }
 
 } // namespace Klawr

@@ -28,13 +28,19 @@ namespace Klawr {
 class FGameProjectBuilder
 {
 public:
+	/** Get the path to the game scripts .csproj file. */
 	static const FString& GetProjectFilename();
 	static bool GenerateProject();
 	static bool AddSourceFileToProject(const FString& SourceFilename);
 	static FString GetTemplatesDir();
 	static void GetSourceDirs(TArray<FString>& SourceDirs);
-	static FString GetProjectAssemblyName();
+	static const FString& GetProjectRootNamespace();
+	static const FString& GetProjectAssemblyName();
+	static const FString& GetProjectAssemblyFilename();
+	static const FString& GetOutputDir();
 	static bool BuildProject(FFeedbackContext* Warn);
+	/** Copy private referenced assemblies to a location they can be loaded from at runtime. */
+	static void CopyPrivateReferencedAssemblies();
 };
 
 } // Klawr

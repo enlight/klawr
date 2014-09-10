@@ -47,11 +47,17 @@ public:
 	 */
 	void AddSourceFile(const FString& SourceFilename, const FString& LinkFilename);
 
-	void AddAssemblyReference(const FString& AssemblyFilename);
+	/**
+	 * Add an assembly reference to the project.
+	 * @param bCopyLocal If true the referenced assembly will be copied to the output directory,
+	 *                   true by default.
+	 */
+	void AddAssemblyReference(const FString& AssemblyFilename, bool bCopyLocal = true);
 
 	void SetProjectGuid(const FGuid& Guid);
 	void SetRootNamespace(const FString& RootNamespace);
 	void SetAssemblyName(const FString& AssemblyName);
+	void SetOutputPath(const FString& OutputPath);
 
 private:
 	// users should call the static Load() to obtain new instances

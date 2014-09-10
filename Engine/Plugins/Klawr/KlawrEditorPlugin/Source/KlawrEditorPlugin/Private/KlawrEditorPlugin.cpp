@@ -28,6 +28,7 @@
 #include "KismetCompilerModule.h"
 #include "AssetTypeActions_KlawrBlueprint.h"
 #include "IKlawrRuntimePlugin.h"
+#include "KlawrGameProjectBuilder.h"
 
 DEFINE_LOG_CATEGORY(LogKlawrEditorPlugin);
 
@@ -72,6 +73,29 @@ class FEditorPlugin : public IKlawrEditorPlugin
 public: // IModuleInterface interface
 	virtual void StartupModule() override
 	{
+		// check if game scripts assembly exists, if not build it
+		if (!FPaths::FileExists(FGameProjectBuilder::GetProjectAssemblyFilename()))
+		{
+			// the .csproj may not exist yet, so generate it if need be
+			if (!FPaths::FileExists(FGameProjectBuilder::GetProjectFilename()))
+			{
+				if (!FGameProjectBuilder::GenerateProject())
+				{
+					return;
+				}
+			}
+			// FIXME: this shouldn't display any dialogs or anything, we're still loading modules
+			// (though this seems to work fine for now)
+			if (!FGameProjectBuilder::BuildProject(GWarn) || 
+				!FPaths::FileExists(FGameProjectBuilder::GetProjectAssemblyFilename()))
+			{
+				UE_LOG(LogKlawrEditorPlugin, Error, TEXT("Failed to build scripts assembly."));
+				return;
+			}
+		}
+
+		IKlawrRuntimePlugin::Get().CreatePrimaryAppDomain();
+		
 		// register asset types
 		auto& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 		AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_KlawrBlueprint));
@@ -102,6 +126,8 @@ public: // IModuleInterface interface
 				AssetTools.UnregisterAssetTypeActions(Action);
 			}
 		}
+
+		IKlawrRuntimePlugin::Get().DestroyPrimaryAppDomain();
 	}
 };
 

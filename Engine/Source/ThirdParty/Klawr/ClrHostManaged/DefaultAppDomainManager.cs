@@ -25,6 +25,7 @@
 using Klawr.ClrHost.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Klawr.ClrHost.Managed
 {
@@ -42,8 +43,8 @@ namespace Klawr.ClrHost.Managed
             // register the custom domain manager with the unmanaged host
             this.InitializationFlags = AppDomainManagerInitializationOptions.RegisterWithHost;
         }
-        
-        public int CreateEngineAppDomain()
+
+        public int CreateEngineAppDomain(string applicationBase)
         {
             var currentSetup = AppDomain.CurrentDomain.SetupInformation;
             var setup = new AppDomainSetup()
@@ -51,13 +52,36 @@ namespace Klawr.ClrHost.Managed
                 AppDomainManagerAssembly = "Klawr.ClrHost.Managed",
                 AppDomainManagerType = "Klawr.ClrHost.Managed.EngineAppDomainManager",
                 ApplicationName = "Klawr.UnrealEngine",
-                ApplicationBase = currentSetup.ApplicationBase,
-                PrivateBinPath = currentSetup.PrivateBinPath
+                ApplicationBase = (
+                    String.IsNullOrEmpty(applicationBase) ? 
+                    currentSetup.ApplicationBase : applicationBase
+                ),
+                // semi-colon delimited list of subdirectories of ApplicationBase where private 
+                // assemblies can be loaded from
+                PrivateBinPath = "Assemblies;ShadowCopy",
+                // only load private assemblies from PrivateBinPath, not ApplicationBase
+                PrivateBinPathProbe = String.Empty,
+                ShadowCopyFiles = "true"
             };
-            // this will instantiate a new app domain manager and call InitializeNewDomain()
-            var engineAppDomain = AppDomain.CreateDomain("EngineDomain", null, setup);
-            var domainId = engineAppDomain.Id;
-            _engineAppDomains.Add(domainId, engineAppDomain);
+            // semi-colon delimited list of absolute paths to directories containing assemblies that
+            // should be shadow copied (directories can be outside ApplicationBase)
+            setup.ShadowCopyDirectories = Path.Combine(setup.ApplicationBase, "ShadowCopy");
+            // directory where shadow copies of assemblies should be stored 
+            // (can be outside ApplicationBase)
+            setup.CachePath = Path.Combine(setup.ApplicationBase, "Cache");
+
+            int domainId = 0;
+            try
+            {
+                // this will instantiate a new app domain manager and call InitializeNewDomain()
+                var engineAppDomain = AppDomain.CreateDomain("EngineDomain", null, setup);
+                domainId = engineAppDomain.Id;
+                _engineAppDomains.Add(domainId, engineAppDomain);
+            }
+            catch (Exception except)
+            {
+                Console.WriteLine(except.ToString());
+            }
             return domainId;
         }
 

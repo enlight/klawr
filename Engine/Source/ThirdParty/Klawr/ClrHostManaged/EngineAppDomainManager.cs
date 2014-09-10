@@ -120,9 +120,27 @@ namespace Klawr.ClrHost.Managed
             // TODO: this may not be the best place to call it
             CacheScriptComponentProxyInfo();
 
-            AssemblyName wrapperAssembly = new AssemblyName();
+            var wrapperAssembly = new AssemblyName();
             wrapperAssembly.Name = "Klawr.UnrealEngine";
             Assembly.Load(wrapperAssembly);
+        }
+
+        public bool LoadAssembly(string assemblyName)
+        {
+            var assembly = new AssemblyName();
+            assembly.Name = assemblyName;
+
+            try
+            {
+                Assembly.Load(assembly);
+            }
+            catch (Exception except)
+            {
+                Console.WriteLine(except.ToString());
+                return false;
+            }
+
+            return true;
         }
 
         public bool CreateScriptObject(string className, IntPtr nativeObject, ref ScriptObjectInstanceInfo info)

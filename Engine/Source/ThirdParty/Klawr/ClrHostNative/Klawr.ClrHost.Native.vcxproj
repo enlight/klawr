@@ -158,6 +158,7 @@
   <ItemGroup>
     <ClInclude Include="Private\ClrHostControl.h" />
     <ClInclude Include="Private\ClrHost.h" />
+    <ClInclude Include="Private\DebugMacros.h" />
     <ClInclude Include="Private\KlawrClrHostInterfaces.h" />
     <ClInclude Include="Public\KlawrClrHost.h" />
     <ClInclude Include="Private\KlawrClrHostPCH.h" />

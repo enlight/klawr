@@ -56,46 +56,67 @@ SAFEARRAY* CreateSafeArrayOfWrapperFunctions(void** wrapperFunctions, int numFun
 
 namespace Klawr {
 
-void ClrHost::Startup()
+bool ClrHost::Startup(const TCHAR* engineAppDomainAppBase, const TCHAR* gameScriptsAssemblyName)
 {
 	_COM_SMARTPTR_TYPEDEF(ICLRMetaHost, IID_ICLRMetaHost);
 	_COM_SMARTPTR_TYPEDEF(ICLRRuntimeInfo, IID_ICLRRuntimeInfo);
 	_COM_SMARTPTR_TYPEDEF(ICLRControl, IID_ICLRControl);
 
+	_engineAppDomainAppBase = engineAppDomainAppBase;
+	_gameScriptsAssemblyName = gameScriptsAssemblyName;
+
 	// bootstrap the CLR
 	
 	ICLRMetaHostPtr metaHost;
 	HRESULT hr = CLRCreateInstance(CLSID_CLRMetaHost, IID_PPV_ARGS(&metaHost));
-	assert(SUCCEEDED(hr));
+	if (!verify(SUCCEEDED(hr)))
+	{
+		return false;
+	}
 
 	// specify which version of the CLR should be used
 	ICLRRuntimeInfoPtr runtimeInfo;
 	hr = metaHost->GetRuntime(L"v4.0.30319", IID_PPV_ARGS(&runtimeInfo));
-	assert(SUCCEEDED(hr));
+	if (!verify(SUCCEEDED(hr)))
+	{
+		return false;
+	}
 
 	// load the CLR (it won't be initialized just yet)
 	hr = runtimeInfo->GetInterface(CLSID_CLRRuntimeHost, IID_PPV_ARGS(&_runtimeHost));
-	assert(SUCCEEDED(hr));
+	if (!verify(SUCCEEDED(hr)))
+	{
+		return false;
+	}
 
 	// hook up our unmanaged host to the runtime host
 	assert(!_hostControl);
 	_hostControl = new ClrHostControl();
 	hr = _runtimeHost->SetHostControl(_hostControl);
-	assert(SUCCEEDED(hr));
+	if (!verify(SUCCEEDED(hr)))
+	{
+		return false;
+	}
 
 	ICLRControlPtr clrControl;
 	hr = _runtimeHost->GetCLRControl(&clrControl);
-	assert(SUCCEEDED(hr));
+	if (!verify(SUCCEEDED(hr)))
+	{
+		return false;
+	}
 
 	// by default the CLR runtime will look for the app domain manager assembly in the same 
 	// directory as the application, which in this case will be 
 	// C:\Program Files\Unreal Engine\4.X\Engine\Binaries\Win64 (or Win32)
 	hr = clrControl->SetAppDomainManagerType(L"Klawr.ClrHost.Managed", L"Klawr.ClrHost.Managed.DefaultAppDomainManager");
-	assert(SUCCEEDED(hr));
+	if (!verify(SUCCEEDED(hr)))
+	{
+		return false;
+	}
 
 	// initialize the CLR (not strictly necessary because the runtime can initialize itself)
 	hr = _runtimeHost->Start();
-	assert(SUCCEEDED(hr));
+	return SUCCEEDED(hr);
 }
 
 void ClrHost::Shutdown()
@@ -116,9 +137,13 @@ void ClrHost::Shutdown()
 	}
 }
 
-bool ClrHost::CreateEngineAppDomain(const ObjectUtilsNativeInfo& info, int& outAppDomainID)
+bool ClrHost::CreateEngineAppDomain(
+	const ObjectUtilsNativeInfo& info, int& outAppDomainID
+)
 {
-	outAppDomainID = _hostControl->GetDefaultAppDomainManager()->CreateEngineAppDomain();
+	outAppDomainID = _hostControl->GetDefaultAppDomainManager()->CreateEngineAppDomain(
+		_engineAppDomainAppBase.c_str()
+	);
 	auto engineAppDomainManager = _hostControl->GetEngineAppDomainManager(outAppDomainID);
 	if (engineAppDomainManager)
 	{
@@ -146,6 +171,7 @@ bool ClrHost::CreateEngineAppDomain(const ObjectUtilsNativeInfo& info, int& outA
 
 		// now that everything the engine wrapper assembly needs is in place it can be loaded
 		engineAppDomainManager->LoadUnrealEngineWrapperAssembly();
+		engineAppDomainManager->LoadAssembly(_gameScriptsAssemblyName.c_str());
 	}
 	return engineAppDomainManager != nullptr;
 }

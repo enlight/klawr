@@ -127,15 +127,28 @@ struct ScriptComponentProxy
 class IClrHost
 {
 public:
-	/** Startup the CLR. */
-	virtual void Startup() = 0;
+	/** 
+	 * @brief Startup the CLR.
+	 * @param engineAppDomainAppBase Base path for engine app domains, any assemblies to be loaded 
+	 *        by the engine app domains must reside in this directory. If an empty/null string is 
+	 *        passed in then the default application base is used (which will be the directory where
+	 *        the application executable is located).
+	 * @param gameScriptsAssemblyName The name of the assembly containing game scripts, it will be
+	 *        automatically loaded into each engine app domain.
+	 * @return true if the CLR was started up successfully, false otherwise
+	 */
+	virtual bool Startup(
+		const TCHAR* engineAppDomainAppBase, const TCHAR* gameScriptsAssemblyName
+	) = 0;
 
 	/**
-	 * @brief Create a new engine app domain and initialize it. 
+	 * @brief Create a new engine app domain and initialize it.
 	 * @param outAppDomainID Will be set to the ID of the newly created engine app domain.
 	 * @return true if the app domain was created and initialized successfully, false otherwise
 	 */
-	virtual bool CreateEngineAppDomain(const ObjectUtilsNativeInfo& objectUtils, int& outAppDomainID) = 0;
+	virtual bool CreateEngineAppDomain(
+		const ObjectUtilsNativeInfo& objectUtils, int& outAppDomainID
+	) = 0;
 	
 	/**
 	 * @brief Destroy an engine app domain.

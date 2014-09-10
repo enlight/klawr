@@ -27,6 +27,7 @@
 #include "KlawrClrHost.h"
 #include <comdef.h> // for _COM_SMARTPTR_TYPEDEF
 #include <map>
+#include <string>
 
 _COM_SMARTPTR_TYPEDEF(ICLRRuntimeHost, IID_ICLRRuntimeHost); // for ICLRRuntimeHostPtr
 
@@ -38,7 +39,7 @@ namespace Klawr {
 class ClrHost : public IClrHost
 {
 public: // IClrHost interface
-	virtual void Startup() override;
+	virtual bool Startup(const TCHAR* engineAppDomainAppBase, const TCHAR* gameScriptsAssemblyName) override;
 	virtual bool CreateEngineAppDomain(const ObjectUtilsNativeInfo& objectUtils, int& outAppDomainID) override;
 	virtual bool DestroyEngineAppDomain(int appDomainID);
 	virtual void Shutdown() override;
@@ -73,6 +74,8 @@ private:
 		int numFunctions;
 	};
 	std::map<tstring, ClassWrapperInfo> _classWrappers;
+	tstring _engineAppDomainAppBase;
+	tstring _gameScriptsAssemblyName;
 };
 
 } // namespace Klawr

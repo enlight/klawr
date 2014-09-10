@@ -116,7 +116,7 @@ void FCSharpProject::AddSourceFile(const FString& InSourceFilename, const FStrin
 	}
 }
 
-void FCSharpProject::AddAssemblyReference(const FString& InAssemblyFilename)
+void FCSharpProject::AddAssemblyReference(const FString& InAssemblyFilename, bool bCopyLocal)
 {
 	// look for an existing ItemGroup containing the assembly references
 	if (!ReferencesNode)
@@ -138,6 +138,10 @@ void FCSharpProject::AddAssemblyReference(const FString& InAssemblyFilename)
 		auto RefNode = ReferencesNode.append_child(TEXT("Reference"));
 		RefNode.append_attribute(TEXT("Include")) = *FPaths::GetCleanFilename(InAssemblyFilename);
 		RefNode.append_child(TEXT("HintPath")).text() = *AssemblyFilename;
+		if (!bCopyLocal)
+		{
+			RefNode.append_child(TEXT("Private")).text() = TEXT("False");
+		}
 	}
 }
 
@@ -157,6 +161,19 @@ void FCSharpProject::SetAssemblyName(const FString& AssemblyName)
 {
 	XmlDoc.first_element_by_path(TEXT("/Project/PropertyGroup/AssemblyName"))
 		.text() = *AssemblyName;
+}
+
+void FCSharpProject::SetOutputPath(
+	const FString& OutputPath
+)
+{
+	// each Configuration|Platform in the .csproj has its own OutputPath, need to set all of them
+	for (auto propertyGroupNode = XmlDoc.child(TEXT("Project")).child(TEXT("PropertyGroup"));
+		propertyGroupNode;
+		propertyGroupNode = propertyGroupNode.next_sibling(TEXT("PropertyGroup")))
+	{
+		propertyGroupNode.child(TEXT("OutputPath")).text() = *OutputPath;
+	}
 }
 
 } // namespace Klawr

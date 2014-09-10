@@ -23,47 +23,14 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
-#include "ModuleManager.h"
+#include <assert.h>
 
-/**
- * Hosts the MS CLR, which is used to execute managed code in UnrealEd and in-game.
- */
-class IKlawrRuntimePlugin : public IModuleInterface
-{
-public:
-	/**
-	 * Singleton-like access to this module's interface.
-	 * @warning Don't call this during the shutdown phase, the module might have been unloaded already.
-	 * @warning It is only valid to call Get() if IsAvailable() returns true.
-	 * @return The singleton instance, loading the module on demand if needed.
-	 */
-	static inline IKlawrRuntimePlugin& Get()
-	{
-		return FModuleManager::LoadModuleChecked<IKlawrRuntimePlugin>("KlawrRuntimePlugin");
-	}
+#ifdef NDEBUG
 
-	/**
-	 * Checks to see if this module is loaded and ready. 
-	 * @return True if the module is loaded and ready to use.
-	 */
-	static inline bool IsAvailable()
-	{
-		return FModuleManager::Get().IsModuleLoaded("KlawrRuntimePlugin");
-	}
+#define verify(_Expression) (_Expression)
 
-	virtual bool CreatePrimaryAppDomain() = 0;
-	virtual bool DestroyPrimaryAppDomain() = 0;
-	virtual bool ReloadPrimaryAppDomain() = 0;
+#else // NDEBUG not defined
 
-	/**
-	 * Get the ID of the app domain in which the given object is referenced.
-	 */
-	virtual int GetObjectAppDomainID(const UObject* Object) const = 0;
+#define verify(_Expression) ( (!!(_Expression)) || (_wassert(_CRT_WIDE(#_Expression), _CRT_WIDE(__FILE__), __LINE__), 0) )
 
-#if WITH_EDITOR
-
-	virtual void OnBeginPIE(bool bIsSimulating) = 0;
-	virtual void OnEndPIE(bool bIsSimulating) = 0;
-
-#endif // WITH_EDITOR
-};
+#endif // NDEBUG

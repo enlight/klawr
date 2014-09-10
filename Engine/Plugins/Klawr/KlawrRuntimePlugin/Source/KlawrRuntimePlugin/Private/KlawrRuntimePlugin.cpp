@@ -126,16 +126,89 @@ public:
 
 #endif // WITH_EDITOR
 
+	virtual bool CreatePrimaryAppDomain() override
+	{
+		check(_primaryEngineAppDomain == 0);
+
+		bool bCreated = IClrHost::Get()->CreateEngineAppDomain(
+			FObjectUtils::Info, _primaryEngineAppDomain
+		);
+
+		if (!bCreated)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to create primary engine app domain!"));
+		}
+		return bCreated;
+	}
+
+	virtual bool DestroyPrimaryAppDomain() override
+	{
+		// nothing to destroy if it doesn't exist
+		if (_primaryEngineAppDomain == 0)
+		{
+			return true;
+		}
+
+		bool bDestroyed = IClrHost::Get()->DestroyEngineAppDomain(_primaryEngineAppDomain);
+
+		// hopefully the PIE app domain was unloaded successfully and all references to native 
+		// objects within that app domain were released, but in case something went wrong the
+		// remaining references need to be cleared out so that UnrealEd can get rid of all the
+		// objects it created for PIE
+		int32 NumReleased = FObjectReferencer::RemoveAllObjectRefsInAppDomain(_PIEAppDomain);
+		if (NumReleased > 0)
+		{
+			UE_LOG(
+				LogKlawrRuntimePlugin, Warning,
+				TEXT("%d object(s) still referenced in the primary engine app domain."), NumReleased
+			);
+		}
+
+		_primaryEngineAppDomain = 0;
+
+		if (!bDestroyed)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to destroy primary engine app domain!"))
+		}
+		return bDestroyed;
+	}
+
+	virtual bool ReloadPrimaryAppDomain() override
+	{
+		// TODO
+		// create a new engine app domain
+		// if the engine app domain was created destroy the primary engine app domain
+		// designate the new engine app domain as the primary domain
+		
+		return false;
+	}
+
 public: // IModuleInterface interface
 	
 	virtual void StartupModule() override
 	{
 		FObjectReferencer::Startup();
-		IClrHost::Get()->Startup();
-		NativeGlue::RegisterWrapperClasses();
-		if (!IClrHost::Get()->CreateEngineAppDomain(FObjectUtils::Info, _primaryEngineAppDomain))
+		FString GameAssembliesDir = FPaths::ConvertRelativePathToFull(
+			FPaths::Combine(
+				*FPaths::GameDir(), TEXT("Binaries"), FPlatformProcess::GetBinariesSubdirectory(),
+				TEXT("Klawr")
+			)
+		);
+		
+		if (IClrHost::Get()->Startup(*GameAssembliesDir, TEXT("GameScripts")))
 		{
-			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to create primary engine app domain!"));
+			NativeGlue::RegisterWrapperClasses();
+#if !WITH_EDITOR
+			// When running in the editor the primary app domain will be created when the Klawr 
+			// editor plugin starts up, which will be after the runtime plugin, this is done so that
+			// the scripts assembly can be built (if it is missing) before the primary engine app
+			// domain attempts to load it.
+			CreatePrimaryAppDomain();
+#endif // !WITH_EDITOR
+		}
+		else
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("Failed to start CLR!"));
 		}
 	}
 	
@@ -143,6 +216,13 @@ public: // IModuleInterface interface
 	{
 		IClrHost::Get()->Shutdown();
 		FObjectReferencer::Shutdown();
+	}
+
+	virtual bool SupportsDynamicReloading() override
+	{
+		// once the CLR has been stopped in a particular process it cannot be started again,
+		// so this module cannot be reloaded
+		return false;
 	}
 };
 

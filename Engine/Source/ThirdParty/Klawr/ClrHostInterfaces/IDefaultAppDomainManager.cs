@@ -40,8 +40,12 @@ namespace Klawr.ClrHost.Interfaces
         /// <summary>
         /// Create an engine app domain that can be unloaded.
         /// </summary>
+        /// <param name="applicationBase">Base path for the application domain, any assemblies to be
+        /// loaded by the new app domain must reside in this directory. If an empty/null string is 
+        /// passed in then the default application base is used (which will be the directory where 
+        /// the application executable is located).</param>
         /// <returns>The identifier of the new engine app domain.</returns>
-        int CreateEngineAppDomain();
+        int CreateEngineAppDomain(string applicationBase);
 
         /// <summary>
         /// Unload an engine app domain.

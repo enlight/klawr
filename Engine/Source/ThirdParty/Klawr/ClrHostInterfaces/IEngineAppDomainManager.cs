@@ -55,6 +55,12 @@ namespace Klawr.ClrHost.Interfaces
         void LoadUnrealEngineWrapperAssembly();
 
         /// <summary>
+        /// Load the specified assembly into the engine app domain.
+        /// </summary>
+        /// <param name="assemblyName">Name of assembly to load (without a file extension).</param>
+        bool LoadAssembly(string assemblyName);
+
+        /// <summary>
         /// Create a new ScriptObject instance of the given class.
         /// </summary>
         /// <param name="className">The name of a class derived from ScriptObject, the namespace
