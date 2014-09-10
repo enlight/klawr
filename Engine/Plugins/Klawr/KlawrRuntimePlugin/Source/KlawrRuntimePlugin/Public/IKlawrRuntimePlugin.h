@@ -53,13 +53,13 @@ public:
 
 	virtual bool CreatePrimaryAppDomain() = 0;
 	virtual bool DestroyPrimaryAppDomain() = 0;
-	virtual bool ReloadPrimaryAppDomain() = 0;
 
 	virtual bool CreateAppDomain(int& OutAppDomainID) = 0;
 	virtual bool DestroyAppDomain(int AppDomainID) = 0;
 
 #if WITH_EDITOR
 	virtual void SetPIEAppDomainID(int AppDomainID) = 0;
+	virtual bool ReloadPrimaryAppDomain() = 0;
 #endif // WITH_EDITOR
 
 	/**

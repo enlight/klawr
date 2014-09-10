@@ -29,6 +29,7 @@
 #include "KlawrScriptComponent.h"
 #include "SKlawrBlueprintFactoryConfig.h"
 #include "KlawrGameProjectBuilder.h"
+#include "IKlawrRuntimePlugin.h"
 
 UKlawrBlueprintFactory::UKlawrBlueprintFactory(const FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -67,21 +68,35 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	SourceLocation = Widget->GetSourceLocation();
 	FPaths::MakePathRelativeTo(SourceLocation, *AbsGameDir);
 	
-	GenerateScriptFile();
+	if (!GenerateScriptFile())
+	{
+		return nullptr;
+	}
 	
 	FString SourceFilePath = FPaths::Combine(*SourceLocation, *SourceFilename);
 	FString ResolvedSourceFilePath = FPaths::Combine(*FPaths::GameDir(), *SourceFilePath);
 
-	// update the .csproj
+	// update the game scripts .csproj
 	if (!Klawr::FGameProjectBuilder::AddSourceFileToProject(ResolvedSourceFilePath))
 	{
 		return nullptr;
 	}
-	// build the .csproj
-	Klawr::FGameProjectBuilder::BuildProject(Warn);
+	// build the game scripts .csproj
+	if (!Klawr::FGameProjectBuilder::BuildProject(Warn))
+	{
+		return nullptr;
+	}
+	// TODO: should only reload if the assembly file was actually modified, a successful build
+	//       may leave the assembly unaltered if the source files haven't actually changed
+	if (!IKlawrRuntimePlugin::Get().ReloadPrimaryAppDomain())
+	{
+		UE_LOG(
+			LogKlawrEditorPlugin, Warning, 
+			TEXT("Failed to reload primary engine app domain!")
+		);
+		return nullptr;
+	}
 	
-	// TODO: reload the primary engine app domain
-
 	auto NewBlueprint = CastChecked<UKlawrBlueprint>(
 		FKismetEditorUtilities::CreateBlueprint(
 			UKlawrScriptComponent::StaticClass(), InParent, InName, BPTYPE_Normal, 
@@ -104,14 +119,14 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	return NewBlueprint;
 }
 
-void UKlawrBlueprintFactory::GenerateScriptFile()
+bool UKlawrBlueprintFactory::GenerateScriptFile()
 {
 	// copy a template from Resources folder to a location chosen by the user
 	FString TemplatePath = Klawr::FGameProjectBuilder::GetTemplatesDir();
 	if (TemplatePath.IsEmpty())
 	{
 		// TODO: display error
-		return;
+		return false;
 	}
 
 	FString TemplateText;
@@ -122,7 +137,7 @@ void UKlawrBlueprintFactory::GenerateScriptFile()
 		if (!FPaths::FileExists(TemplatePath))
 		{
 			// TODO: display error
-			return;
+			return false;
 		}
 
 		// read in the template and replace template variables
@@ -140,5 +155,5 @@ void UKlawrBlueprintFactory::GenerateScriptFile()
 	}
 
 	FString ScriptPath = FPaths::Combine(*FPaths::GameDir(), *SourceLocation, *SourceFilename);
-	FFileHelper::SaveStringToFile(TemplateText, *ScriptPath);
+	return FFileHelper::SaveStringToFile(TemplateText, *ScriptPath);
 }

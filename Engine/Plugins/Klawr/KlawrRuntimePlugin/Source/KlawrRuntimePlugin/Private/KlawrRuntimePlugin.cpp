@@ -70,9 +70,38 @@ public:
 	}
 
 #if WITH_EDITOR
-	virtual void SetPIEAppDomainID(int AppDomainID)
+	virtual void SetPIEAppDomainID(int AppDomainID) override
 	{
 		PIEAppDomainID = AppDomainID;
+	}
+
+	virtual bool ReloadPrimaryAppDomain() override
+	{
+		// to ensure that we don't end up without a primary engine app domain because any of the
+		// assemblies couldn't be reloaded for whatever reason we create a new app domain before
+		// getting rid of the current one
+		bool bReloaded = false;
+		int NewAppDomainID = 0;
+		if (CreateAppDomain(NewAppDomainID))
+		{
+			if (DestroyPrimaryAppDomain())
+			{
+				PrimaryEngineAppDomainID = NewAppDomainID;
+				bReloaded = true;
+			}
+			else
+			{
+				DestroyAppDomain(NewAppDomainID);
+			}
+		}
+		else
+		{
+			UE_LOG(
+				LogKlawrRuntimePlugin, Error,
+				TEXT("Failed to create a new primary engine app domain!")
+			);
+		}
+		return bReloaded;
 	}
 #endif // WITH_EDITOR
 
@@ -109,9 +138,11 @@ public:
 	virtual bool DestroyPrimaryAppDomain() override
 	{
 		bool bDestroyed = DestroyAppDomain(PrimaryEngineAppDomainID);
-		PrimaryEngineAppDomainID = 0;
-
-		if (!bDestroyed)
+		if (bDestroyed)
+		{
+			PrimaryEngineAppDomainID = 0;
+		}
+		else
 		{
 			UE_LOG(
 				LogKlawrRuntimePlugin, Error, 
@@ -119,16 +150,6 @@ public:
 			);
 		}
 		return bDestroyed;
-	}
-
-	virtual bool ReloadPrimaryAppDomain() override
-	{
-		// TODO
-		// create a new engine app domain
-		// if the engine app domain was created destroy the primary engine app domain
-		// designate the new engine app domain as the primary domain
-		
-		return false;
 	}
 
 	virtual bool CreateAppDomain(int& OutAppDomainID) override

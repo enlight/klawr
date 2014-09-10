@@ -42,7 +42,7 @@ public: // UFactory interface
 	) override;
 
 private:
-	void GenerateScriptFile();
+	bool GenerateScriptFile();
 
 private:
 	// name of source file (including extension)
