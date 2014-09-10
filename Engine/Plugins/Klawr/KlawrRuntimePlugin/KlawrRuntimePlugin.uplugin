@@ -17,17 +17,9 @@
 			"Name" : "KlawrRuntimePlugin",
 			"Type" : "Runtime",
 			"LoadingPhase" : "PreDefault",
-			"BlacklistPlatforms" : 
+			"WhitelistPlatforms" : 
 			[ 
-				"Mac",
-				"XboxOne",
-				"PS4",
-				"IOS",
-				"Android",
-				"WinRT",
-				"WinRT_ARM",
-				"HTML5",
-				"Linux"
+				"Win64"
 			]
 		}
 	]
