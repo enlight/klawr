@@ -92,7 +92,7 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	
 	NewBlueprint->ScriptDefinedType = FString::Printf(
 		TEXT("%s.%s"), 
-		*FPaths::GetBaseFilename(FPaths::GetProjectFilePath()), 
+		*Klawr::FGameProjectBuilder::GetProjectRootNamespace(), 
 		*FPaths::GetBaseFilename(SourceFilename)
 	);
 	NewBlueprint->SourceFilePath = SourceFilePath;
@@ -129,7 +129,7 @@ void UKlawrBlueprintFactory::GenerateScriptFile()
 		if (FFileHelper::LoadFileToString(TemplateText, *TemplatePath))
 		{
 			TemplateText.ReplaceInline(
-				TEXT("$RootNamespace$"), *Klawr::FGameProjectBuilder::GetProjectAssemblyName(), 
+				TEXT("$RootNamespace$"), *Klawr::FGameProjectBuilder::GetProjectRootNamespace(), 
 				ESearchCase::CaseSensitive
 			);
 			TemplateText.ReplaceInline(
