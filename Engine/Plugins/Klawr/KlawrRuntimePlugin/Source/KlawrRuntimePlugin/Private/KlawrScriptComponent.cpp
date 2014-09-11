@@ -25,6 +25,7 @@
 #include "KlawrRuntimePluginPrivatePCH.h"
 #include "KlawrScriptComponent.h"
 #include "KlawrClrHost.h"
+#include "KlawrBlueprintGeneratedClass.h"
 
 UKlawrScriptComponent::UKlawrScriptComponent(const FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -40,20 +41,24 @@ void UKlawrScriptComponent::CreateScriptComponentProxy()
 {
 	check(!Proxy);
 
-	Proxy = new Klawr::ScriptComponentProxy();
-	bool bCreated = Klawr::IClrHost::Get()->CreateScriptComponent(
-		IKlawrRuntimePlugin::Get().GetObjectAppDomainID(this),
-		TEXT("Klawr.UnrealEngine.TestComponent"), this, *Proxy
-	);
+	auto GeneratedClass = UKlawrBlueprintGeneratedClass::GetBlueprintGeneratedClass(GetClass());
+	if (GeneratedClass)
+	{
+		Proxy = new Klawr::ScriptComponentProxy();
+		bool bCreated = Klawr::IClrHost::Get()->CreateScriptComponent(
+			IKlawrRuntimePlugin::Get().GetObjectAppDomainID(this),
+			*GeneratedClass->ScriptDefinedType, this, *Proxy
+		);
 
-	if (!bCreated)
-	{
-		delete Proxy;
-		Proxy = nullptr;
-	}
-	else
-	{
-		check(Proxy->InstanceID != 0);
+		if (!bCreated)
+		{
+			delete Proxy;
+			Proxy = nullptr;
+		}
+		else
+		{
+			check(Proxy->InstanceID != 0);
+		}
 	}
 }
 

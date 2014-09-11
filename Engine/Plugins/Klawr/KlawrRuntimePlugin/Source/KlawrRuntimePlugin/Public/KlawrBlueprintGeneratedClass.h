@@ -30,4 +30,29 @@ UCLASS()
 class KLAWRRUNTIMEPLUGIN_API UKlawrBlueprintGeneratedClass : public UBlueprintGeneratedClass
 {
 	GENERATED_UCLASS_BODY()
+
+public:
+	/** 
+	 * The fully qualified name of the type defined in the script associated with an instance of
+	 * this class.
+	 */
+	UPROPERTY()
+	FString ScriptDefinedType;
+
+public:
+	/**
+	 * Get the UKlawrBlueprintGeneratedClass from the inheritance hierarchy of the given class.
+	 * @return UKlawrBlueprintGeneratedClass instance, or nullptr if the given class is not derived
+	 *         from UKlawrBlueprintGeneratedClass
+	 */
+	static UKlawrBlueprintGeneratedClass* GetBlueprintGeneratedClass(UClass* Class)
+	{
+		UKlawrBlueprintGeneratedClass* GeneratedClass = nullptr;
+		for (auto CurrentClass = Class; CurrentClass; CurrentClass = CurrentClass->GetSuperClass())
+		{
+			GeneratedClass = Cast<UKlawrBlueprintGeneratedClass>(CurrentClass);
+			break;
+		}
+		return GeneratedClass;
+	}
 };

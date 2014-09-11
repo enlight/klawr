@@ -43,7 +43,7 @@ FBlueprintCompiler::~FBlueprintCompiler()
 
 void FBlueprintCompiler::Compile()
 {
-	// TODO: create script context
+	// TODO: figure out which properties and methods the script defined type exports to Blueprints
 
 	Super::Compile();
 }
@@ -69,7 +69,8 @@ void FBlueprintCompiler::SpawnNewClass(const FString& NewClassName)
 
 void FBlueprintCompiler::EnsureProperGeneratedClass(UClass*& GeneratedClass)
 {
-	if (GeneratedClass && Cast<UObject>(GeneratedClass)->IsA<UKlawrBlueprintGeneratedClass>())
+	auto ClassObject = Cast<UObject>(GeneratedClass);
+	if (GeneratedClass && !ClassObject->IsA<UKlawrBlueprintGeneratedClass>())
 	{
 		FKismetCompilerUtilities::ConsignToOblivion(
 			GeneratedClass, Super::Blueprint->bIsRegeneratingOnLoad
@@ -85,17 +86,24 @@ void FBlueprintCompiler::CleanAndSanitizeClass(UBlueprintGeneratedClass* ClassTo
 	check(ClassToClean == Super::NewClass);
 }
 
-void FBlueprintCompiler::FinishCompilingClass(UClass* GeneratedClass)
+void FBlueprintCompiler::FinishCompilingClass(UClass* InGeneratedClass)
 {
+	auto Blueprint = CastChecked<UKlawrBlueprint>(Super::Blueprint);
+	auto GeneratedClass = CastChecked<UKlawrBlueprintGeneratedClass>(InGeneratedClass);
+	if (Blueprint && GeneratedClass)
+	{
+		GeneratedClass->ScriptDefinedType = Blueprint->ScriptDefinedType;
+	}
+
 	// allow classes generated from Blueprints of Klawr script components to be used in other 
 	// Blueprints
 	if (Super::Blueprint->ParentClass->IsChildOf(UKlawrScriptComponent::StaticClass()) && 
-		(GeneratedClass != Blueprint->SkeletonGeneratedClass))
+		(InGeneratedClass != Super::Blueprint->SkeletonGeneratedClass))
 	{
-		GeneratedClass->SetMetaData(TEXT("BlueprintSpawnableComponent"), TEXT("true"));
+		InGeneratedClass->SetMetaData(TEXT("BlueprintSpawnableComponent"), TEXT("true"));
 	}
 
-	Super::FinishCompilingClass(GeneratedClass);
+	Super::FinishCompilingClass(InGeneratedClass);
 }
 
 bool FBlueprintCompiler::ValidateGeneratedClass(UBlueprintGeneratedClass* GeneratedClass)
