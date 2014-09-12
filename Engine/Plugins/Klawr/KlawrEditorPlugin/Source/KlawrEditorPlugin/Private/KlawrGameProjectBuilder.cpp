@@ -31,20 +31,25 @@ namespace Klawr {
 
 namespace FGameProjectBuilderInternal 
 {
-	void AddSourceFileToProject(
+	/** @return true if the .csproj was modified, false otherwise */
+	bool AddSourceFileToProject(
 		const TSharedRef<FCSharpProject>& Project, const FString& SourceFilename, 
 		const TArray<FString>& SourceDirs
 	)
 	{
+		const FString GameDir = FPaths::GameDir();
+		FString LinkFilename = SourceFilename;
+		FPaths::MakePathRelativeTo(LinkFilename, *GameDir);
+		LinkFilename = GameDir / LinkFilename;
 		for (const FString& SourceDir : SourceDirs)
 		{
-			FString LinkFilename = SourceFilename;
 			if (LinkFilename.RemoveFromStart(SourceDir))
 			{
-				Project->AddSourceFile(SourceFilename, LinkFilename);
-				break;
+				return Project->AddSourceFile(SourceFilename, LinkFilename);
 			}
 		}
+		// source file is outside any of the source directories
+		return false;
 	}
 } // FGameProjectBuilderInternal
 
@@ -159,11 +164,32 @@ bool FGameProjectBuilder::AddSourceFileToProject(const FString& SourceFilename)
 		TArray<FString> SourceDirs;
 		GetSourceDirs(SourceDirs);
 
-		FGameProjectBuilderInternal::AddSourceFileToProject(
+		bool bProjectModified = FGameProjectBuilderInternal::AddSourceFileToProject(
 			Project.ToSharedRef(), SourceFilename, SourceDirs
 		);
 		
-		return Project->Save();
+		return bProjectModified ? Project->Save() : false;
+	}
+	return GenerateProject();
+}
+
+bool FGameProjectBuilder::AddSourceFilesToProject(const TArray<FString>& SourceFiles)
+{
+	auto Project = FCSharpProject::Load(GetProjectFilename());
+	if (Project.IsValid())
+	{
+		TArray<FString> SourceDirs;
+		GetSourceDirs(SourceDirs);
+
+		bool bProjectModified = false;
+		for (const FString& SourceFilename : SourceFiles)
+		{
+			bProjectModified |= FGameProjectBuilderInternal::AddSourceFileToProject(
+				Project.ToSharedRef(), SourceFilename, SourceDirs
+			);
+		}
+		
+		return bProjectModified ? Project->Save() : false;
 	}
 	return GenerateProject();
 }
@@ -266,6 +292,16 @@ const FString& FGameProjectBuilder::GetOutputDir()
 
 bool FGameProjectBuilder::BuildProject(FFeedbackContext* Warn)
 {
+	// make sure the game scripts .csproj exists before attempting to build it
+	if (!FPaths::FileExists(GetProjectFilename()))
+	{
+		if (!GenerateProject())
+		{
+			// TODO: log error
+			return false;
+		}
+	}
+
 	FString EnvironmentSetupFilename;
 	if (!FPlatformMisc::GetVSComnTools(12 /* VS 2013 */, EnvironmentSetupFilename))
 	{

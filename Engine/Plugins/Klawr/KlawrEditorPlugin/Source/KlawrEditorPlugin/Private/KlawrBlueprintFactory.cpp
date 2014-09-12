@@ -30,6 +30,7 @@
 #include "SKlawrBlueprintFactoryConfig.h"
 #include "KlawrGameProjectBuilder.h"
 #include "IKlawrRuntimePlugin.h"
+#include "KlawrScriptsReloader.h"
 
 UKlawrBlueprintFactory::UKlawrBlueprintFactory(const FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -86,14 +87,9 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	{
 		return nullptr;
 	}
-	// TODO: should only reload if the assembly file was actually modified, a successful build
-	//       may leave the assembly unaltered if the source files haven't actually changed
-	if (!IKlawrRuntimePlugin::Get().ReloadPrimaryAppDomain())
+	// reload the game scripts assembly
+	if (!Klawr::FScriptsReloader::Get().ReloadScripts())
 	{
-		UE_LOG(
-			LogKlawrEditorPlugin, Warning, 
-			TEXT("Failed to reload primary engine app domain!")
-		);
 		return nullptr;
 	}
 	

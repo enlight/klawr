@@ -41,6 +41,7 @@ namespace UnrealBuildTool.Rules
                     "SlateCore",
                     "EditorStyle",
                     "DesktopPlatform",
+                    "DirectoryWatcher",
 					// ... add private dependencies that you statically link with here ...
 				}
 			);

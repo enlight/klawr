@@ -25,13 +25,26 @@
 
 namespace Klawr {
 
+/**
+ * Utility functions to generate and build a VS project containing user provided C# scripts.
+ * FIXME: This should be a singleton instead of a bunch of static functions.
+ */
 class FGameProjectBuilder
 {
 public:
 	/** Get the path to the game scripts .csproj file. */
 	static const FString& GetProjectFilename();
 	static bool GenerateProject();
+	/**
+	 * Add the given source file to the .csproj.
+	 * @return true if the project file was modified, false otherwise
+	 */
 	static bool AddSourceFileToProject(const FString& SourceFilename);
+	/**
+	 * Add the given source files to the .csproj.
+	 * @return true if the project file was modified, false otherwise
+	 */
+	static bool AddSourceFilesToProject(const TArray<FString>& SourceFiles);
 	static FString GetTemplatesDir();
 	static void GetSourceDirs(TArray<FString>& SourceDirs);
 	static const FString& GetProjectRootNamespace();

@@ -29,6 +29,7 @@
 #include "AssetTypeActions_KlawrBlueprint.h"
 #include "IKlawrRuntimePlugin.h"
 #include "KlawrGameProjectBuilder.h"
+#include "KlawrScriptsReloader.h"
 
 DEFINE_LOG_CATEGORY(LogKlawrEditorPlugin);
 
@@ -98,25 +99,19 @@ private:
 	}
 
 public:
+	
 	FEditorPlugin()
 		: PIEAppDomainID(0)
 	{
 	}
 
 public: // IModuleInterface interface
+	
 	virtual void StartupModule() override
 	{
 		// check if game scripts assembly exists, if not build it
 		if (!FPaths::FileExists(FGameProjectBuilder::GetProjectAssemblyFilename()))
 		{
-			// the .csproj may not exist yet, so generate it if need be
-			if (!FPaths::FileExists(FGameProjectBuilder::GetProjectFilename()))
-			{
-				if (!FGameProjectBuilder::GenerateProject())
-				{
-					return;
-				}
-			}
 			// FIXME: this shouldn't display any dialogs or anything, we're still loading modules
 			// (though this seems to work fine for now)
 			if (!FGameProjectBuilder::BuildProject(GWarn) || 
@@ -128,7 +123,7 @@ public: // IModuleInterface interface
 		}
 
 		IKlawrRuntimePlugin::Get().CreatePrimaryAppDomain();
-		
+				
 		// register asset types
 		auto& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 		AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_KlawrBlueprint));
@@ -141,10 +136,15 @@ public: // IModuleInterface interface
 
 		FEditorDelegates::BeginPIE.AddRaw(this, &FEditorPlugin::OnBeginPIE);
 		FEditorDelegates::EndPIE.AddRaw(this, &FEditorPlugin::OnEndPIE);
+
+		FScriptsReloader::Startup();
+		FScriptsReloader::Get().Enable();
 	}
 
 	virtual void ShutdownModule() override
 	{
+		FScriptsReloader::Shutdown();
+
 		FEditorDelegates::BeginPIE.RemoveAll(this);
 		FEditorDelegates::EndPIE.RemoveAll(this);
 

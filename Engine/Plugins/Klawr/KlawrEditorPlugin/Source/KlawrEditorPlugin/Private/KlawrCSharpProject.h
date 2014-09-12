@@ -42,10 +42,12 @@ public:
 	 * @param SourceFilename Path to source file on disk.
 	 * @param LinkFilename Path under which the source file should be displayed in the project,
 	 *                     may be empty.
+	 * @return true if the file was added to the project, false if it wasn't (either because some
+	 *         error occurred, or it was already in the project)
 	 * @note SourceFilename and LinkFilename don't have to match, e.g. SourceFilename could be 
 	 *       "../../Scripts/MyClass.cs" while LinkFilename is "MyScripts/MyClass.cs".
 	 */
-	void AddSourceFile(const FString& SourceFilename, const FString& LinkFilename);
+	bool AddSourceFile(const FString& SourceFilename, const FString& LinkFilename);
 
 	/**
 	 * Add an assembly reference to the project.

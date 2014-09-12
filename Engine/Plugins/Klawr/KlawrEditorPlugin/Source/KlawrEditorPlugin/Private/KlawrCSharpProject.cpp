@@ -80,7 +80,7 @@ bool FCSharpProject::SaveAs(const FString& InProjectFilename)
 	return true;
 }
 
-void FCSharpProject::AddSourceFile(const FString& InSourceFilename, const FString& InLinkFilename)
+bool FCSharpProject::AddSourceFile(const FString& InSourceFilename, const FString& InLinkFilename)
 {
 	// look for an existing ItemGroup containing the source files
 	if (!SourceNode)
@@ -112,8 +112,10 @@ void FCSharpProject::AddSourceFile(const FString& InSourceFilename, const FStrin
 				FPaths::MakePlatformFilename(LinkFilename);
 				CompileNode.append_child(TEXT("Link")).text() = *LinkFilename;
 			}
+			return true;
 		}
 	}
+	return false;
 }
 
 void FCSharpProject::AddAssemblyReference(const FString& InAssemblyFilename, bool bCopyLocal)
