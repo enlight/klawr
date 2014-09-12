@@ -28,7 +28,7 @@ This is a two phase process, in the first phase the CLR hosting libraries must b
 
 Source Location
 -----------------
-The directory hierarchy of this repository matches that of the UE4 source repository, once you check out this project you can just copy the Engine directory into your UE4 source checkout and everything should end up in the right place. However, if you plan on making any changes to the source you'll probably want create a few directory junctions instead of copy/pasting files back and forth. To that end I've provided **CreateLinks.bat**, which you can right-click on and **Run as administrator** directly from the checkout root. But, before you do so you'll need to edit the batch file and set **ENGINE\_SOURCE\_LOCATION** to the location of your UE4 source checkout (TIP: don't leave any spaces around the assignment operator).
+The directory hierarchy of this repository matches that of the UE4 source repository, once you check out this project you can just copy the Engine directory into your UE4 source checkout and everything should end up in the right place. However, if you plan on making any changes to the source you'll probably want create a couple of directory junctions instead of copy/pasting files back and forth. To that end I've provided **CreateLinks.bat**, which you can right-click on and **Run as administrator** directly from the checkout root. The batch file will prompt you to enter the path to the UE4 source checkout that you'd like to use to build Klawr, and will then create the necessary directory junctions.
 
 Now everything should be in the right place, from here on any paths are relative to the UE4 source checkout.
 
