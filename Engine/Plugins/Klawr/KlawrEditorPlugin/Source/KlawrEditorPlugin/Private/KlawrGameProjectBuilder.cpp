@@ -56,9 +56,9 @@ namespace FGameProjectBuilderInternal
 const FString& FGameProjectBuilder::GetProjectFilename()
 {
 	static const FString ProjectFilename = FPaths::Combine(
-		*FPaths::GameIntermediateDir(), TEXT("ProjectFiles"), 
-		*FPaths::GetBaseFilename(FPaths::GetProjectFilePath()),
-		*FPaths::GetBaseFilename(FPaths::GetProjectFilePath())
+		*FPaths::GameIntermediateDir(), TEXT("ProjectFiles"),
+		*(FPaths::GetBaseFilename(FPaths::GetProjectFilePath()).Append(FString(TEXT("Scripts")))),
+		*(FPaths::GetBaseFilename(FPaths::GetProjectFilePath()).Append(FString(TEXT("Scripts"))))
 	).Append(FString(TEXT(".csproj")));
 
 	return ProjectFilename;
