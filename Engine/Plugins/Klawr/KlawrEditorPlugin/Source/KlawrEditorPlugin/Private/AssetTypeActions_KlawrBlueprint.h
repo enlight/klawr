@@ -25,6 +25,7 @@
 
 #include "AssetTypeActions_Base.h"
 #include "KlawrBlueprint.h"
+#include "KlawrBlueprintEditor.h"
 
 /** 
  * Stores UKlawrBlueprint related bits and pieces used by the asset registry, content browser, etc. 
@@ -52,7 +53,21 @@ public: // IAssetTypeActions interface
 		TSharedPtr<IToolkitHost> EditWithinLevelEditor = TSharedPtr<IToolkitHost>()
 	) override
 	{
-		// TODO
+		const EToolkitMode::Type Mode = EditWithinLevelEditor.IsValid() ?
+			EToolkitMode::WorldCentric : EToolkitMode::Standalone;
+
+		for (auto Object : InObjects)
+		{
+			auto Blueprint = Cast<UBlueprint>(Object);
+			if (Blueprint && Blueprint->SkeletonGeneratedClass && Blueprint->GeneratedClass)
+			{
+				TArray<UBlueprint*> Blueprints;
+				Blueprints.Add(Blueprint);
+
+				TSharedRef<FKlawrBlueprintEditor> Editor(new FKlawrBlueprintEditor());
+				Editor->InitBlueprintEditor(Mode, EditWithinLevelEditor, Blueprints);
+			}
+		}
 	}
 
 	virtual uint32 GetCategories() override
