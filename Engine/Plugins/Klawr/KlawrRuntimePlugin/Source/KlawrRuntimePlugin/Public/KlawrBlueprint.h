@@ -62,6 +62,6 @@ public: // UBlueprint interface
 	/** Get the class generated when this blueprint is compiled. */
 	virtual UClass* GetBlueprintClass() const override;
 	/** Check if the generic blueprint factory works with this blueprint (hint: it doesn't). */
-	virtual bool SupportedByDefaultBlueprintFactory() const override { return true; }
+	virtual bool SupportedByDefaultBlueprintFactory() const override { return false; }
 #endif // WITH_EDITOR
 };
