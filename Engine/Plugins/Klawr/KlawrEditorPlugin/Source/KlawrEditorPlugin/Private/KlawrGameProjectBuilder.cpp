@@ -66,12 +66,6 @@ const FString& FGameProjectBuilder::GetProjectFilename()
 
 bool FGameProjectBuilder::GenerateProject()
 {
-	static FString BaseSourceDirs[] =
-	{
-		FPaths::GameDir() / TEXT("Scripts/"),
-		FPaths::GameDir() / TEXT("Source/"),
-	};
-
 	const FString ProjectFilename = GetProjectFilename();
 	const FString ProjectTemplateDir = GetTemplatesDir() / TEXT("GameProjectTemplate");
 	const FString ProjectBasePath = FPaths::GetPath(ProjectFilename);
@@ -136,16 +130,17 @@ bool FGameProjectBuilder::GenerateProject()
 	// the tricky part is figuring out if it's a native dll or an assembly
 
 	// scan the script source directories for any source files and add them to the project
+	TArray<FString> SourceDirs;
+	GetSourceDirs(SourceDirs);
 	TArray<FString> SourceFiles;
-	for (const FString& SourceDir : BaseSourceDirs)
+
+	for (const FString& SourceDir : SourceDirs)
 	{
 		IFileManager::Get().FindFilesRecursive(
 			SourceFiles, *SourceDir, TEXT("*.cs"), true /* Files */, false /* Dirs */, false
 		);
 	}
 
-	TArray<FString> SourceDirs;
-	GetSourceDirs(SourceDirs);
 	for (const FString& SourceFilename : SourceFiles)
 	{
 		FGameProjectBuilderInternal::AddSourceFileToProject(
@@ -237,16 +232,13 @@ FString FGameProjectBuilder::GetTemplatesDir()
 
 void FGameProjectBuilder::GetSourceDirs(TArray<FString>& OutSourceDirs)
 {
-	// to ensure that the longest path is matched paths with a common root must be ordered from
-	// longest to shortest
 	static FString SourceDirs[] =
 	{
 		FPaths::GameDir() / TEXT("Scripts/"),
 		FPaths::GameDir() / TEXT("Source") / TEXT("Scripts/"),
-		FPaths::GameDir() / TEXT("Source/"),
 	};
 	
-	OutSourceDirs.Empty(3);
+	OutSourceDirs.Reset();
 	for (const FString& SourceDir : SourceDirs)
 	{
 		if (IFileManager::Get().DirectoryExists(*SourceDir))
