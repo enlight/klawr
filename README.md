@@ -8,6 +8,8 @@ Some time was also spent developing script objects, which allow for "subclassing
 
 NOTE: This project is still highly experimental, and not very useful (though it's getting there).
 
+Check the [Wiki](https://github.com/enlight/klawr/wiki) for additional details.
+
 Prerequisites
 ========
 - Unreal Engine 4.4.0 or later (you'll need the source from GitHub)
