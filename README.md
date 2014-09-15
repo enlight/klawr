@@ -36,7 +36,19 @@ Now everything should be in the right place, from here on any paths are relative
 
 Disable Built-in Script Plugins
 -------------------------------
-The UE4 source contains some built-in Script plugins, these are mostly meant as a reference for plugin developers, but they get in the way because the Unreal Build Tool (UBT) wastes time building and running them. So, before building the Klawr plugins you'll need to make a couple of one-line changes to the UE4 source to get the built-in Script plugins out of the way, you can either make the changes by hand or apply the two patch files that I've provided (ScriptPluginPatch.diff and UnrealHeaderToolPatch.diff). If you're making the changes by hand comment out `#include "GeneratedScriptLibraries.inl"` in `Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp`, and replace `AdditionalPlugins.Add("ScriptGeneratorPlugin");` with `AdditionalPlugins.Add("KlawrCodeGeneratorPlugin");` in `Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs`. Now UBT won't waste time building the ScriptGeneratorPlugin, the ScriptGeneratorPlugin won't waste time generating wrapper functions that aren't used by anything, and ScriptPlugin won't fail to build because ScriptGeneratorPlugin didn't produce **GeneratedScriptLibraries.inl**.
+The UE4 source contains some built-in Script plugins, these are mostly meant as a reference for plugin developers, but they get in the way because the Unreal Build Tool (UBT) wastes time building and running them. So, before building the Klawr plugins you'll need to make a couple of one-line changes to the UE4 source to get the built-in Script plugins out of the way, you can either make the changes by hand or apply the two patch files that I've provided (ScriptPluginPatch.diff and UnrealHeaderToolPatch.diff). If you're making the changes by hand comment out the following line in `Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp`
+
+```#include "GeneratedScriptLibraries.inl"```
+
+and replace the following line in `Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs`
+
+```AdditionalPlugins.Add("ScriptGeneratorPlugin");```
+
+with
+
+```AdditionalPlugins.Add("KlawrCodeGeneratorPlugin");```
+
+Now UBT won't waste time building the ScriptGeneratorPlugin, the ScriptGeneratorPlugin won't waste time generating wrapper functions that aren't used by anything, and ScriptPlugin won't fail to build because ScriptGeneratorPlugin didn't produce **GeneratedScriptLibraries.inl**.
 
 Libraries
 ---------
@@ -50,13 +62,15 @@ Assuming that the build finished with no errors you can move on to phase two.
 Plugins
 --------
 1. Configure Unreal Header Tool to use the KlawrCodeGeneratorPlugin, to do so add/edit the **Plugins** section in `Engine\Programs\UnrealHeaderTool\Saved\Config\Windows\Engine.ini`:
-```
-[Plugins]
-ProgramEnabledPlugins=KlawrCodeGeneratorPlugin
-ScriptExcludedModules=ScriptPlugin
-ScriptExcludedModules=ScriptEditorPlugin
-ScriptExcludedModules=ScriptGeneratorPlugin
-```
+
+    ```
+    [Plugins]
+    ProgramEnabledPlugins=KlawrCodeGeneratorPlugin
+    ScriptExcludedModules=ScriptPlugin
+    ScriptExcludedModules=ScriptEditorPlugin
+    ScriptExcludedModules=ScriptGeneratorPlugin
+    ```
+
 2. Run GenerateProjectFiles.bat in your UE4 source checkout.
 3.  Open **UE4.sln** in VS2013.
 4.  Set the **Solution Configuration** to **Debug Editor** or Development Editor.
