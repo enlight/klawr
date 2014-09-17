@@ -51,6 +51,22 @@ namespace FGameProjectBuilderInternal
 		// source file is outside any of the source directories
 		return false;
 	}
+
+	void CopyPrivateReferencedAssembly(const FString& AssemblyName, const FString& DestDir)
+	{
+		auto& fileManager = IFileManager::Get();
+
+		const FString AssemblyDLL = AssemblyName + TEXT(".dll");
+		const FString AssemblyPDB = AssemblyName + TEXT(".pdb");
+		fileManager.Copy(
+			*(DestDir / AssemblyDLL),
+			*FPaths::Combine(FPlatformProcess::BaseDir(), *AssemblyDLL)
+		);
+		fileManager.Copy(
+			*(DestDir / AssemblyPDB),
+			*FPaths::Combine(FPlatformProcess::BaseDir(), *AssemblyPDB)
+		);
+	}
 } // FGameProjectBuilderInternal
 
 const FString& FGameProjectBuilder::GetProjectFilename()
@@ -342,24 +358,10 @@ void FGameProjectBuilder::CopyPrivateReferencedAssemblies()
 		TEXT("Klawr/Assemblies")
 	);
 
-	auto& FileManager = IFileManager::Get();
-
 	// these assemblies don't need to be shadow copied, so they go into Klawr/Assemblies
-
-	FileManager.Copy(
-		*(DestDir / TEXT("Klawr.ClrHost.Interfaces.dll")),
-		*FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Interfaces.dll"))
-	);
-
-	FileManager.Copy(
-		*(DestDir / TEXT("Klawr.ClrHost.Managed.dll")),
-		*FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Managed.dll"))
-	);
-
-	FileManager.Copy(
-		*(DestDir / TEXT("Klawr.UnrealEngine.dll")),
-		*FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.UnrealEngine.dll"))
-	);
+	FGameProjectBuilderInternal::CopyPrivateReferencedAssembly(TEXT("Klawr.ClrHost.Interfaces"), DestDir);
+	FGameProjectBuilderInternal::CopyPrivateReferencedAssembly(TEXT("Klawr.ClrHost.Managed"), DestDir);
+	FGameProjectBuilderInternal::CopyPrivateReferencedAssembly(TEXT("Klawr.UnrealEngine"), DestDir);
 }
 
 } // namespace Klawr
