@@ -1,5 +1,6 @@
 ﻿using UnrealBuildTool;
 using System.IO;
+using System;
 
 public class KlawrClrHostNative : ModuleRules
 {
@@ -35,6 +36,8 @@ public class KlawrClrHostNative : ModuleRules
                 configuration = "Release";
                 break;
         }
+
+        Console.WriteLine("KlawrClrHostNative Target.Configuration: " + configuration);
 
         if ((architecture != null) && (configuration != null))
         {
