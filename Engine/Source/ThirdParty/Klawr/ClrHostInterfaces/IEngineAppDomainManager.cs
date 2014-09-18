@@ -31,7 +31,7 @@ namespace Klawr.ClrHost.Interfaces
     /// Manager for engine app domains (that can be unloaded), accessible in native code via COM.
     /// </summary>
     [ComVisible(true)]
-    [GuidAttribute("CBFAB628-9E4D-4439-89FA-EF8B1D5FF966")]
+    [Guid("CBFAB628-9E4D-4439-89FA-EF8B1D5FF966")]
     public interface IEngineAppDomainManager
     {
         /// <summary>
@@ -90,5 +90,12 @@ namespace Klawr.ClrHost.Interfaces
         );
 
         void DestroyScriptComponent(long scriptComponentID);
+
+        /// <summary>
+        /// Get the fully qualified names (including namespace) of all currently loaded managed 
+        /// types derived from UKlawrScriptComponent.
+        /// </summary>
+        /// <returns>Script component type names.</returns>
+        string[] GetScriptComponentTypes();
     }
 }

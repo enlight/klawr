@@ -103,6 +103,17 @@ public:
 		}
 		return bReloaded;
 	}
+
+	virtual void GetScriptComponentTypes(TArray<FString>& Types) override
+	{
+		std::vector<tstring> scriptTypes;
+		IClrHost::Get()->GetScriptComponentTypes(PrimaryEngineAppDomainID, scriptTypes);
+		Types.Reserve(scriptTypes.size());
+		for (const auto& scriptType : scriptTypes)
+		{
+			Types.Add(FString(scriptType.c_str()));
+		}
+	}
 #endif // WITH_EDITOR
 
 	virtual int GetObjectAppDomainID(const UObject* Object) const override

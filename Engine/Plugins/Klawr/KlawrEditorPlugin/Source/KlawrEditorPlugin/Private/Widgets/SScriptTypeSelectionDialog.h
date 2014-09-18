@@ -23,34 +23,45 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
-#include "Engine/Blueprint.h"
-#include "KlawrBlueprint.generated.h"
+namespace Klawr {
 
 /**
- * Generates UObject classes for script objects written in C# or any other CLI language.
+ * A dialog that lets the user select a type defined in a script.
  */
-UCLASS(BlueprintType)
-class KLAWRRUNTIMEPLUGIN_API UKlawrBlueprint : public UBlueprint
+class SScriptTypeSelectionDialog : public SCompoundWidget
 {
-	GENERATED_UCLASS_BODY()
-
-	/** 
-	 * Name of a type defined in a script or assembly.
-	 * For C# types this should be a fully qualified class name, e.g. MyProject.MyClass
-	 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category=Script)
-	FString ScriptDefinedType;
+public:
+	SLATE_BEGIN_ARGS(SScriptTypeSelectionDialog) {}
+		SLATE_TEXT_ARGUMENT(DefaultSelection)
+	SLATE_END_ARGS()
 
 public:
-#if WITH_EDITOR
-	static bool ValidateGeneratedClass(const UClass* Class);
-#endif
+	void Construct(const FArguments& InArgs);
 
-public: // UBlueprint interface
-#if WITH_EDITOR
-	/** Get the class generated when this blueprint is compiled. */
-	virtual UClass* GetBlueprintClass() const override;
-	/** Check if the generic blueprint factory works with this blueprint (hint: it doesn't). */
-	virtual bool SupportedByDefaultBlueprintFactory() const override { return false; }
-#endif // WITH_EDITOR
+	/** 
+	 * @brief Display the dialog so the user can select a script type.
+	 * @param DialogTitle The title the displayed dialog should be given.
+	 * @param InDefaultSelection The name of the type that should be selected by default.
+	 * @return The full name of the script type selected by the user, or an empty string if the
+	 *         the user didn't select any type (for whatever reason).
+	 */
+	static FString SelectScriptType(const FText& DialogTitle, const FString& InDefaultSelection);
+
+private:
+	bool ShowAsModalWindow(const FText& WindowTitle);
+	void OnScriptTypeSelected(const FString& InScriptType);
+	FReply CreateNewScriptType_OnClicked();
+	void CloseDialog(bool bOKClicked = false);
+	FReply OK_OnClicked();
+	FReply Cancel_OnClicked();
+
+private:
+	bool bUserConfirmed;
+	TWeakPtr<SWindow> Dialog;
+	TSharedPtr<class SScriptTypeTree> ScriptTypeTreeWidget;
+	TSharedPtr<class SButton> OKButton;
+	FString SelectedScriptType;
+	FString DefaultSelection;
 };
+
+} // namespace Klawr

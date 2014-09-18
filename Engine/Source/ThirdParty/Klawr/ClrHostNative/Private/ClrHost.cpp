@@ -52,6 +52,40 @@ SAFEARRAY* CreateSafeArrayOfWrapperFunctions(void** wrapperFunctions, int numFun
 	return safeArray;
 }
 
+/** 
+ * @brief Convert a one-dimensional COM SAFEARRAY to a std::vector.
+ * This only works if TSafeArrayElement can be implicitly converted to TVectorElement.
+ */
+template<typename TSafeArrayElement, typename TVectorElement>
+void SafeArrayToVector(SAFEARRAY* input, std::vector<TVectorElement>& output)
+{
+	LONG lowerBound, upperBound;
+	HRESULT hr = SafeArrayGetLBound(input, 1, &lowerBound);
+	if (FAILED(hr))
+	{
+		return;
+	}
+	hr = SafeArrayGetUBound(input, 1, &upperBound);
+	if (FAILED(hr))
+	{
+		return;
+	}
+	LONG numElements = upperBound - lowerBound + 1;
+
+	output.reserve(numElements);
+	TSafeArrayElement* safeArrayData = nullptr;
+	hr = SafeArrayAccessData(input, (void**)&safeArrayData);
+	if (SUCCEEDED(hr))
+	{
+		for (auto i = 0; i < numElements; ++i)
+		{
+			output.push_back(safeArrayData[i]);
+		}
+		hr = SafeArrayUnaccessData(input);
+		assert(SUCCEEDED(hr));
+	}
+}
+
 } // unnamed namespace
 
 namespace Klawr {
@@ -244,6 +278,19 @@ void ClrHost::DestroyScriptComponent(int appDomainID, __int64 instanceID)
 	if (appDomainManager)
 	{
 		appDomainManager->DestroyScriptComponent(instanceID);
+	}
+}
+
+void ClrHost::GetScriptComponentTypes(int appDomainID, std::vector<tstring>& types) const
+{
+	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
+	if (appDomainManager)
+	{
+		SAFEARRAY* safeArray = appDomainManager->GetScriptComponentTypes();
+		if (safeArray)
+		{
+			SafeArrayToVector<BSTR>(safeArray, types);
+		}
 	}
 }
 

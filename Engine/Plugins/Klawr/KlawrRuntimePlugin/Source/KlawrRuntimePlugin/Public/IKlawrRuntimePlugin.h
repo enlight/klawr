@@ -60,6 +60,7 @@ public:
 #if WITH_EDITOR
 	virtual void SetPIEAppDomainID(int AppDomainID) = 0;
 	virtual bool ReloadPrimaryAppDomain() = 0;
+	virtual void GetScriptComponentTypes(TArray<FString>& Types) = 0;
 #endif // WITH_EDITOR
 
 	/**

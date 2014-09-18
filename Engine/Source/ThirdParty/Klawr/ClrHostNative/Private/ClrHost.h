@@ -61,6 +61,8 @@ public: // IClrHost interface
 
 	virtual void DestroyScriptComponent(int appDomainID, __int64 instanceID) override;
 
+	virtual void GetScriptComponentTypes(int appDomainID, std::vector<tstring>& types) const override;
+
 public:
 	ClrHost() : _hostControl(nullptr) {}
 

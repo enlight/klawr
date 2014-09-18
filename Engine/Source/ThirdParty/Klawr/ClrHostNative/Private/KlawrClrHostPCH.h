@@ -8,13 +8,13 @@
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 
 #include <tchar.h>
-#include <string>
+//#include <string>
 
-#ifdef _UNICODE
-typedef std::wstring tstring;
-#else
-typedef std::string tstring;
-#endif // _UNICODE
+//#ifdef _UNICODE
+//typedef std::wstring tstring;
+//#else
+//typedef std::string tstring;
+//#endif // _UNICODE
 
 #include "DebugMacros.h"
 

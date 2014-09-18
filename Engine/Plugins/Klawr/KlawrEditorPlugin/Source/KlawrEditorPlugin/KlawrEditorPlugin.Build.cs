@@ -12,6 +12,7 @@ namespace UnrealBuildTool.Rules
 
 			PrivateIncludePaths.AddRange(
 				new string[] {
+                    "KlawrEditorPlugin/Private",
 					// ... add other private include paths required here ...
 				}
 			);

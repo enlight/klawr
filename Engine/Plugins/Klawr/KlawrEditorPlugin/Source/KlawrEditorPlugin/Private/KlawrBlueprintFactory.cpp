@@ -27,10 +27,10 @@
 #include "KlawrBlueprint.h"
 #include "KlawrBlueprintGeneratedClass.h"
 #include "KlawrScriptComponent.h"
-#include "SKlawrBlueprintFactoryConfig.h"
-#include "KlawrGameProjectBuilder.h"
 #include "IKlawrRuntimePlugin.h"
-#include "KlawrScriptsReloader.h"
+#include "Widgets/SScriptTypeSelectionDialog.h"
+
+#define LOCTEXT_NAMESPACE "KlawrEditorPlugin.UKlawrBlueprintFactory"
 
 UKlawrBlueprintFactory::UKlawrBlueprintFactory(const FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -54,46 +54,16 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 	FFeedbackContext* Warn
 )
 {
-	TSharedRef<SKlawrBlueprintFactoryConfig> Widget = 
-		SNew(SKlawrBlueprintFactoryConfig)
-		.SourceFilename(InName.ToString());
+	FString scriptType = Klawr::SScriptTypeSelectionDialog::SelectScriptType(
+		LOCTEXT("NewBlueprintDialogTitle", "New Klawr Blueprint"), InName.ToString()
+	);
 
-	if (!Widget->ShowAsModalWindow())
+	if (scriptType.IsEmpty())
 	{
 		return nullptr;
 	}
-	
-	SourceFilename = Widget->GetSourceFilename();
-	// convert the absolute path from the config dialog to be relative to the project root
-	FString AbsGameDir = FPaths::ConvertRelativePathToFull(FPaths::GameDir());
-	SourceLocation = Widget->GetSourceLocation();
-	FPaths::MakePathRelativeTo(SourceLocation, *AbsGameDir);
-	
-	if (!GenerateScriptFile())
-	{
-		return nullptr;
-	}
-	
-	FString SourceFilePath = FPaths::Combine(*SourceLocation, *SourceFilename);
-	FString ResolvedSourceFilePath = FPaths::Combine(*FPaths::GameDir(), *SourceFilePath);
 
-	// update the game scripts .csproj
-	if (!Klawr::FGameProjectBuilder::AddSourceFileToProject(ResolvedSourceFilePath))
-	{
-		return nullptr;
-	}
-	// build the game scripts .csproj
-	if (!Klawr::FGameProjectBuilder::BuildProject(Warn))
-	{
-		return nullptr;
-	}
-	// reload the game scripts assembly
-	if (!Klawr::FScriptsReloader::Get().ReloadScripts())
-	{
-		return nullptr;
-	}
-	
-	auto NewBlueprint = CastChecked<UKlawrBlueprint>(
+	auto newBlueprint = CastChecked<UKlawrBlueprint>(
 		FKismetEditorUtilities::CreateBlueprint(
 			UKlawrScriptComponent::StaticClass(), InParent, InName, BPTYPE_Normal, 
 			UKlawrBlueprint::StaticClass(),	UKlawrBlueprintGeneratedClass::StaticClass(), 
@@ -101,55 +71,14 @@ UObject* UKlawrBlueprintFactory::FactoryCreateNew(
 		)
 	);
 	
-	NewBlueprint->ScriptDefinedType = FString::Printf(
-		TEXT("%s.%s"), 
-		*Klawr::FGameProjectBuilder::GetProjectRootNamespace(), 
-		*FPaths::GetBaseFilename(SourceFilename)
-	);
-	NewBlueprint->SourceFilePath = SourceFilePath;
-	NewBlueprint->SourceTimeStamp = 
-		IFileManager::Get().GetTimeStamp(*ResolvedSourceFilePath).ToString();
-
-	FKismetEditorUtilities::CompileBlueprint(NewBlueprint);
-	FEditorDelegates::OnAssetPostImport.Broadcast(this, NewBlueprint);
-	return NewBlueprint;
+	newBlueprint->ScriptDefinedType = scriptType;
+	// TODO: Store some sort of fingerprint of the script type (built from a list of exported
+	//       properties and methods), so that when the game scripts assembly is rebuilt the
+	//       Blueprints whose script types changed can be marked as dirty or recompiled.
+	
+	FKismetEditorUtilities::CompileBlueprint(newBlueprint);
+	FEditorDelegates::OnAssetPostImport.Broadcast(this, newBlueprint);
+	return newBlueprint;
 }
 
-bool UKlawrBlueprintFactory::GenerateScriptFile()
-{
-	// copy a template from Resources folder to a location chosen by the user
-	FString TemplatePath = Klawr::FGameProjectBuilder::GetTemplatesDir();
-	if (TemplatePath.IsEmpty())
-	{
-		// TODO: display error
-		return false;
-	}
-
-	FString TemplateText;
-
-	if (SourceFilename.EndsWith(TEXT(".cs")))
-	{
-		TemplatePath = FPaths::Combine(*TemplatePath, TEXT("Template.cs"));
-		if (!FPaths::FileExists(TemplatePath))
-		{
-			// TODO: display error
-			return false;
-		}
-
-		// read in the template and replace template variables
-		if (FFileHelper::LoadFileToString(TemplateText, *TemplatePath))
-		{
-			TemplateText.ReplaceInline(
-				TEXT("$RootNamespace$"), *Klawr::FGameProjectBuilder::GetProjectRootNamespace(), 
-				ESearchCase::CaseSensitive
-			);
-			TemplateText.ReplaceInline(
-				TEXT("$ScriptName$"), *FPaths::GetBaseFilename(SourceFilename),
-				ESearchCase::CaseSensitive
-			);
-		}
-	}
-
-	FString ScriptPath = FPaths::Combine(*FPaths::GameDir(), *SourceLocation, *SourceFilename);
-	return FFileHelper::SaveStringToFile(TemplateText, *ScriptPath);
-}
+#undef LOCTEXT_NAMESPACE

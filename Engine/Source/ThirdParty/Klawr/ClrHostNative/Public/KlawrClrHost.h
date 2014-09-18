@@ -23,7 +23,18 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
+// ugh, really don't like forcing this STL dependency on client code, but being constrained to 
+// fixed size arrays of c-strings is extremely annoying
+#include <vector>
+#include <string>
+
 namespace Klawr {
+
+#ifdef _UNICODE
+	typedef std::wstring tstring;
+#else
+	typedef std::string tstring;
+#endif // _UNICODE
 
 /**
  * @brief Makes a copy of the given string, the resulting copy can be safely released by the CLR.
@@ -184,10 +195,18 @@ public:
 	 * @return true if the managed script component instance was created successfully, false otherwise
 	 */
 	virtual bool CreateScriptComponent(
-		int appDomainID, const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
+		int appDomainID, const TCHAR* className, class UObject* nativeComponent, 
+		ScriptComponentProxy& proxy
 	) = 0;
 
 	virtual void DestroyScriptComponent(int appDomainID, __int64 instanceID) = 0;
+
+	/**
+	 * @brief Get the fully qualified names (including namespace) of all currently loaded managed 
+	 *        types derived from UKlawrScriptComponent.
+	 * @param types Vector to be filled in with type names.
+	 */
+	virtual void GetScriptComponentTypes(int appDomainID, std::vector<tstring>& types) const = 0;
 
 public:
 	/** Get the singleton instance. */

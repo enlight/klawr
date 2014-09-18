@@ -447,5 +447,22 @@ namespace Klawr.ClrHost.Managed
             );
             return lambdaExpr.Compile();
         }
+
+        public string[] GetScriptComponentTypes()
+        {
+            // this type is defined in the UE4 wrappers assembly
+            var scriptComponentType = FindTypeByName("Klawr.UnrealEngine.UKlawrScriptComponent");
+            if (scriptComponentType == null)
+            {
+                return new string[] { };
+            }
+
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => !assembly.IsDynamic)
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(t => t.IsSubclassOf(scriptComponentType))
+                .Select(t => t.FullName)
+                .ToArray();
+        }
     }
 }
