@@ -36,6 +36,7 @@ class UKlawrBlueprintFactory : public UFactory
 public: // UFactory interface
 	virtual bool DoesSupportClass(UClass* Class) override;
 
+	/** Create a new Klawr Blueprint from scratch. */
 	virtual UObject* FactoryCreateNew(
 		UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, 
 		FFeedbackContext* Warn
