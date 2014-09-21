@@ -48,6 +48,11 @@ public:
 
 	void FinishExport();
 
+	static FString GetPropertyCPPType(const UProperty* Property);
+
+	/** Check if the property type is a struct that can be used for interop. */
+	static bool IsStructPropertyTypeSupported(const UStructProperty* Property);
+
 private:
 	static const FName Name_Vector2D;
 	static const FName Name_Vector;
@@ -57,30 +62,9 @@ private:
 	static const FName Name_LinearColor;
 	static const FName Name_Color;
 
-	static const FString UnmanagedFunctionPointerAttribute;
-	static const FString MarshalReturnedBoolAsUint8Attribute;
-	static const FString MarshalBoolParameterAsUint8Attribute;
 	static const FString ClrHostInterfacesAssemblyName;
 	static const FString ClrHostManagedAssemblyName;
-	static const FString NativeThisPointer;
-
-	struct FExportedProperty
-	{
-		FString GetterDelegateName;
-		FString GetterDelegateTypeName;
-		FString SetterDelegateName;
-		FString SetterDelegateTypeName;
-		FString NativeGetterWrapperFunctionName;
-		FString NativeSetterWrapperFunctionName;
-	};
-
-	struct FExportedFunction
-	{
-		const UFunction* Function;
-		bool bHasReturnValue;
-		FString NativeWrapperFunctionName;
-	};
-
+		
 	/** Path where generated script glue goes **/
 	FString GeneratedCodePath;
 	/** Local root path **/
@@ -95,22 +79,13 @@ private:
 	TArray<FString> AllManagedWrapperFiles;
 	/** Engine source header filenames for all exported classes. */
 	TArray<FString> AllSourceClassHeaders;
-	/** Functions that were exported for each class. */
-	TMap<const UClass*, TArray<FExportedFunction> > ClassExportedFunctions;
-	/** Properties that were exported for each class. */
-	TMap<const UClass*, TArray<FExportedProperty> > ClassExportedProperties;
-
-	TSet<FName> ExportedClassNames;
+	/** Classes for which native wrappers were generated. */
+	TArray<const UClass*> ClassesWithNativeWrappers;
 	TArray<const UClass*> AllExportedClasses;
 
 	static bool CanExportClass(const UClass* Class);
 	static bool CanExportProperty(const UClass* Class, const UProperty* Property);
 	static bool CanExportFunction(const UClass* Class, const UFunction* Function);
-
-	static FString GetClassCPPType(const UClass* Class);
-	static FString GetPropertyCPPType(const UProperty* Property);
-	static FString GenerateFunctionDispatchParamInitializer(const UProperty* Param);
-	static void GenerateFunctionDispatch(const UFunction* Function, FCodeFormatter& GeneratedGlue);
 
 	/** Generate a .csproj for the C# wrapper classes. */
 	void GenerateManagedWrapperProject();
@@ -118,79 +93,12 @@ private:
 	void BuildManagedWrapperProject();
 	/** Create a 'glue' file that merges all generated script files */
 	void GlueAllNativeWrapperFiles();
-
-	/** Export native and managed wrappers for the given UFunction. */
-	void ExportFunction(
-		const FString& ClassNameCPP, const UClass* Class, UFunction* Function, 
-		FCodeFormatter& NativeGlueCode, FCodeFormatter& ManagedGlueCode
-	);
-	/** Export native and managed wrappers for the given UProperty. */
-	void ExportProperty(
-		const FString& ClassNameCPP, UClass* Class, UProperty* Property,
-		FCodeFormatter& NativeGlueCode, FCodeFormatter& ManagedGlueCode
-	);
-	/** Generate a statement returning the given value. */
-	void GenerateNativeReturnValueHandler(
-		const UProperty* ReturnValue, const FString& ReturnValueName, FCodeFormatter& GeneratedGlue
-	);
-
-	FString GenerateManagedReturnValueHandler(const UProperty* ReturnValue);
-
+	
 	/** Check if a property type is supported */
 	static bool IsPropertyTypeSupported(const UProperty* Property);
 	/** Check if the property type is a pointer. */
 	static bool IsPropertyTypePointer(const UProperty* Property);
-	/** Check if the property type is a struct that can be used for interop. */
-	static bool IsStructPropertyTypeSupported(const UStructProperty* Property);
 
-	static FString GetPropertyNativeType(const UProperty* Property);
-	static FString GetPropertyInteropType(const UProperty* Property);
-	static FString GetPropertyManagedType(const UProperty* Property);
-	static FString GetPropertyInteropTypeAttributes(const UProperty* Property);
-	static FString GetPropertyInteropTypeModifiers(const UProperty* Property);
-
-	UProperty* GetNativeWrapperArgsAndReturnType(
-		const UFunction* Function, FString& OutFormalArgs, FString& OutActualArgs
-	);
-
-	UProperty* GetManagedWrapperArgsAndReturnType(
-		const UFunction* Function, FString& OutFormalInteropArgs, FString& OutActualInteropArgs,
-		FString& OutFormalManagedArgs, FString& OutActualManagedArgs
-	);
-		
-	void GenerateNativeWrapperFunction(
-		const UClass* Class, UFunction* Function, FCodeFormatter& GeneratedGlue
-	);
-
-	void GenerateManagedWrapperFunction(
-		const UClass* Class, const UFunction* Function, FCodeFormatter& GeneratedGlue
-	);
-
-	void GenerateNativePropertyGetterWrapper(
-		const FString& ClassNameCPP, const UClass* Class, const UProperty* Property,
-		FCodeFormatter& GeneratedGlue, FExportedProperty& ExportedProperty
-	);
-
-	void GenerateNativePropertySetterWrapper(
-		const FString& ClassNameCPP, const UClass* Class, const UProperty* Property,
-		FCodeFormatter& GeneratedGlue, FExportedProperty& ExportedProperty
-	);
-
-	void GenerateManagedPropertyWrapper(
-		const UClass* Class, const UProperty* Property, FCodeFormatter& GeneratedGlue, 
-		FExportedProperty& ExportedProperty
-	);
-
-	void GenerateManagedStaticConstructor(const UClass* Class, FCodeFormatter& GeneratedGlue);
-	static void GenerateNativeGlueCodeHeader(const UClass* Class, FCodeFormatter& GeneratedGlue);
-	void GenerateNativeGlueCodeFooter(const UClass* Class, FCodeFormatter& GeneratedGlue) const;
-	static bool ShouldGenerateManagedWrapper(const UClass* Class);
-	static bool ShouldGenerateScriptObjectClass(const UClass* Class);
-	void GenerateManagedGlueCodeHeader(const UClass* Class, FCodeFormatter& GeneratedGlue) const;
-	void GenerateManagedGlueCodeFooter(const UClass* Class, FCodeFormatter& GeneratedGlue);
-	void GenerateManagedScriptObjectClass(const UClass* Class, FCodeFormatter& GeneratedGlue);
-	FString GenerateDelegateTypeName(const FString& FunctionName, bool bHasReturnValue) const;
-	FString GenerateDelegateName(const FString& FunctionName) const;
 	void WriteToFile(const FString& Path, const FString& Content);
 	FString RebaseToBuildPath(const FString& Filename) const;
 };
