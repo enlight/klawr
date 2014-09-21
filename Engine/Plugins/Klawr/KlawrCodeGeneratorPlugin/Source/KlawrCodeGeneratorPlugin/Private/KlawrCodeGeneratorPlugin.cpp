@@ -73,9 +73,9 @@ public:	// IScriptGeneratorPlugin interface
 						GEngineIni
 					);
 				}
-			} Config;
-			bCanExport = !Config.ExcludedModules.Contains(ModuleName) 
-				&& ((Config.SupportedModules.Num() == 0) || Config.SupportedModules.Contains(ModuleName));
+			} config;
+			bCanExport = !config.ExcludedModules.Contains(ModuleName) 
+				&& ((config.SupportedModules.Num() == 0) || config.SupportedModules.Contains(ModuleName));
 		}
 		return bCanExport;
 	}

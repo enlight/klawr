@@ -57,40 +57,40 @@ FCodeGenerator::FCodeGenerator(
 
 FString FCodeGenerator::GetPropertyCPPType(const UProperty* Property)
 {
-	static const FString EnumDecl(TEXT("enum "));
-	static const FString StructDecl(TEXT("struct "));
-	static const FString ClassDecl(TEXT("class "));
-	static const FString TEnumAsByteDecl(TEXT("TEnumAsByte<enum "));
-	static const FString TSubclassOfDecl(TEXT("TSubclassOf<class "));
-	static const FString Space(TEXT(" "));
+	static const FString enumDecl(TEXT("enum "));
+	static const FString structDecl(TEXT("struct "));
+	static const FString classDecl(TEXT("class "));
+	static const FString enumAsByteDecl(TEXT("TEnumAsByte<enum "));
+	static const FString subclassOfDecl(TEXT("TSubclassOf<class "));
+	static const FString space(TEXT(" "));
 
-	FString CPPTypeName = Property->GetCPPType(NULL, CPPF_ArgumentOrReturnValue);
+	FString cppTypeName = Property->GetCPPType(NULL, CPPF_ArgumentOrReturnValue);
 	
-	if (CPPTypeName.StartsWith(EnumDecl) || CPPTypeName.StartsWith(StructDecl) || CPPTypeName.StartsWith(ClassDecl))
+	if (cppTypeName.StartsWith(enumDecl) || cppTypeName.StartsWith(structDecl) || cppTypeName.StartsWith(classDecl))
 	{
 		// strip enum/struct/class keyword
-		CPPTypeName = CPPTypeName.Mid(CPPTypeName.Find(Space) + 1);
+		cppTypeName = cppTypeName.Mid(cppTypeName.Find(space) + 1);
 	}
-	else if (CPPTypeName.StartsWith(TEnumAsByteDecl))
+	else if (cppTypeName.StartsWith(enumAsByteDecl))
 	{
 		// strip enum keyword
-		CPPTypeName = TEXT("TEnumAsByte<") + CPPTypeName.Mid(CPPTypeName.Find(Space) + 1);
+		cppTypeName = TEXT("TEnumAsByte<") + cppTypeName.Mid(cppTypeName.Find(space) + 1);
 	}
-	else if (CPPTypeName.StartsWith(TSubclassOfDecl))
+	else if (cppTypeName.StartsWith(subclassOfDecl))
 	{
 		// strip class keyword
-		CPPTypeName = TEXT("TSubclassOf<") + CPPTypeName.Mid(CPPTypeName.Find(Space) + 1);
+		cppTypeName = TEXT("TSubclassOf<") + cppTypeName.Mid(cppTypeName.Find(space) + 1);
 		// Passing around TSubclassOf<UObject> doesn't really provide any more type safety than
 		// passing around UClass (so far only UObjects can cross the native/managed boundary),
 		// and TSubclassOf<> lacks the reference equality UClass has.
-		if (CPPTypeName.StartsWith(TEXT("TSubclassOf<UObject>")))
+		if (cppTypeName.StartsWith(TEXT("TSubclassOf<UObject>")))
 		{
-			CPPTypeName = TEXT("UClass*");
+			cppTypeName = TEXT("UClass*");
 		}
 	}
 	// some type names end with a space, strip it away
-	CPPTypeName.RemoveFromEnd(Space);
-	return CPPTypeName;
+	cppTypeName.RemoveFromEnd(space);
+	return cppTypeName;
 }
 
 bool FCodeGenerator::CanExportClass(const UClass* Class)
@@ -106,10 +106,10 @@ bool FCodeGenerator::CanExportClass(const UClass* Class)
 	{
 		// check for exportable functions
 		bool bHasMembersToExport = false;
-		TFieldIterator<UFunction> FuncIt(Class, EFieldIteratorFlags::ExcludeSuper);
-		for ( ; FuncIt; ++FuncIt)
+		TFieldIterator<UFunction> funcIt(Class, EFieldIteratorFlags::ExcludeSuper);
+		for ( ; funcIt; ++funcIt)
 		{
-			if (CanExportFunction(Class, *FuncIt))
+			if (CanExportFunction(Class, *funcIt))
 			{
 				bHasMembersToExport = true;
 				break;
@@ -118,10 +118,10 @@ bool FCodeGenerator::CanExportClass(const UClass* Class)
 		// check for exportable properties
 		if (!bHasMembersToExport)
 		{
-			TFieldIterator<UProperty> PropertyIt(Class, EFieldIteratorFlags::ExcludeSuper);
-			for ( ; PropertyIt; ++PropertyIt)
+			TFieldIterator<UProperty> propertyIt(Class, EFieldIteratorFlags::ExcludeSuper);
+			for ( ; propertyIt; ++propertyIt)
 			{
-				if (CanExportProperty(Class, *PropertyIt))
+				if (CanExportProperty(Class, *propertyIt))
 				{
 					bHasMembersToExport = true;
 					break;
@@ -377,122 +377,122 @@ void FCodeGenerator::ExportClass(
 
 void FCodeGenerator::GenerateManagedWrapperProject()
 {
-	const FString ResourcesBasePath = 
+	const FString resourcesBasePath = 
 		FPaths::EnginePluginsDir() / TEXT("Klawr/KlawrCodeGeneratorPlugin/Resources/WrapperProjectTemplate");
-	const FString ProjectBasePath = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr");
+	const FString projectBasePath = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr");
 
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	if (!PlatformFile.CopyDirectoryTree(*ProjectBasePath, *ResourcesBasePath, true))
+	IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
+	if (!platformFile.CopyDirectoryTree(*projectBasePath, *resourcesBasePath, true))
 	{
 		FError::Throwf(TEXT("Failed to copy wrapper template!"));
 	}
 
-	const FString ProjectName("Klawr.UnrealEngine.csproj");
-	const FString ProjectTemplateFilename = ResourcesBasePath / ProjectName;
-	const FString ProjectOutputFilename = ProjectBasePath / ProjectName;
+	const FString projectName("Klawr.UnrealEngine.csproj");
+	const FString projectTemplateFilename = resourcesBasePath / projectName;
+	const FString projectOutputFilename = projectBasePath / projectName;
 
 	// load the template .csproj
-	pugi::xml_document XmlDoc;
-	pugi::xml_parse_result result = XmlDoc.load_file(
-		*ProjectTemplateFilename, pugi::parse_default | pugi::parse_declaration | pugi::parse_comments
+	pugi::xml_document xmlDoc;
+	pugi::xml_parse_result result = xmlDoc.load_file(
+		*projectTemplateFilename, pugi::parse_default | pugi::parse_declaration | pugi::parse_comments
 	);
 
 	if (!result)
 	{
-		FError::Throwf(TEXT("Failed to load %s"), *ProjectTemplateFilename);
+		FError::Throwf(TEXT("Failed to load %s"), *projectTemplateFilename);
 	}
 	else
 	{
 		// add a reference to the CLR host interfaces assembly
-		auto ReferencesNode = XmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
-		if (ReferencesNode)
+		auto referencesNode = xmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
+		if (referencesNode)
 		{
-			FString AssemblyPath = 
+			FString assemblyPath = 
 				FPaths::RootDir() 
 				/ TEXT("Engine/Source/ThirdParty/Klawr/ClrHostInterfaces/bin/$(Configuration)") 
 				/ ClrHostInterfacesAssemblyName + TEXT(".dll");
-			FPaths::MakePathRelativeTo(AssemblyPath, *ProjectOutputFilename);
-			FPaths::MakePlatformFilename(AssemblyPath);
+			FPaths::MakePathRelativeTo(assemblyPath, *projectOutputFilename);
+			FPaths::MakePlatformFilename(assemblyPath);
 
-			auto RefNode = ReferencesNode.append_child(TEXT("Reference"));
-			RefNode.append_attribute(TEXT("Include")) = *ClrHostInterfacesAssemblyName;
-			RefNode.append_child(TEXT("HintPath")).text() = *AssemblyPath;
+			auto refNode = referencesNode.append_child(TEXT("Reference"));
+			refNode.append_attribute(TEXT("Include")) = *ClrHostInterfacesAssemblyName;
+			refNode.append_child(TEXT("HintPath")).text() = *assemblyPath;
 		}
 
 		// add a reference to the CLR host managed assembly
-		if (ReferencesNode)
+		if (referencesNode)
 		{
-			FString AssemblyPath =
+			FString assemblyPath =
 				FPaths::RootDir()
 				/ TEXT("Engine/Source/ThirdParty/Klawr/ClrHostManaged/bin/$(Configuration)")
 				/ ClrHostManagedAssemblyName + TEXT(".dll");
-			FPaths::MakePathRelativeTo(AssemblyPath, *ProjectOutputFilename);
-			FPaths::MakePlatformFilename(AssemblyPath);
+			FPaths::MakePathRelativeTo(assemblyPath, *projectOutputFilename);
+			FPaths::MakePlatformFilename(assemblyPath);
 
-			auto RefNode = ReferencesNode.append_child(TEXT("Reference"));
-			RefNode.append_attribute(TEXT("Include")) = *ClrHostManagedAssemblyName;
-			RefNode.append_child(TEXT("HintPath")).text() = *AssemblyPath;
+			auto refNode = referencesNode.append_child(TEXT("Reference"));
+			refNode.append_attribute(TEXT("Include")) = *ClrHostManagedAssemblyName;
+			refNode.append_child(TEXT("HintPath")).text() = *assemblyPath;
 		}
 
 		// include all the generated C# wrapper classes in the project file
-		auto SourceNode = XmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
-		if (SourceNode)
+		auto sourceNode = xmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Compile")).parent();
+		if (sourceNode)
 		{
-			FString LinkFilename;
-			for (FString ManagedGlueFilename : AllManagedWrapperFiles)
+			FString linkFilename;
+			for (FString managedGlueFilename : AllManagedWrapperFiles)
 			{
-				FPaths::MakePathRelativeTo(ManagedGlueFilename, *ProjectOutputFilename);
-				FPaths::MakePlatformFilename(ManagedGlueFilename);
+				FPaths::MakePathRelativeTo(managedGlueFilename, *projectOutputFilename);
+				FPaths::MakePlatformFilename(managedGlueFilename);
 				// group all generated .cs files under a virtual folder in the project file
-				LinkFilename = TEXT("Generated\\");
-				LinkFilename += FPaths::GetCleanFilename(ManagedGlueFilename);
+				linkFilename = TEXT("Generated\\");
+				linkFilename += FPaths::GetCleanFilename(managedGlueFilename);
 
-				auto CompileNode = SourceNode.append_child(TEXT("Compile"));
-				CompileNode.append_attribute(TEXT("Include")) = *ManagedGlueFilename;
-				CompileNode.append_child(TEXT("Link")).text() = *LinkFilename;
+				auto compileNode = sourceNode.append_child(TEXT("Compile"));
+				compileNode.append_attribute(TEXT("Include")) = *managedGlueFilename;
+				compileNode.append_child(TEXT("Link")).text() = *linkFilename;
 			}
 		}
 
 		// add a post-build event to copy the C# wrapper assembly to the engine binaries dir
-		FString AssemblyDestPath = FPlatformProcess::BaseDir();
-		FPaths::NormalizeFilename(AssemblyDestPath);
-		FPaths::CollapseRelativeDirectories(AssemblyDestPath);
-		FPaths::MakePlatformFilename(AssemblyDestPath);
+		FString assemblyDestPath = FPlatformProcess::BaseDir();
+		FPaths::NormalizeFilename(assemblyDestPath);
+		FPaths::CollapseRelativeDirectories(assemblyDestPath);
+		FPaths::MakePlatformFilename(assemblyDestPath);
 		
-		FString PostBuildCmd = FString::Printf(
-			TEXT("xcopy \"$(TargetPath)\" \"%s\" /Y"), *AssemblyDestPath
+		FString postBuildCmd = FString::Printf(
+			TEXT("xcopy \"$(TargetPath)\" \"%s\" /Y"), *assemblyDestPath
 		);
 
-		XmlDoc
+		xmlDoc
 			.child(TEXT("Project"))
 				.append_child(TEXT("PropertyGroup"))
-					.append_child(TEXT("PostBuildEvent")).text() = *PostBuildCmd;
+					.append_child(TEXT("PostBuildEvent")).text() = *postBuildCmd;
 
 		// preserve the BOM and line endings of the template .csproj when writing out the new file
-		unsigned int OutputFlags =
+		unsigned int outputFlags =
 			pugi::format_default | pugi::format_write_bom | pugi::format_save_file_text;
 
-		if (!XmlDoc.save_file(*ProjectOutputFilename, TEXT("  "), OutputFlags))
+		if (!xmlDoc.save_file(*projectOutputFilename, TEXT("  "), outputFlags))
 		{
-			FError::Throwf(TEXT("Failed to save %s"), *ProjectOutputFilename);
+			FError::Throwf(TEXT("Failed to save %s"), *projectOutputFilename);
 		}
 	}
 }
 
 void FCodeGenerator::BuildManagedWrapperProject()
 {
-	FString BuildFilename = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr/Build.bat");
-	FPaths::CollapseRelativeDirectories(BuildFilename);
-	FPaths::MakePlatformFilename(BuildFilename);
-	int32 ReturnCode = 0;
-	FString StdOut;
-	FString StdError;
+	FString buildFilename = FPaths::EngineIntermediateDir() / TEXT("ProjectFiles/Klawr/Build.bat");
+	FPaths::CollapseRelativeDirectories(buildFilename);
+	FPaths::MakePlatformFilename(buildFilename);
+	int32 returnCode = 0;
+	FString stdOut;
+	FString stdError;
 
 	FPlatformProcess::ExecProcess(
-		*BuildFilename, TEXT(""), &ReturnCode, &StdOut, &StdError
+		*buildFilename, TEXT(""), &returnCode, &stdOut, &stdError
 	);
 
-	if (ReturnCode != 0)
+	if (returnCode != 0)
 	{
 		FError::Throwf(TEXT("Failed to build Klawr.UnrealEngine assembly!"));
 	}
@@ -564,10 +564,10 @@ void FCodeGenerator::GlueAllNativeWrapperFiles()
 
 void FCodeGenerator::WriteToFile(const FString& Path, const FString& Content)
 {
-	FString DiskContent;
-	FFileHelper::LoadFileToString(DiskContent, *Path);
+	FString diskContent;
+	FFileHelper::LoadFileToString(diskContent, *Path);
 
-	const bool bContentChanged = (DiskContent.Len() == 0) || FCString::Strcmp(*DiskContent, *Content);
+	const bool bContentChanged = (diskContent.Len() == 0) || FCString::Strcmp(*diskContent, *Content);
 	if (bContentChanged)
 	{
 		if (!FFileHelper::SaveStringToFile(Content, *Path))
@@ -579,9 +579,9 @@ void FCodeGenerator::WriteToFile(const FString& Path, const FString& Content)
 
 FString FCodeGenerator::RebaseToBuildPath(const FString& Filename) const
 {
-	FString RebasedFilename(Filename);
-	FPaths::MakePathRelativeTo(RebasedFilename, *IncludeBase);
-	return RebasedFilename;
+	FString rebasedFilename(Filename);
+	FPaths::MakePathRelativeTo(rebasedFilename, *IncludeBase);
+	return rebasedFilename;
 }
 
 } // namespace Klawr
