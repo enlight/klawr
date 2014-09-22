@@ -87,17 +87,9 @@ During the build you may see a bunch of console windows popup briefly, don't pan
 
 Using
 ====
-**Don't!** Yet. But if you insist:
+First of all make sure you've got a project open that you don't mind obliterating in case something goes wrong, next enable KlawrRuntimePlugin and KlawrEditorPlugin in UnrealEd, restart as requested.
 
-1. Enable KlawrRuntimePlugin and KlawrEditorPlugin in UnrealEd, restart as requested.
-2. On the Content Browser menu select New->Blueprints->Klawr Blueprint.
-3. Enter a name for the new Blueprint (it's going to contain a component), e.g. MyComponent
-4. Enter the filename for your new C# script, this will default to the name of the Blueprint.
-5. Enter the location for your new C# script, this is relative to the game project directory, and should be outside the Content directory. The default is the Scripts directory (will be created if it doesn't already exist), but you can also set the location to the Source directory (if your project has one), or Source\Scripts, or any directory within the aforementioned directories (excluding Content).
-6. Press OK to create the Blueprint.
-7. The C# scripts assembly will be rebuilt.
-8. The new Blueprint component can now be attached to an actor, just open/create an actor Blueprint and add the Blueprint component to it.
-9. Nothing happens because I'm still working on it! :)
+Now you can [create a script component Blueprint](https://github.com/enlight/klawr/wiki/Creating-a-Script-Component-Blueprint).
 
 License
 =====
