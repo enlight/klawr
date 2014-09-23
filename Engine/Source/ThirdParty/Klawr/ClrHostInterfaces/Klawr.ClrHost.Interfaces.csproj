@@ -43,6 +43,7 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LogUtilsProxy.cs" />
     <Compile Include="IDefaultAppDomainManager.cs" />
     <Compile Include="IEngineAppDomainManager.cs" />
     <Compile Include="IScriptObject.cs" />

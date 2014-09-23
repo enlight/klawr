@@ -21,48 +21,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //-------------------------------------------------------------------------------
+#pragma once
 
-#include "KlawrRuntimePluginPrivatePCH.h"
-#include "KlawrNativeUtils.h"
 #include "KlawrClrHost.h"
-#include "KlawrObjectReferencer.h"
 
 namespace Klawr {
-	namespace ObjectUtils {
-		static UClass* GetClassByName(const TCHAR* nativeClassName)
-		{
-			return Cast<UClass>(StaticFindObject(UClass::StaticClass(), ANY_PACKAGE, nativeClassName, true));
-		}
 
-		static const TCHAR* GetClassName(UClass* nativeClass)
-		{
-			FString className;
-			static_cast<UClass*>(nativeClass)->GetName(className);
-			return Klawr::MakeStringCopyForCLR(*className);
-		}
-
-		static uint8 IsClassChildOf(UClass* derivedClass, UClass* baseClass)
-		{
-			return static_cast<UClass*>(derivedClass)->IsChildOf(static_cast<UClass*>(baseClass));
-		}
-
-		static void RemoveObjectRef(UObject* obj)
-		{
-			// NOTE: currently UClass instances aren't reference counted, under the assumption they 
-			// won't be garbage collected... it's probably a bad assumption!
-			if (!obj->IsA<UClass>())
-			{
-				Klawr::FObjectReferencer::RemoveObjectRef(obj);
-			}
-		}
-	} // namespace ObjectUtils
-
-	ObjectUtilsNativeInfo FNativeUtils::Object =
-	{
-		ObjectUtils::GetClassByName,
-		ObjectUtils::GetClassName,
-		ObjectUtils::IsClassChildOf,
-		ObjectUtils::RemoveObjectRef
-	};
+/** Encapsulates native utility functions that are exported to managed code. */
+struct FNativeUtils
+{
+	static ObjectUtilsNativeInfo Object;
+	static LogUtilsProxy Log;
+};
 
 } // namespace Klawr

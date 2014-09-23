@@ -21,15 +21,60 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //-------------------------------------------------------------------------------
-#pragma once
 
+#include "KlawrRuntimePluginPrivatePCH.h"
+#include "KlawrNativeUtils.h"
 #include "KlawrClrHost.h"
 
 namespace Klawr {
+	namespace LogUtils {
+		
+		void LogFatalError(const TCHAR* message)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Fatal, TEXT("%s"), message);
+		}
+		
+		void LogError(const TCHAR* message)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Error, TEXT("%s"), message);
+		}
 
-struct FObjectUtils
-{
-	static ObjectUtilsNativeInfo Info;
-};
+		void LogWarning(const TCHAR* message)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Warning, TEXT("%s"), message);
+		}
+
+		void Display(const TCHAR* message)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Display, TEXT("%s"), message);
+		}
+
+		void Log(const TCHAR* message)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Log, TEXT("%s"), message);
+		}
+		
+		void LogVerbose(const TCHAR* message)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, Verbose, TEXT("%s"), message);
+		}
+		
+		void LogVeryVerbose(const TCHAR* message)
+		{
+			UE_LOG(LogKlawrRuntimePlugin, VeryVerbose, TEXT("%s"), message);
+		}
+
+	} // namespace LogUtils
+
+	LogUtilsProxy FNativeUtils::Log =
+	{
+		LogUtils::LogFatalError,
+		LogUtils::LogError,
+		LogUtils::LogWarning,
+		LogUtils::Display,
+		LogUtils::Log,
+		LogUtils::LogVerbose,
+		LogUtils::LogVeryVerbose,
+	};
 
 } // namespace Klawr

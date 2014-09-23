@@ -90,6 +90,8 @@ namespace Klawr.ClrHost.Managed
         // cache of previously created script component types
         private Dictionary<string /*Full Type Name*/, ScriptComponentTypeInfo> _scriptComponentTypeCache = new Dictionary<string, ScriptComponentTypeInfo>();
 
+        private LogUtils _logUtils;
+
         // NOTE: the base implementation of this method does nothing, so no need to call it
         public override void InitializeNewDomain(AppDomainSetup appDomainInfo)
         {
@@ -266,6 +268,13 @@ namespace Klawr.ClrHost.Managed
         {
             ObjectUtils.BindToNativeFunctions(ref info);
             UObjectHandle.ReleaseHandleCallback = new Action<IntPtr>(ObjectUtils.ReleaseObject);
+        }
+
+        public void BindLogUtils(ref LogUtilsProxy proxy)
+        {
+            _logUtils = new LogUtils(ref proxy);
+            // redirect output to the UE console and log file
+            System.Console.SetOut(new UELogWriter());
         }
 
         public bool CreateScriptComponent(

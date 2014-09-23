@@ -23,7 +23,7 @@
 //-------------------------------------------------------------------------------
 #include "KlawrRuntimePluginPrivatePCH.h"
 #include "KlawrClrHost.h"
-#include "KlawrObjectUtils.h"
+#include "KlawrNativeUtils.h"
 #include "KlawrObjectReferencer.h"
 
 DEFINE_LOG_CATEGORY(LogKlawrRuntimePlugin);
@@ -165,7 +165,14 @@ public:
 
 	virtual bool CreateAppDomain(int& OutAppDomainID) override
 	{
-		return IClrHost::Get()->CreateEngineAppDomain(FObjectUtils::Info, OutAppDomainID);
+		IClrHost* clrHost = IClrHost::Get();
+		if (clrHost->CreateEngineAppDomain(OutAppDomainID))
+		{
+			return clrHost->InitEngineAppDomain(
+				OutAppDomainID, FNativeUtils::Object, FNativeUtils::Log
+			);
+		}
+		return false;
 	}
 
 	virtual bool DestroyAppDomain(int AppDomainID) override

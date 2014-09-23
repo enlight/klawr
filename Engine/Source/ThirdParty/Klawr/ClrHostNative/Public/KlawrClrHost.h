@@ -75,6 +75,35 @@ struct ObjectUtilsNativeInfo
 	RemoveObjectRefAction RemoveObjectRef;
 };
 
+/** 
+ * @brief Contains pointers to native logging functions.
+ *
+ * These native functions will be called by managed code.
+ *
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ *       the managed counterpart is also exposed to native code via COM under the 
+ *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library).
+ */
+struct LogUtilsProxy
+{
+	typedef void (*LogAction)(const TCHAR* text);
+
+	/** Print an error to the UE4 console and log file, then crash (even if logging is disabled). */
+	LogAction LogFatalError;
+	/** Print an error to the UE4 console and log file. */
+	LogAction LogError;
+	/** Print a warning to the UE4 console and log file. */
+	LogAction LogWarning;
+	/** Print a message to the UE4 console and log file. */
+	LogAction Display;
+	/** Print a message to the log file, but not to the UE4 console. */
+	LogAction Log;
+	/** Print a verbose message to a log file (if Verbose logging is enabled). */
+	LogAction LogVerbose;
+	/** Print a verbose message to a log file (if VeryVerbose logging is enabled). */
+	LogAction LogVeryVerbose;
+};
+
 /**
  * @brief Contains native/managed interop information for a ScriptObject instance.
  * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
@@ -153,14 +182,21 @@ public:
 	) = 0;
 
 	/**
-	 * @brief Create a new engine app domain and initialize it.
+	 * @brief Create a new engine app domain.
 	 * @param outAppDomainID Will be set to the ID of the newly created engine app domain.
-	 * @return true if the app domain was created and initialized successfully, false otherwise
+	 * @return true if the app domain was created successfully, false otherwise
 	 */
-	virtual bool CreateEngineAppDomain(
-		const ObjectUtilsNativeInfo& objectUtils, int& outAppDomainID
-	) = 0;
+	virtual bool CreateEngineAppDomain(int& outAppDomainID) = 0;
 	
+	/**
+	 * @brief Initialize a previously created engine app domain.
+	 * @param appDomainID ID of the app domain to be initialized.
+	 * @return true if the app domain was initialized successfully, false otherwise
+	 */
+	virtual bool InitEngineAppDomain(
+		int appDomainID, const ObjectUtilsNativeInfo& objectUtils, const LogUtilsProxy& logUtils
+	) = 0;
+
 	/**
 	 * @brief Destroy an engine app domain.
 	 * @param appDomainID The ID of the engine app domain to destroy.

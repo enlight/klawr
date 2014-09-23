@@ -40,7 +40,10 @@ class ClrHost : public IClrHost
 {
 public: // IClrHost interface
 	virtual bool Startup(const TCHAR* engineAppDomainAppBase, const TCHAR* gameScriptsAssemblyName) override;
-	virtual bool CreateEngineAppDomain(const ObjectUtilsNativeInfo& objectUtils, int& outAppDomainID) override;
+	virtual bool CreateEngineAppDomain(int& outAppDomainID) override;
+	virtual bool InitEngineAppDomain(
+		int appDomainID, const ObjectUtilsNativeInfo& objectUtils, const LogUtilsProxy& logUtils
+	) override;
 	virtual bool DestroyEngineAppDomain(int appDomainID);
 	virtual void Shutdown() override;
 

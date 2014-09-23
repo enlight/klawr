@@ -90,6 +90,25 @@ void SafeArrayToVector(SAFEARRAY* input, std::vector<TVectorElement>& output)
 
 namespace Klawr {
 
+struct ProxySizeChecks
+{
+	static_assert(
+		sizeof(Klawr_ClrHost_Interfaces::ObjectUtilsNativeInfo) == sizeof(ObjectUtilsNativeInfo),
+		"ObjectUtilsNativeInfo doesn't have the same size in native and managed code!"
+	);
+
+	static_assert(
+		sizeof(Klawr_ClrHost_Interfaces::LogUtilsProxy) == sizeof(LogUtilsProxy),
+		"LogUtilsProxy doesn't have the same size in native and managed code!"
+	);
+
+	static_assert(
+		sizeof(Klawr_ClrHost_Interfaces::ScriptComponentProxy) == sizeof(ScriptComponentProxy),
+		"ScriptComponentProxy doesn't have the same size in native and managed code!"
+	);
+
+};
+
 bool ClrHost::Startup(const TCHAR* engineAppDomainAppBase, const TCHAR* gameScriptsAssemblyName)
 {
 	_COM_SMARTPTR_TYPEDEF(ICLRMetaHost, IID_ICLRMetaHost);
@@ -142,7 +161,10 @@ bool ClrHost::Startup(const TCHAR* engineAppDomainAppBase, const TCHAR* gameScri
 	// by default the CLR runtime will look for the app domain manager assembly in the same 
 	// directory as the application, which in this case will be 
 	// C:\Program Files\Unreal Engine\4.X\Engine\Binaries\Win64 (or Win32)
-	hr = clrControl->SetAppDomainManagerType(L"Klawr.ClrHost.Managed", L"Klawr.ClrHost.Managed.DefaultAppDomainManager");
+	hr = clrControl->SetAppDomainManagerType(
+		L"Klawr.ClrHost.Managed", L"Klawr.ClrHost.Managed.DefaultAppDomainManager"
+	);
+
 	if (!verify(SUCCEEDED(hr)))
 	{
 		return false;
@@ -171,15 +193,20 @@ void ClrHost::Shutdown()
 	}
 }
 
-bool ClrHost::CreateEngineAppDomain(
-	const ObjectUtilsNativeInfo& info, int& outAppDomainID
-)
+bool ClrHost::CreateEngineAppDomain(int& outAppDomainID)
 {
 	outAppDomainID = _hostControl->GetDefaultAppDomainManager()->CreateEngineAppDomain(
 		_engineAppDomainAppBase.c_str()
 	);
-	auto engineAppDomainManager = _hostControl->GetEngineAppDomainManager(outAppDomainID);
-	if (engineAppDomainManager)
+	return _hostControl->GetEngineAppDomainManager(outAppDomainID) != nullptr;
+}
+
+bool ClrHost::InitEngineAppDomain(
+	int appDomainID, const ObjectUtilsNativeInfo& objectUtils, const LogUtilsProxy& logUtils
+)
+{
+	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
+	if (appDomainManager)
 	{
 		// pass all the native wrapper functions to the managed side of the CLR host so that they 
 		// can be hooked up to properties and methods of the generated C# wrapper classes (though 
@@ -191,23 +218,29 @@ bool ClrHost::CreateEngineAppDomain(
 			auto safeArray = CreateSafeArrayOfWrapperFunctions(
 				wrapperInfo.functionPointers, wrapperInfo.numFunctions
 			);
-			HRESULT hr = engineAppDomainManager->SetNativeFunctionPointers(className, safeArray);
+			HRESULT hr = appDomainManager->SetNativeFunctionPointers(className, safeArray);
 			assert(SUCCEEDED(hr));
 		}
 
 		// pass a few utility functions to the managed side to deal with native UObject instances
 		Klawr_ClrHost_Interfaces::ObjectUtilsNativeInfo interopInfo;
-		interopInfo.GetClassByName = reinterpret_cast<INT_PTR>(info.GetClassByName);
-		interopInfo.GetClassName = reinterpret_cast<INT_PTR>(info.GetClassName);
-		interopInfo.IsClassChildOf = reinterpret_cast<INT_PTR>(info.IsClassChildOf);
-		interopInfo.RemoveObjectRef = reinterpret_cast<INT_PTR>(info.RemoveObjectRef);
-		engineAppDomainManager->BindObjectUtils(&interopInfo);
+		interopInfo.GetClassByName = reinterpret_cast<INT_PTR>(objectUtils.GetClassByName);
+		interopInfo.GetClassName = reinterpret_cast<INT_PTR>(objectUtils.GetClassName);
+		interopInfo.IsClassChildOf = reinterpret_cast<INT_PTR>(objectUtils.IsClassChildOf);
+		interopInfo.RemoveObjectRef = reinterpret_cast<INT_PTR>(objectUtils.RemoveObjectRef);
+		appDomainManager->BindObjectUtils(&interopInfo);
+
+		appDomainManager->BindLogUtils(
+			reinterpret_cast<Klawr_ClrHost_Interfaces::LogUtilsProxy*>(
+				const_cast<LogUtilsProxy*>(&logUtils)
+			)
+		);
 
 		// now that everything the engine wrapper assembly needs is in place it can be loaded
-		engineAppDomainManager->LoadUnrealEngineWrapperAssembly();
-		engineAppDomainManager->LoadAssembly(_gameScriptsAssemblyName.c_str());
+		appDomainManager->LoadUnrealEngineWrapperAssembly();
+		appDomainManager->LoadAssembly(_gameScriptsAssemblyName.c_str());
 	}
-	return engineAppDomainManager != nullptr;
+	return appDomainManager != nullptr;
 }
 
 bool ClrHost::DestroyEngineAppDomain(int appDomainID)
@@ -252,14 +285,6 @@ bool ClrHost::CreateScriptComponent(
 	int appDomainID, const TCHAR* className, class UObject* nativeComponent, ScriptComponentProxy& proxy
 )
 {
-	// these two structures must have the same size and layout (but can't test layout that easily)
-	bool proxiesSameSize = sizeof(Klawr_ClrHost_Interfaces::ScriptComponentProxy) == sizeof(ScriptComponentProxy);
-	assert(proxiesSameSize);
-	if (!proxiesSameSize)
-	{
-		return false;
-	}
-
 	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
 	if (!appDomainManager)
 	{

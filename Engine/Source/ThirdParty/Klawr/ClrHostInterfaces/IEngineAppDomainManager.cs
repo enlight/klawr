@@ -85,6 +85,14 @@ namespace Klawr.ClrHost.Interfaces
         /// <param name="info"></param>
         void BindObjectUtils(ref ObjectUtilsNativeInfo info);
 
+        /// <summary>
+        /// The native side of the CLR host will use this method to pass a set of native logging
+        /// functions to the managed side of the CLR host. This method should be called during 
+        /// initialization of the engine app domain.
+        /// </summary>
+        /// <param name="proxy">Structure containing pointers to native functions.</param>
+        void BindLogUtils(ref LogUtilsProxy proxy);
+
         bool CreateScriptComponent(
             string className, IntPtr nativeComponent, ref ScriptComponentProxy proxy
         );
