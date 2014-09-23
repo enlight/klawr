@@ -30,7 +30,11 @@
 namespace Klawr {
 
 const FString FCSharpWrapperGenerator::UnmanagedFunctionPointerAttribute = 
-	TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl)]");
+#ifdef UNICODE
+	TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Unicode)]");
+#else
+	TEXT("[UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Ansi)]");
+#endif // UNICODE
 
 const FString FCSharpWrapperGenerator::MarshalReturnedBoolAsUint8Attribute =
 	TEXT("[return: MarshalAs(UnmanagedType.U1)]");
