@@ -40,6 +40,11 @@ class FEditorPlugin : public IKlawrEditorPlugin
 private:
 	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
 	int PIEAppDomainID;
+	// true when the PIE app domain needs to be destroyed
+	bool bPIEAppDomainDestructionPending;
+	bool bPIEGarbageCollected;
+	bool bRegisteredForOnLevelActorListChanged;
+	bool bRegisteredForPostGarbageCollect;
 
 private:
 	/** Called by the Blueprint compiler. */
@@ -64,6 +69,44 @@ private:
 		RegisteredAssetTypeActions.Add(Action);
 	}
 
+	void RegisterOnLevelActorListChanged()
+	{
+		if (!bRegisteredForOnLevelActorListChanged)
+		{
+			check(GEngine);
+			GEngine->OnLevelActorListChanged().AddRaw(this, &FEditorPlugin::OnLevelActorListChanged);
+			bRegisteredForOnLevelActorListChanged = true;
+		}
+	}
+
+	void UnregisterOnLevelActorListChanged()
+	{
+		if (bRegisteredForOnLevelActorListChanged)
+		{
+			check(GEngine);
+			GEngine->OnLevelActorListChanged().RemoveAll(this);
+			bRegisteredForOnLevelActorListChanged = false;
+		}
+	}
+
+	void RegisterPostGarbageCollect()
+	{
+		if (!bRegisteredForPostGarbageCollect)
+		{
+			FCoreDelegates::PostGarbageCollect.AddRaw(this, &FEditorPlugin::OnPostGarbageCollect);
+			bRegisteredForPostGarbageCollect = true;
+		}
+	}
+
+	void UnregisterPostGarbageCollect()
+	{
+		if (bRegisteredForPostGarbageCollect)
+		{
+			FCoreDelegates::PostGarbageCollect.RemoveAll(this);
+			bRegisteredForPostGarbageCollect = false;
+		}
+	}
+
 	void OnBeginPIE(const bool bIsSimulating)
 	{
 		UE_LOG(LogKlawrEditorPlugin, Display, TEXT("Creating a new app domain for PIE."));
@@ -83,9 +126,47 @@ private:
 
 	void OnEndPIE(const bool bIsSimulating)
 	{
-		UE_LOG(LogKlawrEditorPlugin, Display, TEXT("Unloading PIE app domain."));
 		if (ensure(PIEAppDomainID != 0))
 		{
+			// At this point it's too early to destroy the PIE app domain because actors in the
+			// PIE world haven't even been notified play has ended, so they haven't had a chance
+			// to release references to any managed objects. 
+			RegisterOnLevelActorListChanged();
+			bPIEAppDomainDestructionPending = true;
+			bPIEGarbageCollected = false;
+		}
+	}
+
+	void OnLevelActorListChanged()
+	{
+		if (bPIEAppDomainDestructionPending && ensure(PIEAppDomainID != 0))
+		{
+			// At this point actors have been notified play has ended, and have unregistered their
+			// components. However, neither the actors in the PIE world, nor their components have
+			// been destroyed yet, that will only happen when the garbage collector runs.
+			UnregisterOnLevelActorListChanged();
+			RegisterPostGarbageCollect();
+			// TODO: run the .NET garbage collector to ensure any unused references to native 
+			// UObjects are collected before the UE garbage collector runs
+			bPIEGarbageCollected = true;
+		}
+	}
+
+	void OnPostGarbageCollect()
+	{
+		if (bPIEGarbageCollected && ensure(PIEAppDomainID != 0))
+		{
+			// At this point all actors and components in the PIE world should've been destroyed,
+			// along with any other UObjects.
+			// FIXME: Unfortunately, if there are any circular references between native UObjects 
+			// and managed code then the UE garbage collector will not be able to collect all the
+			// native UObjects in the PIE world, in which case UnrealEd will display an error...
+			// So, I need to figure out a way to deal with circular references.
+			check(bPIEAppDomainDestructionPending);
+
+			UnregisterPostGarbageCollect();
+
+			UE_LOG(LogKlawrEditorPlugin, Display, TEXT("Unloading PIE app domain."));
 			auto& Runtime = IKlawrRuntimePlugin::Get();
 			if (!Runtime.DestroyAppDomain(PIEAppDomainID))
 			{
@@ -95,6 +176,7 @@ private:
 			}
 			PIEAppDomainID = 0;
 			Runtime.SetPIEAppDomainID(PIEAppDomainID);
+			bPIEAppDomainDestructionPending = false;
 		}
 	}
 
@@ -102,6 +184,10 @@ public:
 	
 	FEditorPlugin()
 		: PIEAppDomainID(0)
+		, bPIEAppDomainDestructionPending(false)
+		, bPIEGarbageCollected(false)
+		, bRegisteredForOnLevelActorListChanged(false)
+		, bRegisteredForPostGarbageCollect(false)
 	{
 	}
 
@@ -136,7 +222,8 @@ public: // IModuleInterface interface
 
 		FEditorDelegates::BeginPIE.AddRaw(this, &FEditorPlugin::OnBeginPIE);
 		FEditorDelegates::EndPIE.AddRaw(this, &FEditorPlugin::OnEndPIE);
-
+		
+		
 		FScriptsReloader::Startup();
 		FScriptsReloader::Get().Enable();
 	}
@@ -147,6 +234,9 @@ public: // IModuleInterface interface
 
 		FEditorDelegates::BeginPIE.RemoveAll(this);
 		FEditorDelegates::EndPIE.RemoveAll(this);
+		
+		check(!bRegisteredForOnLevelActorListChanged);
+		check(!bRegisteredForPostGarbageCollect);
 
 		// at this point the editor may have already unloaded the AssetTools module, 
 		// in that case there's no need to unregister the previously registered asset types

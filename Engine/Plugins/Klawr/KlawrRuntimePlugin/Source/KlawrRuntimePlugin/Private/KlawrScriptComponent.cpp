@@ -123,16 +123,19 @@ void UKlawrScriptComponent::OnRegister()
 
 void UKlawrScriptComponent::OnUnregister()
 {
-	if (Proxy && Proxy->OnUnregister)
+	if (Proxy)
 	{
-		Proxy->OnUnregister();
-	}
-
-	// bHasBeenCreated should only be true if OnComponentCreated() was called, in which case
-	// the proxy should only be destroyed in OnComponentDestroyed()
-	if (!Super::bHasBeenCreated)
-	{
-		DestroyScriptComponentProxy();
+		if (Proxy->OnUnregister)
+		{
+			Proxy->OnUnregister();
+		}
+	
+		// bHasBeenCreated should only be true if OnComponentCreated() was called, in which case
+		// the proxy should only be destroyed in OnComponentDestroyed()
+		if (!Super::bHasBeenCreated)
+		{
+			DestroyScriptComponentProxy();
+		}
 	}
 
 	Super::OnUnregister();
