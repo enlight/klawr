@@ -22,9 +22,6 @@ namespace Klawr.UnrealEngine
             return (UClass)typeof(UKlawrScriptComponent);
         }
 
-        public virtual void OnComponentCreated() { }
-        public virtual void OnComponentDestroyed() { }
-
         protected virtual void OnRegister() { }
         protected virtual void OnUnregister() { }
         

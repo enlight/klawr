@@ -42,9 +42,7 @@ private:
 	int PIEAppDomainID;
 	// true when the PIE app domain needs to be destroyed
 	bool bPIEAppDomainDestructionPending;
-	bool bPIEGarbageCollected;
 	bool bRegisteredForOnLevelActorListChanged;
-	bool bRegisteredForPostGarbageCollect;
 
 private:
 	/** Called by the Blueprint compiler. */
@@ -89,24 +87,6 @@ private:
 		}
 	}
 
-	void RegisterPostGarbageCollect()
-	{
-		if (!bRegisteredForPostGarbageCollect)
-		{
-			FCoreDelegates::PostGarbageCollect.AddRaw(this, &FEditorPlugin::OnPostGarbageCollect);
-			bRegisteredForPostGarbageCollect = true;
-		}
-	}
-
-	void UnregisterPostGarbageCollect()
-	{
-		if (bRegisteredForPostGarbageCollect)
-		{
-			FCoreDelegates::PostGarbageCollect.RemoveAll(this);
-			bRegisteredForPostGarbageCollect = false;
-		}
-	}
-
 	void OnBeginPIE(const bool bIsSimulating)
 	{
 		UE_LOG(LogKlawrEditorPlugin, Display, TEXT("Creating a new app domain for PIE."));
@@ -133,7 +113,6 @@ private:
 			// to release references to any managed objects. 
 			RegisterOnLevelActorListChanged();
 			bPIEAppDomainDestructionPending = true;
-			bPIEGarbageCollected = false;
 		}
 	}
 
@@ -145,31 +124,18 @@ private:
 			// components. However, neither the actors in the PIE world, nor their components have
 			// been destroyed yet, that will only happen when the garbage collector runs.
 			UnregisterOnLevelActorListChanged();
-			RegisterPostGarbageCollect();
-			// TODO: run the .NET garbage collector to ensure any unused references to native 
-			// UObjects are collected before the UE garbage collector runs
-			bPIEGarbageCollected = true;
-		}
-	}
-
-	void OnPostGarbageCollect()
-	{
-		if (bPIEGarbageCollected && ensure(PIEAppDomainID != 0))
-		{
-			// At this point all actors and components in the PIE world should've been destroyed,
-			// along with any other UObjects.
-			// FIXME: Unfortunately, if there are any circular references between native UObjects 
-			// and managed code then the UE garbage collector will not be able to collect all the
-			// native UObjects in the PIE world, in which case UnrealEd will display an error...
-			// So, I need to figure out a way to deal with circular references.
-			check(bPIEAppDomainDestructionPending);
-
-			UnregisterPostGarbageCollect();
-
+			// Any references to managed script components held by their native counterparts 
+			// should've been released when the native script components were unregistered.
+			// So, the PIE app domain can now be safely unloaded, and shortly after the UE garbage 
+			// collector will run and clean out any UObjects that were previously referenced by 
+			// managed code.
 			UE_LOG(LogKlawrEditorPlugin, Display, TEXT("Unloading PIE app domain."));
 			auto& Runtime = IKlawrRuntimePlugin::Get();
 			if (!Runtime.DestroyAppDomain(PIEAppDomainID))
 			{
+				// FIXME: Is a warning sufficient? Perhaps a fatal error is more appropriate to
+				// avoid ending up in some unknown state where managed code still holds references 
+				// to native objects that will be destroyed when the UE garbage collector runs?
 				UE_LOG(
 					LogKlawrEditorPlugin, Warning, TEXT("Failed to unload PIE app domain!")
 				);
@@ -185,9 +151,7 @@ public:
 	FEditorPlugin()
 		: PIEAppDomainID(0)
 		, bPIEAppDomainDestructionPending(false)
-		, bPIEGarbageCollected(false)
 		, bRegisteredForOnLevelActorListChanged(false)
-		, bRegisteredForPostGarbageCollect(false)
 	{
 	}
 
@@ -236,7 +200,6 @@ public: // IModuleInterface interface
 		FEditorDelegates::EndPIE.RemoveAll(this);
 		
 		check(!bRegisteredForOnLevelActorListChanged);
-		check(!bRegisteredForPostGarbageCollect);
 
 		// at this point the editor may have already unloaded the AssetTools module, 
 		// in that case there's no need to unregister the previously registered asset types

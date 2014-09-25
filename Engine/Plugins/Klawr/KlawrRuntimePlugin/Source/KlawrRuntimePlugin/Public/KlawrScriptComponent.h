@@ -41,15 +41,6 @@ class KLAWRRUNTIMEPLUGIN_API UKlawrScriptComponent : public UActorComponent
 public: // UActorComponent interface
 	
 	/** 
-	 * Called when the component is created (not loaded), before OnRegister().
-	 * @note This doesn't appear to get called in PIE.
-	 */
-	virtual void OnComponentCreated() override;
-
-	/** Called when the component is being destroyed, after OnUnregister(). */
-	virtual void OnComponentDestroyed() override;
-	
-	/** 
 	 * Called after OnComponentCreated() has been called for all default (native) components 
 	 * attached to the actor.
 	 */
@@ -60,18 +51,20 @@ public: // UActorComponent interface
 	
 	/**
 	 * Begin gameplay.
-	 * At this point OnComponentCreated() and OnRegister() have been called for all components
-	 * attached to the actor.
+	 * At this point OnRegister() has been called on all components attached to the actor.
 	 */
 	virtual void InitializeComponent() override;
 	
 	/** Update the state of the component. */
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void TickComponent(
+		float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction
+	) override;
 
 private:
 	void CreateScriptComponentProxy();
 	void DestroyScriptComponentProxy();
 
 private:
+	// a proxy that represents the managed counterpart of this script component
 	Klawr::ScriptComponentProxy* Proxy;
 };

@@ -31,10 +31,11 @@ UKlawrScriptComponent::UKlawrScriptComponent(const FPostConstructInitializePrope
 	: Super(PCIP)
 	, Proxy(nullptr)
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	// by default disable everything, re-enable only the relevant bits in OnRegister()
+	PrimaryComponentTick.bCanEverTick = false;
 	bTickInEditor = false;
-	bAutoActivate = true;
-	bWantsInitializeComponent = true;
+	bAutoActivate = false;
+	bWantsInitializeComponent = false;
 }
 
 void UKlawrScriptComponent::CreateScriptComponentProxy()
@@ -77,48 +78,29 @@ void UKlawrScriptComponent::DestroyScriptComponentProxy()
 	Proxy = nullptr;
 }
 
-void UKlawrScriptComponent::OnComponentCreated()
-{
-	Super::OnComponentCreated();
-		
-	if (!HasAnyFlags(RF_ClassDefaultObject))
-	{
-		CreateScriptComponentProxy();
-		if (Proxy && Proxy->OnComponentCreated)
-		{
-			Proxy->OnComponentCreated();
-		}
-	}
-}
-
-void UKlawrScriptComponent::OnComponentDestroyed()
-{
-	if (Proxy)
-	{
-		if (Proxy->OnComponentDestroyed)
-		{
-			Proxy->OnComponentDestroyed();
-		}
-
-		DestroyScriptComponentProxy();
-	}
-
-	Super::OnComponentDestroyed();
-}
-
 void UKlawrScriptComponent::OnRegister()
 {
-	Super::OnRegister();
-
 	if (!Proxy && !HasAnyFlags(RF_ClassDefaultObject))
 	{
 		CreateScriptComponentProxy();
 	}
 
-	if (Proxy && Proxy->OnRegister)
+	if (Proxy)
 	{
-		Proxy->OnRegister();
+		// users don't have to implement InitializeComponent() and TickComponent() in their scripts,
+		// so here we figure out which of those have been implemented
+		bWantsInitializeComponent = !!Proxy->InitializeComponent;
+		PrimaryComponentTick.bCanEverTick = !!Proxy->TickComponent;
+		bAutoActivate = PrimaryComponentTick.bCanEverTick;
+
+		if (Proxy->OnRegister)
+		{
+			Proxy->OnRegister();
+		}
 	}
+
+	// this needs to be called after the code above because it's going to look at bAutoActivate
+	Super::OnRegister();
 }
 
 void UKlawrScriptComponent::OnUnregister()
@@ -130,12 +112,7 @@ void UKlawrScriptComponent::OnUnregister()
 			Proxy->OnUnregister();
 		}
 	
-		// bHasBeenCreated should only be true if OnComponentCreated() was called, in which case
-		// the proxy should only be destroyed in OnComponentDestroyed()
-		if (!Super::bHasBeenCreated)
-		{
-			DestroyScriptComponentProxy();
-		}
+		DestroyScriptComponentProxy();
 	}
 
 	Super::OnUnregister();
