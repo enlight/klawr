@@ -30,26 +30,26 @@ namespace Klawr.ClrHost.Managed
 {
     internal class ObjectUtils
     {
-        private static ObjectUtilsNativeInfo _native;
-                
-        public static void BindToNativeFunctions(ref ObjectUtilsNativeInfo info)
+        private static ObjectUtilsProxy _proxy;
+
+        internal ObjectUtils(ref ObjectUtilsProxy proxy)
         {
-            _native = info;
+            _proxy = proxy;
         }
 
         public static UObjectHandle GetClassByName(string nativeClassName)
         {
-            return _native.GetClassByName(nativeClassName);
+            return _proxy.GetClassByName(nativeClassName);
         }
 
         public static string GetClassName(UObjectHandle nativeClass)
         {
-            return _native.GetClassName(nativeClass);
+            return _proxy.GetClassName(nativeClass);
         }
 
         public static bool IsClassChildOf(UObjectHandle derivedClass, UObjectHandle baseClass)
         {
-            return _native.IsClassChildOf(derivedClass, baseClass);
+            return _proxy.IsClassChildOf(derivedClass, baseClass);
         }
 
         /// <summary>
@@ -58,9 +58,9 @@ namespace Klawr.ClrHost.Managed
         /// <param name="handle">Pointer to a native UObject instance.</param>
         public static void ReleaseObject(IntPtr nativeObject)
         {
-            if (_native.RemoveObjectRef != null)
+            if (_proxy.RemoveObjectRef != null)
             {
-               _native.RemoveObjectRef(nativeObject);
+                _proxy.RemoveObjectRef(nativeObject);
             }
         }
     }

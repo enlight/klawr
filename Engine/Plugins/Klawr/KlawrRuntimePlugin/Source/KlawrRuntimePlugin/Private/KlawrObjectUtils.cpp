@@ -57,7 +57,7 @@ namespace Klawr {
 		}
 	} // namespace ObjectUtils
 
-	ObjectUtilsNativeInfo FNativeUtils::Object =
+	ObjectUtilsProxy FNativeUtils::Object =
 	{
 		ObjectUtils::GetClassByName,
 		ObjectUtils::GetClassName,

@@ -33,7 +33,7 @@ namespace Klawr.ClrHost.Interfaces
     [ComVisible(true)]
     [Guid("06A91CEC-0B66-4DCC-B4AB-7DFF3F237F48")]
     [StructLayout(LayoutKind.Sequential)]
-    public struct ObjectUtilsNativeInfo
+    public struct ObjectUtilsProxy
     {
         [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
         public delegate UObjectHandle GetClassByNameFunc(string nativeClassName);

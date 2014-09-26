@@ -82,8 +82,8 @@ namespace Klawr.ClrHost.Interfaces
         /// during initialization of the engine app domain, before any native UObject instance is 
         /// passed to the managed side.
         /// </summary>
-        /// <param name="info"></param>
-        void BindObjectUtils(ref ObjectUtilsNativeInfo info);
+        /// <param name="proxy">Structure containing pointers to native functions.</param>
+        void BindObjectUtils(ref ObjectUtilsProxy proxy);
 
         /// <summary>
         /// The native side of the CLR host will use this method to pass a set of native logging

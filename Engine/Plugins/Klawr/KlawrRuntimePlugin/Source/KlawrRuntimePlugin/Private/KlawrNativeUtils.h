@@ -30,7 +30,7 @@ namespace Klawr {
 /** Encapsulates native utility functions that are exported to managed code. */
 struct FNativeUtils
 {
-	static ObjectUtilsNativeInfo Object;
+	static ObjectUtilsProxy Object;
 	static LogUtilsProxy Log;
 };
 

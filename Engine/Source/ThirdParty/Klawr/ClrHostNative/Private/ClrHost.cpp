@@ -93,8 +93,8 @@ namespace Klawr {
 struct ProxySizeChecks
 {
 	static_assert(
-		sizeof(Klawr_ClrHost_Interfaces::ObjectUtilsNativeInfo) == sizeof(ObjectUtilsNativeInfo),
-		"ObjectUtilsNativeInfo doesn't have the same size in native and managed code!"
+		sizeof(Klawr_ClrHost_Interfaces::ObjectUtilsProxy) == sizeof(ObjectUtilsProxy),
+		"ObjectUtilsProxy doesn't have the same size in native and managed code!"
 	);
 
 	static_assert(
@@ -202,7 +202,7 @@ bool ClrHost::CreateEngineAppDomain(int& outAppDomainID)
 }
 
 bool ClrHost::InitEngineAppDomain(
-	int appDomainID, const ObjectUtilsNativeInfo& objectUtils, const LogUtilsProxy& logUtils
+	int appDomainID, const ObjectUtilsProxy& objectUtils, const LogUtilsProxy& logUtils
 )
 {
 	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
@@ -223,12 +223,11 @@ bool ClrHost::InitEngineAppDomain(
 		}
 
 		// pass a few utility functions to the managed side to deal with native UObject instances
-		Klawr_ClrHost_Interfaces::ObjectUtilsNativeInfo interopInfo;
-		interopInfo.GetClassByName = reinterpret_cast<INT_PTR>(objectUtils.GetClassByName);
-		interopInfo.GetClassName = reinterpret_cast<INT_PTR>(objectUtils.GetClassName);
-		interopInfo.IsClassChildOf = reinterpret_cast<INT_PTR>(objectUtils.IsClassChildOf);
-		interopInfo.RemoveObjectRef = reinterpret_cast<INT_PTR>(objectUtils.RemoveObjectRef);
-		appDomainManager->BindObjectUtils(&interopInfo);
+		appDomainManager->BindObjectUtils(
+			reinterpret_cast<Klawr_ClrHost_Interfaces::ObjectUtilsProxy*>(
+				const_cast<ObjectUtilsProxy*>(&objectUtils)
+			)
+		);
 
 		appDomainManager->BindLogUtils(
 			reinterpret_cast<Klawr_ClrHost_Interfaces::LogUtilsProxy*>(

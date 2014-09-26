@@ -58,7 +58,7 @@ TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
  *       the managed counterpart is also exposed to native code via COM under the 
  *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library).
  */
-struct ObjectUtilsNativeInfo
+struct ObjectUtilsProxy
 {
 	typedef class UClass* (*GetClassByNameFunc)(const TCHAR* nativeClassName);
 	typedef const TCHAR* (*GetClassNameFunc)(class UClass* nativeClass);
@@ -194,7 +194,7 @@ public:
 	 * @return true if the app domain was initialized successfully, false otherwise
 	 */
 	virtual bool InitEngineAppDomain(
-		int appDomainID, const ObjectUtilsNativeInfo& objectUtils, const LogUtilsProxy& logUtils
+		int appDomainID, const ObjectUtilsProxy& objectUtils, const LogUtilsProxy& logUtils
 	) = 0;
 
 	/**
