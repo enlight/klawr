@@ -19,7 +19,6 @@ goto ReadyToCompile
 echo Build.bat VCVARS_FILENAME PROJECT_FILENAME
 echo VCVARS_FILENAME: Path to vcvars batch file that sets up a VS2013 build environment.
 echo PROJECT_FILENAME: Path to the .csproj that should be built.
-pause
 goto Exit
 
 :ReadyToCompile
@@ -33,12 +32,10 @@ goto UsageInfo
 
 :Error_BuildFailed
 echo ERROR: Failed to build %PROJECT_FILENAME%
-pause
 goto Exit
 
 :Error_NoVisualStudio2013Environment
 echo ERROR: A valid version of Visual Studio doesn't appear to be installed.
-pause
 goto Exit
 
 :Exit
