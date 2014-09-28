@@ -40,7 +40,6 @@ const FName FCodeGenerator::Name_Transform("Transform");
 const FName FCodeGenerator::Name_LinearColor("LinearColor");
 const FName FCodeGenerator::Name_Color("Color");
 
-const FString FCodeGenerator::ClrHostInterfacesAssemblyName = TEXT("Klawr.ClrHost.Interfaces");
 const FString FCodeGenerator::ClrHostManagedAssemblyName = TEXT("Klawr.ClrHost.Managed");
 
 FCodeGenerator::FCodeGenerator(
@@ -403,23 +402,8 @@ void FCodeGenerator::GenerateManagedWrapperProject()
 	}
 	else
 	{
-		// add a reference to the CLR host interfaces assembly
-		auto referencesNode = xmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
-		if (referencesNode)
-		{
-			FString assemblyPath = 
-				FPaths::RootDir() 
-				/ TEXT("Engine/Source/ThirdParty/Klawr/ClrHostInterfaces/bin/$(Configuration)") 
-				/ ClrHostInterfacesAssemblyName + TEXT(".dll");
-			FPaths::MakePathRelativeTo(assemblyPath, *projectOutputFilename);
-			FPaths::MakePlatformFilename(assemblyPath);
-
-			auto refNode = referencesNode.append_child(TEXT("Reference"));
-			refNode.append_attribute(TEXT("Include")) = *ClrHostInterfacesAssemblyName;
-			refNode.append_child(TEXT("HintPath")).text() = *assemblyPath;
-		}
-
 		// add a reference to the CLR host managed assembly
+		auto referencesNode = xmlDoc.first_element_by_path(TEXT("/Project/ItemGroup/Reference")).parent();
 		if (referencesNode)
 		{
 			FString assemblyPath =

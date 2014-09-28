@@ -62,7 +62,6 @@ private:
 	static const FName Name_LinearColor;
 	static const FName Name_Color;
 
-	static const FString ClrHostInterfacesAssemblyName;
 	static const FString ClrHostManagedAssemblyName;
 		
 	/** Path where generated script glue goes **/

@@ -47,8 +47,8 @@ public class KlawrClrHostNative : ModuleRules
             PublicAdditionalLibraries.Add(libName);
         }
                 
-        // copy the host assemblies (assumed to have been built previously) to the engine binaries 
-        // directory so that they can be found and loaded at runtime by the unmanaged CLR host
+        // copy the CLR host assembly (assumed to have been built previously) to the engine binaries 
+        // directory so that it can be found and loaded at runtime by the unmanaged CLR host
 
         string hostAssemblyName = "Klawr.ClrHost.Managed";
         string hostAssemblyDLL = hostAssemblyName + ".dll";
@@ -57,13 +57,7 @@ public class KlawrClrHostNative : ModuleRules
             basePath, Path.Combine("..", "ClrHostManaged", "bin", configuration)
         );
         Utils.CollapseRelativeDirectories(ref hostAssemblySourceDir);
-        string hostInterfacesAssemblyName = "Klawr.ClrHost.Interfaces";
-        string hostInterfacesAssemblyDLL = hostInterfacesAssemblyName + ".dll";
-        string hostInterfacesAssemblyPDB = hostInterfacesAssemblyName + ".pdb";
-        string hostInterfacesAssemblySourceDir = Path.Combine(
-            basePath, Path.Combine("..", "ClrHostInterfaces", "bin", configuration)
-        );
-        Utils.CollapseRelativeDirectories(ref hostInterfacesAssemblySourceDir);
+        
         string binariesDir = Path.Combine(
             BuildConfiguration.RelativeEnginePath, "Binaries", Target.Platform.ToString()
         );
@@ -77,16 +71,6 @@ public class KlawrClrHostNative : ModuleRules
         File.Copy(
             Path.Combine(hostAssemblySourceDir, hostAssemblyPDB),
             Path.Combine(binariesDir, hostAssemblyPDB),
-            bOverwrite
-        );
-        File.Copy(
-            Path.Combine(hostInterfacesAssemblySourceDir, hostInterfacesAssemblyDLL),
-            Path.Combine(binariesDir, hostInterfacesAssemblyDLL),
-            bOverwrite
-        );
-        File.Copy(
-            Path.Combine(hostInterfacesAssemblySourceDir, hostInterfacesAssemblyPDB),
-            Path.Combine(binariesDir, hostInterfacesAssemblyPDB),
             bOverwrite
         );
     }

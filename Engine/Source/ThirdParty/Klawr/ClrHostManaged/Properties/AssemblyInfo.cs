@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Klawr.ClrHost.Managed")]
-[assembly: AssemblyDescription("Contains a custom app domain manager.")]
+[assembly: AssemblyDescription("The managed side of a custom CLR host.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Klawr CLR Host")]

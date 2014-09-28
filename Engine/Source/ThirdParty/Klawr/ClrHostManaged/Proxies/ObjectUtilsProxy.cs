@@ -22,43 +22,42 @@
 // SOFTWARE.
 //
 
+using System;
 using System.Runtime.InteropServices;
 
-namespace Klawr.ClrHost.Interfaces
+namespace Klawr.ClrHost.Managed
 {
     /// <summary>
-    /// Contains native/managed interop information for a ScriptObject instance.
+    /// Contains delegates encapsulating native UObject and UClass utility functions.
     /// </summary>
     [ComVisible(true)]
-    [GuidAttribute("B4F3A010-B7B6-42D6-82F9-331C56487AA2")]
+    [Guid("06A91CEC-0B66-4DCC-B4AB-7DFF3F237F48")]
     [StructLayout(LayoutKind.Sequential)]
-    public struct ScriptObjectInstanceInfo
+    public struct ObjectUtilsProxy
     {
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+        public delegate UObjectHandle GetClassByNameFunc(string nativeClassName);
+        
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+        public delegate string GetClassNameFunc(UObjectHandle nativeClass);
+        
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void BeginPlayAction();
+        [return: MarshalAs(UnmanagedType.U1)]
+        public delegate bool IsClassChildOfFunc(UObjectHandle derivedClass, UObjectHandle baseClass);
+        
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void TickAction(float deltaTime);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void DestroyAction();
+        public delegate void RemoveObjectRefAction(IntPtr nativeObject);
 
-        /// <summary>
-        /// ID of a ScriptObject instance.
-        /// </summary>
-        public long InstanceID;
-        /// <summary>
-        /// Delegate instance encapsulating ScriptObject.BeginPlay().
-        /// </summary>
         [MarshalAs(UnmanagedType.FunctionPtr)]
-        public BeginPlayAction BeginPlay;
-        /// <summary>
-        /// Delegate instance encapsulating ScriptObject.Tick().
-        /// </summary>
+        public GetClassByNameFunc GetClassByName;
+
         [MarshalAs(UnmanagedType.FunctionPtr)]
-        public TickAction Tick;
-        /// <summary>
-        /// Delegate instance encapsulating ScriptObject.Destroy().
-        /// </summary>
+        public GetClassNameFunc GetClassName;
+        
         [MarshalAs(UnmanagedType.FunctionPtr)]
-        public DestroyAction Destroy;
-    };
+        public IsClassChildOfFunc IsClassChildOf;
+        
+        [MarshalAs(UnmanagedType.FunctionPtr)]
+        public RemoveObjectRefAction RemoveObjectRef;
+    }
 }

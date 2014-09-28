@@ -25,21 +25,13 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Klawr.ClrHost.Interfaces
+namespace Klawr.ClrHost.Managed
 {
     /// <summary>
     /// Encapsulates a native UObject pointer and takes care of properly disposing of it.
     /// </summary>
     public class UObjectHandle : SafeHandle
     {
-        /// <summary>
-        /// This delegate will be called when the handle is disposed, it will receive a pointer to
-        /// a native UObject instance, and should notify the native side of the CLR host that a
-        /// reference to the native UObject has been released.
-        /// </summary>
-        /// <remarks>This property will be set by the EngineAppDomainManager.</remarks>
-        public static Action<IntPtr> ReleaseHandleCallback { private get; set; }
-
         /// <summary>
         /// Encapsulates a native null pointer.
         /// </summary>
@@ -75,10 +67,7 @@ namespace Klawr.ClrHost.Interfaces
 
         protected override bool ReleaseHandle()
         {
-            if (ReleaseHandleCallback != null)
-            {
-                ReleaseHandleCallback(handle);
-            }
+            ObjectUtils.ReleaseObject(handle);
             handle = IntPtr.Zero;
             return true;
         }

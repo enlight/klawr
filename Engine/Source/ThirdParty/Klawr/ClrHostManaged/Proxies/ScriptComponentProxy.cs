@@ -24,7 +24,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Klawr.ClrHost.Interfaces
+namespace Klawr.ClrHost.Managed
 {
     /// <summary>
     /// A native proxy for a managed UKlawrScriptComponent instance.

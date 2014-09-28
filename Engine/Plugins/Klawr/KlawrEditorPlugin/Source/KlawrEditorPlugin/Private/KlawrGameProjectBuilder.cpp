@@ -130,10 +130,6 @@ bool FGameProjectBuilder::GenerateProject()
 	Project->SetOutputPath(OutputPath);
 
 	Project->AddAssemblyReference(
-		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Interfaces.dll")),
-		false
-	);
-	Project->AddAssemblyReference(
 		FPaths::Combine(FPlatformProcess::BaseDir(), TEXT("Klawr.ClrHost.Managed.dll")),
 		false
 	);
@@ -359,7 +355,6 @@ void FGameProjectBuilder::CopyPrivateReferencedAssemblies()
 	);
 
 	// these assemblies don't need to be shadow copied, so they go into Klawr/Assemblies
-	FGameProjectBuilderInternal::CopyPrivateReferencedAssembly(TEXT("Klawr.ClrHost.Interfaces"), DestDir);
 	FGameProjectBuilderInternal::CopyPrivateReferencedAssembly(TEXT("Klawr.ClrHost.Managed"), DestDir);
 	FGameProjectBuilderInternal::CopyPrivateReferencedAssembly(TEXT("Klawr.UnrealEngine"), DestDir);
 }

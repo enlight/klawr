@@ -265,7 +265,6 @@ namespace Klawr.ClrHost.Managed
         public void BindObjectUtils(ref ObjectUtilsProxy proxy)
         {
             new ObjectUtils(ref proxy);
-            UObjectHandle.ReleaseHandleCallback = new Action<IntPtr>(ObjectUtils.ReleaseObject);
         }
 
         public void BindLogUtils(ref LogUtilsProxy proxy)

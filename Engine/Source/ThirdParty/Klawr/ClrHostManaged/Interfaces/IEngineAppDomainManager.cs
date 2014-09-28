@@ -24,6 +24,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using Klawr.ClrHost.Managed;
 
 namespace Klawr.ClrHost.Interfaces
 {

@@ -54,9 +54,9 @@ TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
  *
  * These native functions will be called by managed code.
  *
- * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Managed,
  *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library).
+ *       Klawr::Managed namespace (but it's hidden from clients of this library).
  */
 struct ObjectUtilsProxy
 {
@@ -80,9 +80,9 @@ struct ObjectUtilsProxy
  *
  * These native functions will be called by managed code.
  *
- * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Managed,
  *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library).
+ *       Klawr::Managed namespace (but it's hidden from clients of this library).
  */
 struct LogUtilsProxy
 {
@@ -106,9 +106,9 @@ struct LogUtilsProxy
 
 /**
  * @brief Contains native/managed interop information for a ScriptObject instance.
- * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Managed,
  *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library).
+ *       Klawr::Managed namespace (but it's hidden from clients of this library).
  */
 struct ScriptObjectInstanceInfo
 {
@@ -133,9 +133,9 @@ struct ScriptObjectInstanceInfo
  * instance. Managed UKlawrScriptComponent subclasses may not implement all methods, so some
  * of the function pointers may be null.
  *
- * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Interfaces,
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Managed,
  *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr_ClrHost_Interfaces namespace (but it's hidden from clients of this library). 
+ *       Klawr::Managed namespace (but it's hidden from clients of this library). 
  *       The size and layout of the two structures must remain identical.
  */
 struct ScriptComponentProxy

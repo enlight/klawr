@@ -32,7 +32,7 @@ namespace Klawr.ClrHost.Managed
     /// <summary>
     /// Writes text to the UE console and log file.
     /// </summary>
-    class UELogWriter : TextWriter
+    internal class UELogWriter : TextWriter
     {
         private StringBuilder _stringBuilder = new StringBuilder();
 

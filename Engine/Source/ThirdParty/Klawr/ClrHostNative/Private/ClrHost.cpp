@@ -93,17 +93,17 @@ namespace Klawr {
 struct ProxySizeChecks
 {
 	static_assert(
-		sizeof(Klawr_ClrHost_Interfaces::ObjectUtilsProxy) == sizeof(ObjectUtilsProxy),
+		sizeof(Klawr::Managed::ObjectUtilsProxy) == sizeof(ObjectUtilsProxy),
 		"ObjectUtilsProxy doesn't have the same size in native and managed code!"
 	);
 
 	static_assert(
-		sizeof(Klawr_ClrHost_Interfaces::LogUtilsProxy) == sizeof(LogUtilsProxy),
+		sizeof(Klawr::Managed::LogUtilsProxy) == sizeof(LogUtilsProxy),
 		"LogUtilsProxy doesn't have the same size in native and managed code!"
 	);
 
 	static_assert(
-		sizeof(Klawr_ClrHost_Interfaces::ScriptComponentProxy) == sizeof(ScriptComponentProxy),
+		sizeof(Klawr::Managed::ScriptComponentProxy) == sizeof(ScriptComponentProxy),
 		"ScriptComponentProxy doesn't have the same size in native and managed code!"
 	);
 
@@ -224,13 +224,13 @@ bool ClrHost::InitEngineAppDomain(
 
 		// pass a few utility functions to the managed side to deal with native UObject instances
 		appDomainManager->BindObjectUtils(
-			reinterpret_cast<Klawr_ClrHost_Interfaces::ObjectUtilsProxy*>(
+			reinterpret_cast<Klawr::Managed::ObjectUtilsProxy*>(
 				const_cast<ObjectUtilsProxy*>(&objectUtils)
 			)
 		);
 
 		appDomainManager->BindLogUtils(
-			reinterpret_cast<Klawr_ClrHost_Interfaces::LogUtilsProxy*>(
+			reinterpret_cast<Klawr::Managed::LogUtilsProxy*>(
 				const_cast<LogUtilsProxy*>(&logUtils)
 			)
 		);
@@ -257,7 +257,7 @@ bool ClrHost::CreateScriptObject(
 		return false;
 	}
 
-	Klawr_ClrHost_Interfaces::ScriptObjectInstanceInfo srcInfo;
+	Klawr::Managed::ScriptObjectInstanceInfo srcInfo;
 	bool created = !!appDomainManager->CreateScriptObject(
 		className, reinterpret_cast<INT_PTR>(owner), &srcInfo
 	);
@@ -292,7 +292,7 @@ bool ClrHost::CreateScriptComponent(
 
 	return !!appDomainManager->CreateScriptComponent(
 		className, reinterpret_cast<INT_PTR>(nativeComponent),
-		reinterpret_cast<Klawr_ClrHost_Interfaces::ScriptComponentProxy*>(&proxy)
+		reinterpret_cast<Klawr::Managed::ScriptComponentProxy*>(&proxy)
 	);
 }
 

@@ -25,7 +25,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Klawr.ClrHost.Interfaces
+namespace Klawr.ClrHost.Managed
 {
     /// <summary>
     /// Contains delegates encapsulating native logging functions.

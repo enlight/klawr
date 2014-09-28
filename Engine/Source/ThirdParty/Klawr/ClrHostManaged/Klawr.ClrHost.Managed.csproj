@@ -39,26 +39,29 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class.cs" />
+    <Compile Include="ObjectHandle.cs" />
+    <Compile Include="Wrappers\Class.cs" />
     <Compile Include="DefaultAppDomainManager.cs" />
     <Compile Include="EngineAppDomainManager.cs" />
-    <Compile Include="LogUtils.cs" />
-    <Compile Include="Object.cs" />
-    <Compile Include="ObjectUtils.cs" />
+    <Compile Include="Interfaces\IDefaultAppDomainManager.cs" />
+    <Compile Include="Interfaces\IEngineAppDomainManager.cs" />
+    <Compile Include="Interfaces\IScriptObject.cs" />
+    <Compile Include="Wrappers\LogUtils.cs" />
+    <Compile Include="Wrappers\Object.cs" />
+    <Compile Include="Wrappers\ObjectUtils.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UE4Structs.cs" />
+    <Compile Include="Proxies\LogUtilsProxy.cs" />
+    <Compile Include="Proxies\ObjectUtilsProxy.cs" />
+    <Compile Include="Proxies\ScriptComponentProxy.cs" />
+    <Compile Include="Proxies\ScriptObjectInstanceInfo.cs" />
+    <Compile Include="Wrappers\UE4Structs.cs" />
     <Compile Include="UELogWriter.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\ClrHostInterfaces\Klawr.ClrHost.Interfaces.csproj">
-      <Project>{faf6128d-1e21-4d74-9751-f07801dbaa39}</Project>
-      <Name>Klawr.ClrHost.Interfaces</Name>
-    </ProjectReference>
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>call "$(DevEnvDir)..\..\VC\vcvarsall.bat" x86_amd64
+tlbexp $(TargetFileName) /asmpath:$(TargetDir)</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
