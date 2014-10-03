@@ -41,11 +41,18 @@ void FNativeWrapperGenerator::GenerateHeader()
 	GeneratedGlue
 		<< TEXT("#pragma once") LINE_TERMINATOR
 		<< TEXT("namespace Klawr {")
-		<< TEXT("namespace NativeGlue {") LINE_TERMINATOR;
+		<< TEXT("namespace NativeGlue {")
+		<< FCodeFormatter::LineTerminator()
+		<< FString::Printf(TEXT("struct %s"), *FriendlyClassName)
+		<< FCodeFormatter::OpenBrace();
 }
 
 void FNativeWrapperGenerator::GenerateFooter()
 {
+	GeneratedGlue 
+		<< FCodeFormatter::CloseBrace()
+		<< TEXT(";");
+
 	if (ExportedProperties.Num() || ExportedFunctions.Num())
 	{
 		// generate an array of function pointers to all the native wrapper functions
@@ -86,10 +93,9 @@ void FNativeWrapperGenerator::GenerateFunctionWrapper(const UFunction* Function)
 		returnValueTypeName = GetPropertyType(returnValue);
 	}
 	// define a native wrapper function that will be bound to a managed delegate
-	FString wrapperName = FString::Printf(TEXT("%s_%s"), *FriendlyClassName, *Function->GetName());
 	GeneratedGlue << FString::Printf(
-		TEXT("%s %s(%s)"),
-		*returnValueTypeName, *wrapperName, *formalArgs
+		TEXT("static %s %s(%s)"),
+		*returnValueTypeName, *Function->GetName(), *formalArgs
 	);
 	GeneratedGlue << FCodeFormatter::OpenBrace();
 
@@ -125,7 +131,9 @@ void FNativeWrapperGenerator::GenerateFunctionWrapper(const UFunction* Function)
 		<< FCodeFormatter::LineTerminator();
 
 	FExportedFunction funcInfo;
-	funcInfo.WrapperFunctionName = wrapperName;
+	funcInfo.WrapperFunctionName = FString::Printf(
+		TEXT("%s::%s"), *FriendlyClassName, *Function->GetName()
+	);
 	ExportedFunctions.Add(funcInfo);
 }
 
@@ -402,11 +410,11 @@ void FNativeWrapperGenerator::GenerateFunctionDispatch(const UFunction* Function
 FString FNativeWrapperGenerator::GeneratePropertyGetterWrapper(const UProperty* Property)
 {
 	// define a native getter wrapper function that will be bound to a managed delegate
-	FString propertyTypeName = GetPropertyType(Property);
-	FString getterName = FString::Printf(TEXT("%s_Get_%s"), *FriendlyClassName, *Property->GetName());
+	const FString propertyTypeName = GetPropertyType(Property);
+	const FString getterName = FString::Printf(TEXT("Get_%s"), *Property->GetName());
 	
 	GeneratedGlue 
-		<< FString::Printf(TEXT("%s %s(void* self)"), *propertyTypeName, *getterName)
+		<< FString::Printf(TEXT("static %s %s(void* self)"), *propertyTypeName, *getterName)
 		<< FCodeFormatter::OpenBrace()
 		// FIXME: "Obj" isn't very unique, should pick a name that isn't likely to conflict with
 		//        regular function argument names.
@@ -426,18 +434,18 @@ FString FNativeWrapperGenerator::GeneratePropertyGetterWrapper(const UProperty* 
 		<< FCodeFormatter::CloseBrace()
 		<< FCodeFormatter::LineTerminator();
 
-	return getterName;
+	return FString::Printf(TEXT("%s::%s"), *FriendlyClassName, *getterName);
 }
 
 FString FNativeWrapperGenerator::GeneratePropertySetterWrapper(const UProperty* Property)
 {
 	// define a native setter wrapper function that will be bound to a managed delegate
-	FString propertyTypeName = GetPropertyType(Property);
-	FString setterName = FString::Printf(TEXT("%s_Set_%s"), *FriendlyClassName, *Property->GetName());
+	const FString propertyTypeName = GetPropertyType(Property);
+	const FString setterName = FString::Printf(TEXT("Set_%s"), *Property->GetName());
 
 	GeneratedGlue 
 		<< FString::Printf(
-			TEXT("void %s(void* self, %s %s)"), 
+			TEXT("static void %s(void* self, %s %s)"), 
 			*setterName, *propertyTypeName, *Property->GetName()
 		)
 		<< FCodeFormatter::OpenBrace()
@@ -457,7 +465,7 @@ FString FNativeWrapperGenerator::GeneratePropertySetterWrapper(const UProperty* 
 		<< FCodeFormatter::CloseBrace()
 		<< FCodeFormatter::LineTerminator();
 
-	return setterName;
+	return FString::Printf(TEXT("%s::%s"), *FriendlyClassName, *setterName);
 }
 
 } // namespace Klawr
