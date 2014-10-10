@@ -85,7 +85,8 @@ namespace Klawr.ClrHost.Interfaces
         /// </summary>
         void BindUtils(
             ref ObjectUtilsProxy objectUtilsProxy,
-            ref LogUtilsProxy logUtilsProxy
+            ref LogUtilsProxy logUtilsProxy,
+            ref ArrayUtilsProxy arrayUtilsProxy
         );
                 
         bool CreateScriptComponent(

@@ -264,13 +264,15 @@ namespace Klawr.ClrHost.Managed
 
         public void BindUtils(
             ref ObjectUtilsProxy objectUtilsProxy,
-            ref LogUtilsProxy logUtilsProxy
+            ref LogUtilsProxy logUtilsProxy,
+            ref ArrayUtilsProxy arrayUtilsProxy
         )
         {
             new ObjectUtils(ref objectUtilsProxy);
             new LogUtils(ref logUtilsProxy);
             // redirect output to the UE console and log file (needs LogUtils)
             System.Console.SetOut(new UELogWriter());
+            new ArrayUtils(ref arrayUtilsProxy);
         }
 
         public bool CreateScriptComponent(

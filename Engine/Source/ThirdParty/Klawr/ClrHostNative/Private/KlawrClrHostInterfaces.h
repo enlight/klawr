@@ -21,6 +21,7 @@ namespace Klawr
 		
 		using ObjectUtilsProxy = Klawr_ClrHost_Managed::ObjectUtilsProxy;
 		using LogUtilsProxy = Klawr_ClrHost_Managed::LogUtilsProxy;
+		using ArrayUtilsProxy = Klawr_ClrHost_Managed::ArrayUtilsProxy;
 
 		using ScriptComponentProxy = Klawr_ClrHost_Managed::ScriptComponentProxy;
 		using ScriptObjectInstanceInfo = Klawr_ClrHost_Managed::ScriptObjectInstanceInfo;

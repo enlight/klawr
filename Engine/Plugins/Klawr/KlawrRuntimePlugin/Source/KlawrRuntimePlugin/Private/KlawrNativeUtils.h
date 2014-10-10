@@ -32,6 +32,7 @@ struct FNativeUtils
 {
 	static ObjectUtilsProxy Object;
 	static LogUtilsProxy Log;
+	static ArrayUtilsProxy Array;
 };
 
 } // namespace Klawr

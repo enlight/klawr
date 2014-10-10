@@ -171,7 +171,8 @@ public:
 			NativeUtils nativeUtils =
 			{
 				FNativeUtils::Object,
-				FNativeUtils::Log
+				FNativeUtils::Log,
+				FNativeUtils::Array
 			};
 			return clrHost->InitEngineAppDomain(outAppDomainID, nativeUtils);
 		}

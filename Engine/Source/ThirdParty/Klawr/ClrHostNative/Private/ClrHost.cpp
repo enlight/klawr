@@ -103,6 +103,11 @@ struct ProxySizeChecks
 	);
 
 	static_assert(
+		sizeof(Klawr::Managed::ArrayUtilsProxy) == sizeof(ArrayUtilsProxy),
+		"ArrayUtilsProxy doesn't have the same size in native and managed code!"
+	);
+
+	static_assert(
 		sizeof(Klawr::Managed::ScriptComponentProxy) == sizeof(ScriptComponentProxy),
 		"ScriptComponentProxy doesn't have the same size in native and managed code!"
 	);
@@ -227,6 +232,9 @@ bool ClrHost::InitEngineAppDomain(int appDomainID, const NativeUtils& nativeUtil
 			),
 			reinterpret_cast<Klawr::Managed::LogUtilsProxy*>(
 				const_cast<LogUtilsProxy*>(&nativeUtils.Log)
+			),
+			reinterpret_cast<Klawr::Managed::ArrayUtilsProxy*>(
+				const_cast<ArrayUtilsProxy*>(&nativeUtils.Array)
 			)
 		);
 

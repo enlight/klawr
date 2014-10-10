@@ -80,11 +80,50 @@ struct LogUtilsProxy
 	LogAction LogVeryVerbose;
 };
 
+// This class needs to be implemented by clients of the library.
+class FArrayHelper;
+
+/** 
+ * @brief Contains pointers to native TArray manipulation functions.
+ *
+ * These native functions will be called by managed code.
+ *
+ * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Managed,
+ *       the managed counterpart is also exposed to native code via COM under the 
+ *       Klawr::Managed namespace (but it's hidden from clients of this library).
+ */
+struct ArrayUtilsProxy
+{
+	int32 (*Num)(FArrayHelper* arrayHelper);
+	void* (*GetRawPtr)(FArrayHelper* arrayHelper, int32 index);
+	const TCHAR* (*GetString)(FArrayHelper* arrayHelper, int32 index);
+	class UObject* (*GetObject)(FArrayHelper* arrayHelper, int32 index);
+	void (*SetUInt8At)(FArrayHelper* arrayHelper, int32 index, uint8 item);
+	void (*SetInt16At)(FArrayHelper* arrayHelper, int32 index, int16 item);
+	void (*SetInt32At)(FArrayHelper* arrayHelper, int32 index, int32 item);
+	void (*SetInt64At)(FArrayHelper* arrayHelper, int32 index, int64 item);
+	void (*SetStringAt)(FArrayHelper* arrayHelper, int32 index, const TCHAR* item);
+	void (*SetObjectAt)(FArrayHelper* arrayHelper, int32 index, class UObject* item);
+	int32 (*Add)(FArrayHelper* arrayHelper);
+	void (*Reset)(FArrayHelper* arrayHelper, int32 newCapacity);
+	int32 (*Find)(FArrayHelper* arrayHelper, void* itemPtr);
+	int32 (*FindUInt8)(FArrayHelper* arrayHelper, uint8 item);
+	int32 (*FindInt16)(FArrayHelper* arrayHelper, int16 item);
+	int32 (*FindInt32)(FArrayHelper* arrayHelper, int32 item);
+	int32 (*FindInt64)(FArrayHelper* arrayHelper, int64 item);
+	int32 (*FindString)(FArrayHelper* arrayHelper, const TCHAR* item);
+	int32 (*FindObject)(FArrayHelper* arrayHelper, class UObject* item);
+	void (*Insert)(FArrayHelper* arrayHelper, int32 index);
+	void (*RemoveAt)(FArrayHelper* arrayHelper, int32 index);
+	void (*Destroy)(FArrayHelper* arrayHelper);
+};
+
 /** Encapsulates native utility functions that are exported to managed code. */
 struct NativeUtils
 {
 	ObjectUtilsProxy Object;
 	LogUtilsProxy Log;
+	ArrayUtilsProxy Array;
 };
 
 } // namespace Klawr
