@@ -22,9 +22,8 @@
 // SOFTWARE.
 //
 
+using Klawr.ClrHost.Managed.SafeHandles;
 using System;
-using Klawr.ClrHost.Managed;
-using Klawr.ClrHost.Interfaces;
 
 namespace Klawr.UnrealEngine
 {

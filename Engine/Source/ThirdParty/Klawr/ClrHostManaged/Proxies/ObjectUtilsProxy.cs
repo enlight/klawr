@@ -22,6 +22,7 @@
 // SOFTWARE.
 //
 
+using Klawr.ClrHost.Managed.SafeHandles;
 using System;
 using System.Runtime.InteropServices;
 

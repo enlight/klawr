@@ -1,5 +1,6 @@
 ﻿using Klawr.ClrHost.Interfaces;
 using Klawr.ClrHost.Managed;
+using Klawr.ClrHost.Managed.SafeHandles;
 
 namespace Klawr.UnrealEngine
 {

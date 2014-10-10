@@ -25,7 +25,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Klawr.ClrHost.Managed
+namespace Klawr.ClrHost.Managed.SafeHandles
 {
     /// <summary>
     /// Encapsulates a native UObject pointer and takes care of properly disposing of it.

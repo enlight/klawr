@@ -23,6 +23,7 @@
 //
 
 using Klawr.ClrHost.Interfaces;
+using Klawr.ClrHost.Managed.SafeHandles;
 using System;
 using System.Collections.Generic;
 using System.Reflection;

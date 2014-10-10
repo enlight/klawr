@@ -91,6 +91,7 @@ void FCSharpWrapperGenerator::GenerateHeader()
 		<< TEXT("using System.Runtime.InteropServices;")
 		<< TEXT("using Klawr.ClrHost.Interfaces;")
 		<< TEXT("using Klawr.ClrHost.Managed;")
+		<< TEXT("using Klawr.ClrHost.Managed.SafeHandles;")
 		<< FCodeFormatter::LineTerminator()
 
 		// declare namespace

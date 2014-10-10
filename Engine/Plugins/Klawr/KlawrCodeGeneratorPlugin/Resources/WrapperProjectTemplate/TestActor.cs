@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using Klawr.ClrHost.Managed;
 using Klawr.ClrHost.Interfaces;
+using Klawr.ClrHost.Managed.SafeHandles;
 
 namespace Klawr.UnrealEngine
 {

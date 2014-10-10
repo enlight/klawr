@@ -39,7 +39,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ObjectHandle.cs" />
+    <Compile Include="SafeHandles\ObjectHandle.cs" />
     <Compile Include="Wrappers\Class.cs" />
     <Compile Include="DefaultAppDomainManager.cs" />
     <Compile Include="EngineAppDomainManager.cs" />
