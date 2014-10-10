@@ -201,9 +201,7 @@ bool ClrHost::CreateEngineAppDomain(int& outAppDomainID)
 	return _hostControl->GetEngineAppDomainManager(outAppDomainID) != nullptr;
 }
 
-bool ClrHost::InitEngineAppDomain(
-	int appDomainID, const ObjectUtilsProxy& objectUtils, const LogUtilsProxy& logUtils
-)
+bool ClrHost::InitEngineAppDomain(int appDomainID, const NativeUtils& nativeUtils)
 {
 	auto appDomainManager = _hostControl->GetEngineAppDomainManager(appDomainID);
 	if (appDomainManager)
@@ -222,16 +220,13 @@ bool ClrHost::InitEngineAppDomain(
 			assert(SUCCEEDED(hr));
 		}
 
-		// pass a few utility functions to the managed side to deal with native UObject instances
-		appDomainManager->BindObjectUtils(
+		// pass a few utility functions to the managed side
+		appDomainManager->BindUtils(
 			reinterpret_cast<Klawr::Managed::ObjectUtilsProxy*>(
-				const_cast<ObjectUtilsProxy*>(&objectUtils)
-			)
-		);
-
-		appDomainManager->BindLogUtils(
+				const_cast<ObjectUtilsProxy*>(&nativeUtils.Object)
+			),
 			reinterpret_cast<Klawr::Managed::LogUtilsProxy*>(
-				const_cast<LogUtilsProxy*>(&logUtils)
+				const_cast<LogUtilsProxy*>(&nativeUtils.Log)
 			)
 		);
 

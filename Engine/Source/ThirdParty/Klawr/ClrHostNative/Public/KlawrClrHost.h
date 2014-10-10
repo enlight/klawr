@@ -36,6 +36,12 @@ namespace Klawr {
 	typedef std::string tstring;
 #endif // _UNICODE
 
+} // namespace Klawr
+
+#include "KlawrNativeUtils.h"
+
+namespace Klawr {
+
 /**
  * @brief Makes a copy of the given string, the resulting copy can be safely released by the CLR.
  *
@@ -48,61 +54,6 @@ namespace Klawr {
  * @return A copy of the c-string passed in.
  */
 TCHAR* MakeStringCopyForCLR(const TCHAR* stringToCopy);
-
-/** 
- * @brief Contains pointers to native UObject and UClass utility functions.
- *
- * These native functions will be called by managed code.
- *
- * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Managed,
- *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr::Managed namespace (but it's hidden from clients of this library).
- */
-struct ObjectUtilsProxy
-{
-	typedef class UClass* (*GetClassByNameFunc)(const TCHAR* nativeClassName);
-	typedef const TCHAR* (*GetClassNameFunc)(class UClass* nativeClass);
-	typedef unsigned char (*IsClassChildOfFunc)(class UClass* derivedClass, class UClass* baseClass);
-	typedef void (*RemoveObjectRefAction)(class UObject* nativeObject);
-
-	/** Get a UClass instance matching the given name (excluding U/A prefix). */
-	GetClassByNameFunc GetClassByName;
-	/** Get the name (excluding U/A prefix) of a UClass instance. */
-	GetClassNameFunc GetClassName;
-	/** Determine if one UClass is derived from another. */
-	IsClassChildOfFunc IsClassChildOf;
-	/** Called when a managed reference to a UObject instance is disposed. */
-	RemoveObjectRefAction RemoveObjectRef;
-};
-
-/** 
- * @brief Contains pointers to native logging functions.
- *
- * These native functions will be called by managed code.
- *
- * @note This struct has a managed counterpart by the same name defined in Klawr.ClrHost.Managed,
- *       the managed counterpart is also exposed to native code via COM under the 
- *       Klawr::Managed namespace (but it's hidden from clients of this library).
- */
-struct LogUtilsProxy
-{
-	typedef void (*LogAction)(const TCHAR* text);
-
-	/** Print an error to the UE4 console and log file, then crash (even if logging is disabled). */
-	LogAction LogFatalError;
-	/** Print an error to the UE4 console and log file. */
-	LogAction LogError;
-	/** Print a warning to the UE4 console and log file. */
-	LogAction LogWarning;
-	/** Print a message to the UE4 console and log file. */
-	LogAction Display;
-	/** Print a message to the log file, but not to the UE4 console. */
-	LogAction Log;
-	/** Print a verbose message to a log file (if Verbose logging is enabled). */
-	LogAction LogVerbose;
-	/** Print a verbose message to a log file (if VeryVerbose logging is enabled). */
-	LogAction LogVeryVerbose;
-};
 
 /**
  * @brief Contains native/managed interop information for a ScriptObject instance.
@@ -193,9 +144,7 @@ public:
 	 * @param appDomainID ID of the app domain to be initialized.
 	 * @return true if the app domain was initialized successfully, false otherwise
 	 */
-	virtual bool InitEngineAppDomain(
-		int appDomainID, const ObjectUtilsProxy& objectUtils, const LogUtilsProxy& logUtils
-	) = 0;
+	virtual bool InitEngineAppDomain(int appDomainID, const NativeUtils& nativeUtils) = 0;
 
 	/**
 	 * @brief Destroy an engine app domain.

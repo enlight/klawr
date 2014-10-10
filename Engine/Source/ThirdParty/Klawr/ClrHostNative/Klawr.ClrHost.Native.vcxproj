@@ -163,6 +163,7 @@
     <ClInclude Include="Public\KlawrClrHost.h" />
     <ClInclude Include="Private\KlawrClrHostPCH.h" />
     <ClInclude Include="Private\targetver.h" />
+    <ClInclude Include="Public\KlawrNativeUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\ClrHost.cpp" />

@@ -163,14 +163,17 @@ public:
 		return bDestroyed;
 	}
 
-	virtual bool CreateAppDomain(int& OutAppDomainID) override
+	virtual bool CreateAppDomain(int& outAppDomainID) override
 	{
 		IClrHost* clrHost = IClrHost::Get();
-		if (clrHost->CreateEngineAppDomain(OutAppDomainID))
+		if (clrHost->CreateEngineAppDomain(outAppDomainID))
 		{
-			return clrHost->InitEngineAppDomain(
-				OutAppDomainID, FNativeUtils::Object, FNativeUtils::Log
-			);
+			NativeUtils nativeUtils =
+			{
+				FNativeUtils::Object,
+				FNativeUtils::Log
+			};
+			return clrHost->InitEngineAppDomain(outAppDomainID, nativeUtils);
 		}
 		return false;
 	}

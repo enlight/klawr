@@ -13,28 +13,37 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\Public">
+      <UniqueIdentifier>{9a70e81c-09d2-4e1a-9b63-a7c612cefba5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Private">
+      <UniqueIdentifier>{76ce432c-5e17-47c4-9afd-3090cd2de0dd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Private\KlawrClrHostPCH.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Public\KlawrClrHost.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Public</Filter>
     </ClInclude>
-    <ClInclude Include="Private\ClrHostControl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\KlawrClrHostInterfaces.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Public\KlawrNativeUtils.h">
+      <Filter>Header Files\Public</Filter>
     </ClInclude>
     <ClInclude Include="Private\ClrHost.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\ClrHostControl.h">
+      <Filter>Header Files\Private</Filter>
     </ClInclude>
     <ClInclude Include="Private\DebugMacros.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\KlawrClrHostInterfaces.h">
+      <Filter>Header Files\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\KlawrClrHostPCH.h">
+      <Filter>Header Files\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\targetver.h">
+      <Filter>Header Files\Private</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

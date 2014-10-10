@@ -78,22 +78,16 @@ namespace Klawr.ClrHost.Interfaces
         void DestroyScriptObject(long scriptObjectInstanceID);
 
         /// <summary>
-        /// The native side of the CLR host will use this method to pass a set of native object 
-        /// management functions to the managed side of the CLR host. This method must be called
-        /// during initialization of the engine app domain, before any native UObject instance is 
+        /// The native side of the CLR host will use this method to pass a set of native utility 
+        /// functions to the managed side of the CLR host. This method must be called during 
+        /// initialization of the engine app domain, before any native UObject instance is 
         /// passed to the managed side.
         /// </summary>
-        /// <param name="proxy">Structure containing pointers to native functions.</param>
-        void BindObjectUtils(ref ObjectUtilsProxy proxy);
-
-        /// <summary>
-        /// The native side of the CLR host will use this method to pass a set of native logging
-        /// functions to the managed side of the CLR host. This method should be called during 
-        /// initialization of the engine app domain.
-        /// </summary>
-        /// <param name="proxy">Structure containing pointers to native functions.</param>
-        void BindLogUtils(ref LogUtilsProxy proxy);
-
+        void BindUtils(
+            ref ObjectUtilsProxy objectUtilsProxy,
+            ref LogUtilsProxy logUtilsProxy
+        );
+                
         bool CreateScriptComponent(
             string className, IntPtr nativeComponent, ref ScriptComponentProxy proxy
         );

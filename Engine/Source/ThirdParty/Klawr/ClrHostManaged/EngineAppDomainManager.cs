@@ -26,11 +26,10 @@ using Klawr.ClrHost.Interfaces;
 using Klawr.ClrHost.Managed.SafeHandles;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Linq.Expressions;
 
 namespace Klawr.ClrHost.Managed
 {
@@ -263,15 +262,14 @@ namespace Klawr.ClrHost.Managed
                 .FirstOrDefault(t => t.FullName.Equals(typeName));
         }
 
-        public void BindObjectUtils(ref ObjectUtilsProxy proxy)
+        public void BindUtils(
+            ref ObjectUtilsProxy objectUtilsProxy,
+            ref LogUtilsProxy logUtilsProxy
+        )
         {
-            new ObjectUtils(ref proxy);
-        }
-
-        public void BindLogUtils(ref LogUtilsProxy proxy)
-        {
-            new LogUtils(ref proxy);
-            // redirect output to the UE console and log file
+            new ObjectUtils(ref objectUtilsProxy);
+            new LogUtils(ref logUtilsProxy);
+            // redirect output to the UE console and log file (needs LogUtils)
             System.Console.SetOut(new UELogWriter());
         }
 
