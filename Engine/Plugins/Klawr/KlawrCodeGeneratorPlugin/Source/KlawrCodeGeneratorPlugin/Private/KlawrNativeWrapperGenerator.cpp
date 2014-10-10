@@ -63,9 +63,14 @@ void FNativeWrapperGenerator::GenerateFooter()
 
 		for (const auto& exportedProperty : ExportedProperties)
 		{
-			GeneratedGlue
-				<< exportedProperty.GetterWrapperFunctionName + TEXT(",")
-				<< exportedProperty.SetterWrapperFunctionName + TEXT(",");
+			if (!exportedProperty.GetterWrapperFunctionName.IsEmpty())
+			{
+				GeneratedGlue << exportedProperty.GetterWrapperFunctionName + TEXT(",");
+			}
+			if (!exportedProperty.SetterWrapperFunctionName.IsEmpty())
+			{
+				GeneratedGlue << exportedProperty.SetterWrapperFunctionName + TEXT(",");
+			}
 		}
 		
 		for (const auto& exportedFunction : ExportedFunctions)
@@ -137,11 +142,20 @@ void FNativeWrapperGenerator::GenerateFunctionWrapper(const UFunction* Function)
 	ExportedFunctions.Add(funcInfo);
 }
 
-void FNativeWrapperGenerator::GeneratePropertyWrapper(const UProperty* Property)
+void FNativeWrapperGenerator::GeneratePropertyWrapper(const UProperty* prop)
 {
 	FExportedProperty exportedProperty;
-	exportedProperty.GetterWrapperFunctionName = GeneratePropertyGetterWrapper(Property);
-	exportedProperty.SetterWrapperFunctionName = GeneratePropertySetterWrapper(Property);
+	auto arrayProp = Cast<UArrayProperty>(prop);
+	if (arrayProp)
+	{
+		exportedProperty.GetterWrapperFunctionName = GenerateArrayPropertyGetterWrapper(arrayProp);
+		exportedProperty.SetterWrapperFunctionName.Empty();
+	}
+	else
+	{
+		exportedProperty.GetterWrapperFunctionName = GeneratePropertyGetterWrapper(prop);
+		exportedProperty.SetterWrapperFunctionName = GeneratePropertySetterWrapper(prop);
+	}
 	ExportedProperties.Add(exportedProperty);
 }
 
@@ -466,6 +480,29 @@ FString FNativeWrapperGenerator::GeneratePropertySetterWrapper(const UProperty* 
 		<< FCodeFormatter::LineTerminator();
 
 	return FString::Printf(TEXT("%s::%s"), *FriendlyClassName, *setterName);
+}
+
+FString FNativeWrapperGenerator::GenerateArrayPropertyGetterWrapper(const UArrayProperty* arrayProp)
+{
+	// define a native getter wrapper function that will be bound to a managed delegate
+	const FString propertyTypeName = GetPropertyType(arrayProp);
+	const FString getterName = FString::Printf(TEXT("Get_%s"), *arrayProp->GetName());
+
+	GeneratedGlue
+		<< FString::Printf(TEXT("static FArrayHelper* %s(%s* self)"), *getterName, *NativeClassName)
+		<< FCodeFormatter::OpenBrace()
+			<< FString::Printf(
+				TEXT("static UArrayProperty* prop = Cast<UArrayProperty>(FindScriptPropertyHelper(%s::StaticClass(), TEXT(\"%s\")));"),
+				*NativeClassName, *arrayProp->GetName()
+			)
+			<< FString::Printf(
+				TEXT("return new TArrayHelper<%s>(&self->%s, prop);"), 
+				*FCodeGenerator::GetPropertyCPPType(arrayProp->Inner), *arrayProp->GetName()
+			)
+		<< FCodeFormatter::CloseBrace()
+		<< FCodeFormatter::LineTerminator();
+
+	return FString::Printf(TEXT("%s::%s"), *FriendlyClassName, *getterName);
 }
 
 } // namespace Klawr

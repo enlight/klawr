@@ -89,9 +89,11 @@ void FCSharpWrapperGenerator::GenerateHeader()
 		// usings
 		<< TEXT("using System;")
 		<< TEXT("using System.Runtime.InteropServices;")
+		<< TEXT("using System.Collections.Generic;")
 		<< TEXT("using Klawr.ClrHost.Interfaces;")
 		<< TEXT("using Klawr.ClrHost.Managed;")
 		<< TEXT("using Klawr.ClrHost.Managed.SafeHandles;")
+		<< TEXT("using Klawr.ClrHost.Managed.Collections;")
 		<< FCodeFormatter::LineTerminator()
 
 		// declare namespace
@@ -104,6 +106,10 @@ void FCSharpWrapperGenerator::GenerateHeader()
 			// declare class
 			<< classDecl 
 			<< FCodeFormatter::OpenBrace()
+
+				// used in Dispose()
+				<< TEXT("private bool _isDisposed = false;")
+				<< FCodeFormatter::LineTerminator()
 
 				// constructor
 				<< FString::Printf(
@@ -127,6 +133,11 @@ void FCSharpWrapperGenerator::GenerateFooter()
 {
 	if (bShouldGenerateManagedWrapper)
 	{
+		// define Dispose()
+		GenerateDisposeMethod();
+
+		GeneratedGlue << FCodeFormatter::LineTerminator();
+
 		// define static constructor
 		GenerateManagedStaticConstructor();
 		// close the class
@@ -202,7 +213,20 @@ void FCSharpWrapperGenerator::GenerateFunctionWrapper(const UFunction* Function)
 	ExportedFunctions.Add(funcInfo);
 }
 
-void FCSharpWrapperGenerator::GeneratePropertyWrapper(const UProperty* Property)
+void FCSharpWrapperGenerator::GeneratePropertyWrapper(const UProperty* prop)
+{
+	auto arrayProp = Cast<UArrayProperty>(prop);
+	if (arrayProp)
+	{
+		GenerateArrayPropertyWrapper(arrayProp);
+	}
+	else
+	{
+		GenerateStandardPropertyWrapper(prop);
+	}
+}
+
+void FCSharpWrapperGenerator::GenerateStandardPropertyWrapper(const UProperty* Property)
 {
 	const FString getterName = FString::Printf(TEXT("Get_%s"), *Property->GetName());
 	const FString setterName = FString::Printf(TEXT("Set_%s"), *Property->GetName());
@@ -281,6 +305,61 @@ void FCSharpWrapperGenerator::GeneratePropertyWrapper(const UProperty* Property)
 		<< FCodeFormatter::LineTerminator();
 }
 
+void FCSharpWrapperGenerator::GenerateArrayPropertyWrapper(const UArrayProperty* arrayProp)
+{
+	const FString getterName = FString::Printf(TEXT("Get_%s"), *arrayProp->GetName());
+	
+	FExportedProperty propertyInfo;
+	propertyInfo.GetterDelegateName = GetDelegateName(getterName);
+	propertyInfo.GetterDelegateTypeName = GetDelegateTypeName(getterName, true);
+	propertyInfo.SetterDelegateName.Empty();
+	propertyInfo.SetterDelegateTypeName.Empty();
+	ExportedProperties.Add(propertyInfo);
+	
+	const FString managedTypeName = GetPropertyManagedType(arrayProp->Inner);
+	const FString backingFieldName = FString::Printf(TEXT("_%s"), *arrayProp->GetName());
+	const FString arrayPropertyWrapperTypeName = GetArrayPropertyWrapperType(arrayProp);
+	
+	DisposableMembers.Add(backingFieldName);
+
+	GeneratedGlue
+		// declare getter delegate type
+		<< UnmanagedFunctionPointerAttribute
+		<< FString::Printf(
+			TEXT("private delegate ArrayHandle %s(UObjectHandle self);"),
+			*propertyInfo.GetterDelegateTypeName
+		)
+		// declare delegate instance that will be bound to the native wrapper function
+		<< FString::Printf(
+			TEXT("private static %s %s;"),
+			*propertyInfo.GetterDelegateTypeName, *propertyInfo.GetterDelegateName
+		)
+		// declare the backing field for the property
+		<< FString::Printf(TEXT("private ArrayList<%s> %s;"), *managedTypeName, *backingFieldName)
+		<< FCodeFormatter::LineTerminator()
+		// define a property that calls the native wrapper function through the delegate
+		// declared above
+		<< FString::Printf(TEXT("public IList<%s> %s"), *managedTypeName, *arrayProp->GetName())
+		<< FCodeFormatter::OpenBrace()
+			<< TEXT("get")
+			<< FCodeFormatter::OpenBrace()
+				<< FString::Printf(TEXT("if (%s == null)"), *backingFieldName)
+				<< FCodeFormatter::OpenBrace()
+					<< FString::Printf(
+						TEXT("var arrayHandle = %s((UObjectHandle)this);"), 
+						*propertyInfo.GetterDelegateName
+					)
+					<< FString::Printf(
+						TEXT("%s = new ArrayList<%s>(new %s((UObjectHandle)this, arrayHandle));"),
+						*backingFieldName, *managedTypeName, *arrayPropertyWrapperTypeName
+					)
+				<< FCodeFormatter::CloseBrace()
+				<< FString::Printf(TEXT("return %s;"), *backingFieldName)
+			<< FCodeFormatter::CloseBrace()
+		<< FCodeFormatter::CloseBrace()
+		<< FCodeFormatter::LineTerminator();
+}
+
 bool FCSharpWrapperGenerator::ShouldGenerateManagedWrapper(const UClass* Class)
 {
 	return (Class != UObject::StaticClass())
@@ -296,6 +375,32 @@ bool FCSharpWrapperGenerator::ShouldGenerateScriptObjectClass(const UClass* Clas
 	//        should be available though (because HACK_HEADER_GENERATOR should be defined for this
 	//        plugin) so it is possible to do what GetBoolMetaDataHierarchical() does.
 	//return Class->GetBoolMetaDataHierarchical(FBlueprintMetadata::MD_IsBlueprintBase);
+}
+
+void FCSharpWrapperGenerator::GenerateDisposeMethod()
+{
+	GeneratedGlue 
+		<< TEXT("protected override void Dispose(bool isDisposing)")
+		<< FCodeFormatter::OpenBrace()
+			<< TEXT("if (!_isDisposed)")
+			<< FCodeFormatter::OpenBrace()
+				<< TEXT("if (isDisposing)")
+				<< FCodeFormatter::OpenBrace();
+	
+	for (const FString& member : DisposableMembers)
+	{
+		GeneratedGlue 
+			<< FString::Printf(TEXT("if (%s != null)"), *member)
+			<< FCodeFormatter::OpenBrace()
+				<< FString::Printf(TEXT("%s.Dispose();"), *member)
+			<< FCodeFormatter::CloseBrace();
+	}
+
+	GeneratedGlue
+				<< FCodeFormatter::CloseBrace()
+				<< TEXT("_isDisposed = true;")
+			<< FCodeFormatter::CloseBrace()
+		<< FCodeFormatter::CloseBrace();
 }
 
 void FCSharpWrapperGenerator::GenerateManagedStaticConstructor()
@@ -318,18 +423,24 @@ void FCSharpWrapperGenerator::GenerateManagedStaticConstructor()
 	int32 functionIdx = 0;
 	for (const FExportedProperty& propInfo : ExportedProperties)
 	{
-		GeneratedGlue << FString::Printf(
-			TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;"),
-			*propInfo.GetterDelegateName, functionIdx, *propInfo.GetterDelegateTypeName,
-			*propInfo.GetterDelegateTypeName
-		);
-		++functionIdx;
-		GeneratedGlue << FString::Printf(
-			TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;"),
-			*propInfo.SetterDelegateName, functionIdx, *propInfo.SetterDelegateTypeName,
-			*propInfo.SetterDelegateTypeName
-		);
-		++functionIdx;
+		if (!propInfo.GetterDelegateName.IsEmpty())
+		{
+			GeneratedGlue << FString::Printf(
+				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;"),
+				*propInfo.GetterDelegateName, functionIdx, *propInfo.GetterDelegateTypeName,
+				*propInfo.GetterDelegateTypeName
+			);
+			++functionIdx;
+		}
+		if (!propInfo.SetterDelegateName.IsEmpty())
+		{
+			GeneratedGlue << FString::Printf(
+				TEXT("%s = Marshal.GetDelegateForFunctionPointer(nativeFuncPtrs[%d], typeof(%s)) as %s;"),
+				*propInfo.SetterDelegateName, functionIdx, *propInfo.SetterDelegateTypeName,
+				*propInfo.SetterDelegateTypeName
+			);
+			++functionIdx;
+		}
 	}
 		
 	for (const FExportedFunction& funcInfo : ExportedFunctions)
@@ -596,6 +707,29 @@ FString FCSharpWrapperGenerator::GetDelegateTypeName(
 FString FCSharpWrapperGenerator::GetDelegateName(const FString& FunctionName)
 {
 	return FString(TEXT("_")) + FunctionName;
+}
+
+FString FCSharpWrapperGenerator::GetArrayPropertyWrapperType(const UArrayProperty* arrayProperty)
+{
+	const UProperty* elementProperty = arrayProperty->Inner;
+	if (elementProperty->IsA<UStrProperty>() || elementProperty->IsA<UNameProperty>())
+	{
+		return TEXT("StringArrayProperty");
+	}
+	else if (elementProperty->IsA<UObjectProperty>())
+	{
+		return FString::Printf(
+			TEXT("ObjectArrayProperty<%s>"), *GetPropertyManagedType(elementProperty)
+		);
+	}
+	else if (elementProperty->IsA<UBoolProperty>())
+	{
+		return TEXT("BoolArrayProperty");
+	}
+	else
+	{
+		return FString::Printf(TEXT("%sArrayProperty"), *elementProperty->GetCPPType());
+	}
 }
 
 } // namespace Klawr

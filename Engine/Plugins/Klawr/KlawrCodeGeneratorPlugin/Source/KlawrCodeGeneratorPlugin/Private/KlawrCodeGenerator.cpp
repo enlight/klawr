@@ -149,7 +149,8 @@ bool FCodeGenerator::CanExportFunction(const UClass* Class, const UFunction* Fun
 	// check all parameter types for this function are supported
 	for (TFieldIterator<UProperty> ParamIt(Function); ParamIt; ++ParamIt)
 	{
-		if (!IsPropertyTypeSupported(*ParamIt))
+		// arrays that are class members are supported, but arrays that are parameters are not
+		if (ParamIt->IsA<UArrayProperty>() || !IsPropertyTypeSupported(*ParamIt))
 		{
 			return false;
 		}
@@ -162,14 +163,18 @@ bool FCodeGenerator::IsPropertyTypeSupported(const UProperty* Property)
 {
 	bool bSupported = true;
 
-	if (Property->IsA<UArrayProperty>() ||
-		Property->ArrayDim > 1 ||
+	if (Property->ArrayDim > 1 ||
 		Property->IsA<UDelegateProperty>() ||
 		Property->IsA<UMulticastDelegateProperty>() ||
 		Property->IsA<UWeakObjectProperty>() ||
 		Property->IsA<UInterfaceProperty>())
 	{
 		bSupported = false;
+	}
+	else if (Property->IsA<UArrayProperty>())
+	{
+		auto arrayProp = Cast<UArrayProperty>(Property);
+		bSupported = IsPropertyTypeSupported(arrayProp->Inner);
 	}
 	else if (Property->IsA<UStructProperty>())
 	{

@@ -63,8 +63,11 @@ private:
 	};
 
 private:
+	void GenerateStandardPropertyWrapper(const UProperty* Property);
+	void GenerateArrayPropertyWrapper(const UArrayProperty* Property);
 	static bool ShouldGenerateManagedWrapper(const UClass* Class);
 	static bool ShouldGenerateScriptObjectClass(const UClass* Class);
+	void GenerateDisposeMethod();
 	void GenerateManagedStaticConstructor();
 	void GenerateManagedScriptObjectClass();
 	static UProperty* GetWrapperArgsAndReturnType(
@@ -78,6 +81,7 @@ private:
 	static FString GetPropertyInteropTypeModifiers(const UProperty* Property);
 	static FString GetDelegateTypeName(const FString& FunctionName, bool bHasReturnValue);
 	static FString GetDelegateName(const FString& FunctionName);
+	static FString GetArrayPropertyWrapperType(const UArrayProperty* ArrayProperty);
 
 private:
 	const UClass* WrapperSuperClass;
@@ -88,6 +92,8 @@ private:
 	bool bShouldGenerateScriptObjectClass;
 	TArray<FExportedFunction> ExportedFunctions;
 	TArray<FExportedProperty> ExportedProperties;
+	// names of members of the generated C# class that need to be disposed
+	TArray<FString>DisposableMembers;
 
 	static const FString UnmanagedFunctionPointerAttribute;
 	static const FString MarshalReturnedBoolAsUint8Attribute;

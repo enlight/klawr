@@ -41,7 +41,9 @@
   <ItemGroup>
     <Compile Include="SafeHandles\ArrayHandle.cs" />
     <Compile Include="SafeHandles\ObjectHandle.cs" />
+    <Compile Include="Collections\NativeArray.cs" />
     <Compile Include="Proxies\ArrayUtilsProxy.cs" />
+    <Compile Include="Collections\ArrayList.cs" />
     <Compile Include="Wrappers\ArrayUtils.cs" />
     <Compile Include="Wrappers\Class.cs" />
     <Compile Include="DefaultAppDomainManager.cs" />

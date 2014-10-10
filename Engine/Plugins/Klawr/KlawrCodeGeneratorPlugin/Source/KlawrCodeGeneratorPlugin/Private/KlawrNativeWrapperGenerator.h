@@ -67,6 +67,7 @@ private:
 	void GenerateFunctionDispatch(const UFunction* Function);
 	FString GeneratePropertyGetterWrapper(const UProperty* Property);
 	FString GeneratePropertySetterWrapper(const UProperty* Property);
+	FString GenerateArrayPropertyGetterWrapper(const UArrayProperty* Property);
 
 private:
 	FString FriendlyClassName;
