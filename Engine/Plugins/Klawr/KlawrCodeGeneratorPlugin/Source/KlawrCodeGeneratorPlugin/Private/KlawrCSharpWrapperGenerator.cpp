@@ -400,6 +400,7 @@ void FCSharpWrapperGenerator::GenerateDisposeMethod()
 	GeneratedGlue
 				<< FCodeFormatter::CloseBrace()
 				<< TEXT("_isDisposed = true;")
+				<< TEXT("base.Dispose(isDisposing);")
 			<< FCodeFormatter::CloseBrace()
 		<< FCodeFormatter::CloseBrace();
 }
