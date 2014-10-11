@@ -107,10 +107,6 @@ void FCSharpWrapperGenerator::GenerateHeader()
 			<< classDecl 
 			<< FCodeFormatter::OpenBrace()
 
-				// used in Dispose()
-				<< TEXT("private bool _isDisposed = false;")
-				<< FCodeFormatter::LineTerminator()
-
 				// constructor
 				<< FString::Printf(
 					TEXT("public %s(UObjectHandle nativeObject) : base(nativeObject)"), 
@@ -118,6 +114,7 @@ void FCSharpWrapperGenerator::GenerateHeader()
 				)
 				<< FCodeFormatter::OpenBrace()
 				<< FCodeFormatter::CloseBrace()
+				<< FCodeFormatter::LineTerminator()
 	
 				// StaticClass()
 				<< TEXT("public new static UClass StaticClass()")
@@ -125,7 +122,7 @@ void FCSharpWrapperGenerator::GenerateHeader()
 					<< FString::Printf(TEXT("return (UClass)typeof(%s);"), *NativeClassName)
 				<< FCodeFormatter::CloseBrace()
 			
-			<< FCodeFormatter::LineTerminator();
+				<< FCodeFormatter::LineTerminator();
 	}
 }
 
@@ -133,10 +130,14 @@ void FCSharpWrapperGenerator::GenerateFooter()
 {
 	if (bShouldGenerateManagedWrapper)
 	{
-		// define Dispose()
-		GenerateDisposeMethod();
-
-		GeneratedGlue << FCodeFormatter::LineTerminator();
+		if (DisposableMembers.Num() > 0)
+		{
+			// used in Dispose()
+			GeneratedGlue << TEXT("private bool _isDisposed = false;");
+			GeneratedGlue << FCodeFormatter::LineTerminator();
+			GenerateDisposeMethod();
+			GeneratedGlue << FCodeFormatter::LineTerminator();
+		}
 
 		// define static constructor
 		GenerateManagedStaticConstructor();
