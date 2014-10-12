@@ -264,7 +264,7 @@ namespace Klawr.ClrHost.Managed.Collections
 
         protected override Int64 GetValue(int index)
         {
-            return Marshal.ReadInt32(ArrayUtils.GetRawPtr(NativeArrayHandle, index));
+            return Marshal.ReadInt64(ArrayUtils.GetRawPtr(NativeArrayHandle, index));
         }
 
         protected override void SetValue(int index, Int64 item)
