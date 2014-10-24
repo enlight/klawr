@@ -1,6 +1,11 @@
 Klawr (Experimental WIP)
 ================
-A set of Unreal Engine 4 plugins that will allow users to write game-play code in C# (and eventually other CLI languages such as F#), in game projects targeting the Windows platform. The primary aim of this project is to make it possible to do anything that can currently be done in Blueprints in C# scripts, in order to eliminate the need for complex Blueprint spaghetti.
+A set of Unreal Engine 4 plugins that will allow users to write game-play code in C# (and eventually
+other CLI languages such as F#), in game projects targeting the Windows platform. If you're looking
+for a cross-platform alternative Xamarin has developed a [plugin](https://mono-ue.github.io/) that 
+provides Mono integration, however a commercial Mono license is not cheap. The primary aim of this 
+project is to make it possible to do anything that can currently be done in Blueprints in C# scripts,
+in order to eliminate the need for complex Blueprint spaghetti.
 
 The current development focus is on script components (see UKlawrScriptComponent), these are actor components whose functionality is implemented in a C# class. The C# class attached to a script component can access any Blueprint accessible property or function exposed by the actor it is attached to or any of its sibling components (this is still limited at present). Eventually the properties and methods defined in a C# script component will also be exposed to Blueprints.
 
