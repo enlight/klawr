@@ -82,7 +82,7 @@ Plugins
     ScriptExcludedModules=ScriptGeneratorPlugin
     ```
 
-2. Run GenerateProjectFiles.bat in your UE4 source checkout.
+2. Run **GenerateProjectFiles.bat** in your UE4 source checkout.
 3. Open **UE4.sln** in VS2013.
 4. Set the **Solution Configuration** to **Debug Editor** or Development Editor.
 5. Set the **Solution Platform** to **Win64** (this is very important, Win32 builds are not supported yet).
@@ -100,4 +100,5 @@ License
 =====
 Klawr is licensed under the MIT license.
 
-Klawr uses the pugixml library to parse XML, it was written by Arseny Kapoulkine and is licensed under the MIT license.
+Klawr uses the [pugixml](http://pugixml.org/) library to parse XML, it was written by
+Arseny Kapoulkine and is licensed under the MIT license.
