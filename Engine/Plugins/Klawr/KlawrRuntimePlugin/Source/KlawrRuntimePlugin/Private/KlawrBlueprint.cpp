@@ -26,11 +26,6 @@
 #include "KlawrBlueprint.h"
 #include "KlawrBlueprintGeneratedClass.h"
 
-UKlawrBlueprint::UKlawrBlueprint(const FPostConstructInitializeProperties& PCIP)
-	: Super(PCIP)
-{
-}
-
 #if WITH_EDITOR
 
 bool UKlawrBlueprint::ValidateGeneratedClass(const UClass* Class)

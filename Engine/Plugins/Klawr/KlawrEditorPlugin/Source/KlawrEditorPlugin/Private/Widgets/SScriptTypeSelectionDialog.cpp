@@ -35,7 +35,7 @@ namespace Klawr {
 
 void SScriptTypeSelectionDialog::Construct(const FArguments& InArgs)
 {
-	DefaultSelection = InArgs._DefaultSelection;
+	DefaultSelection = InArgs._DefaultSelection.ToString();
 
 	bUserConfirmed = false;
 

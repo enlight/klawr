@@ -32,8 +32,8 @@
 
 #define LOCTEXT_NAMESPACE "KlawrEditorPlugin.UKlawrBlueprintFactory"
 
-UKlawrBlueprintFactory::UKlawrBlueprintFactory(const FPostConstructInitializeProperties& PCIP)
-	: Super(PCIP)
+UKlawrBlueprintFactory::UKlawrBlueprintFactory(const FObjectInitializer& objectInitializer)
+	: Super(objectInitializer)
 {
 	Super::SupportedClass = UKlawrBlueprint::StaticClass();
 	Super::bCreateNew = true;

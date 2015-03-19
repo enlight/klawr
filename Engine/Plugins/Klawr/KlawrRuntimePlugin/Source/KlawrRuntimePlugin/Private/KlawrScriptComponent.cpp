@@ -27,8 +27,8 @@
 #include "KlawrClrHost.h"
 #include "KlawrBlueprintGeneratedClass.h"
 
-UKlawrScriptComponent::UKlawrScriptComponent(const FPostConstructInitializeProperties& PCIP)
-	: Super(PCIP)
+UKlawrScriptComponent::UKlawrScriptComponent(const FObjectInitializer& objectInitializer)
+	: Super(objectInitializer)
 	, Proxy(nullptr)
 {
 	// by default disable everything, re-enable only the relevant bits in OnRegister()

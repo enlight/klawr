@@ -153,16 +153,20 @@ void FScriptsReloader::Enable()
 	FGameProjectBuilder::GetSourceDirs(SourceDirs);
 	for (const FString& SourceDir : SourceDirs)
 	{
-		DirWatcher->RegisterDirectoryChangedCallback(
+		FDelegateHandle NewHandle;
+		DirWatcher->RegisterDirectoryChangedCallback_Handle(
 			SourceDir, 
 			IDirectoryWatcher::FDirectoryChanged::CreateRaw(
 				this, &FScriptsReloader::OnSourceDirChanged
-			)
+			),
+			NewHandle
 		);
+		OnSourceDirChangedDelegateHandles.Add(SourceDir, NewHandle);
 	}
-	DirWatcher->RegisterDirectoryChangedCallback(
+	DirWatcher->RegisterDirectoryChangedCallback_Handle(
 		FGameProjectBuilder::GetOutputDir(),
-		IDirectoryWatcher::FDirectoryChanged::CreateRaw(this, &FScriptsReloader::OnBinaryDirChanged)
+		IDirectoryWatcher::FDirectoryChanged::CreateRaw(this, &FScriptsReloader::OnBinaryDirChanged),
+		OnBinaryDirChangedDelegateHandle
 	);
 
 	bAutoReloadScripts = true;
@@ -188,18 +192,19 @@ void FScriptsReloader::Disable()
 
 	TArray<FString> SourceDirs;
 	FGameProjectBuilder::GetSourceDirs(SourceDirs);
+	// FIXME: actually it's probably better to just unregister everything in the 
+	// OnSourceDirChangedDelegateHandles map in case SourceDirs was modified after the delegates
+	// were registered!
 	for (const FString& SourceDir : SourceDirs)
 	{
-		DirWatcher->UnregisterDirectoryChangedCallback(
-			SourceDir,
-			IDirectoryWatcher::FDirectoryChanged::CreateRaw(
-				this, &FScriptsReloader::OnSourceDirChanged
-			)
+		DirWatcher->UnregisterDirectoryChangedCallback_Handle(
+			SourceDir, OnSourceDirChangedDelegateHandles.FindRef(SourceDir)
 		);
+		OnSourceDirChangedDelegateHandles.Remove(SourceDir);
 	}
-	DirWatcher->UnregisterDirectoryChangedCallback(
+	DirWatcher->UnregisterDirectoryChangedCallback_Handle(
 		FGameProjectBuilder::GetOutputDir(),
-		IDirectoryWatcher::FDirectoryChanged::CreateRaw(this, &FScriptsReloader::OnBinaryDirChanged)
+		OnBinaryDirChangedDelegateHandle
 	);
 
 	FEditorDelegates::BeginPIE.RemoveAll(this);

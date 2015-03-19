@@ -36,7 +36,10 @@ namespace Klawr
 UCLASS(BlueprintType)
 class KLAWRRUNTIMEPLUGIN_API UKlawrScriptComponent : public UActorComponent
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UKlawrScriptComponent(const FObjectInitializer& objectInitializer);
 
 public: // UActorComponent interface
 	

@@ -262,7 +262,7 @@ void FCodeGenerator::ExportClass(
 	bool bHasChanged
 )
 {
-	if (Class->HasAnyClassFlags(CLASS_Temporary | CLASS_Deprecated))
+	if (Class->HasAnyClassFlags(CLASS_Deprecated))
 	{
 		return;
 	}

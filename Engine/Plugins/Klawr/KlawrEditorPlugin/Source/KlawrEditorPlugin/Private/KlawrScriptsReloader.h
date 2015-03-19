@@ -23,6 +23,8 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
+struct FFileChangeData;
+
 namespace Klawr {
 
 /**
@@ -69,9 +71,9 @@ private:
 	virtual ~FScriptsReloader();
 
 	/** Called by the directory watcher when script files are added, modified, or removed. */
-	void OnSourceDirChanged(const TArray<struct FFileChangeData>& InFileChanges);
+	void OnSourceDirChanged(const TArray<FFileChangeData>& InFileChanges);
 	/** Called by the directory watcher when assemblies are added, modified, or removed. */
-	void OnBinaryDirChanged(const TArray<struct FFileChangeData>& InFileChanges);
+	void OnBinaryDirChanged(const TArray<FFileChangeData>& InFileChanges);
 	/** Called when UnrealEd enters Play In Editor mode. */
 	void OnBeginPIE(const bool bIsSimulating);
 	/** Called when UnrealEd exits Play In Editor mode. */
@@ -91,6 +93,10 @@ private:
 	TArray<FString> ModifiedScriptFiles;
 	// time stamp of the game scripts assembly at the time it was last loaded
 	FDateTime LastScriptsAssemblyTimeStamp;
+	// handles of all registered OnSourceDirChanged delegates
+	TMap<FString /* sourceDir */, FDelegateHandle> OnSourceDirChangedDelegateHandles;
+	// handle to the registered OnBinaryDirChanged delegate
+	FDelegateHandle OnBinaryDirChangedDelegateHandle;
 
 	static FScriptsReloader* Singleton;
 };

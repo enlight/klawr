@@ -32,8 +32,9 @@
 UCLASS(BlueprintType)
 class KLAWRRUNTIMEPLUGIN_API UKlawrBlueprint : public UBlueprint
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
+public:
 	/** 
 	 * Name of a type defined in a script or assembly.
 	 * For C# types this should be a fully qualified class name, e.g. MyProject.MyClass

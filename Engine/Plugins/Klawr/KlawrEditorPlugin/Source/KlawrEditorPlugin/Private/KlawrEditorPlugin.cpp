@@ -35,7 +35,7 @@ DEFINE_LOG_CATEGORY(LogKlawrEditorPlugin);
 
 namespace Klawr {
 
-class FEditorPlugin : public IKlawrEditorPlugin
+class FEditorPlugin : public IKlawrEditorPlugin, IBlueprintCompiler
 {
 private:
 	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
@@ -45,22 +45,6 @@ private:
 	bool bRegisteredForOnLevelActorListChanged;
 
 private:
-	/** Called by the Blueprint compiler. */
-	FReply CompileBlueprint(
-		UBlueprint* Blueprint, const FKismetCompilerOptions& CompileOptions,
-		FCompilerResultsLog& Results, TArray<UObject*>* ObjLoaded
-	)
-	{
-		if (auto KlawrBlueprint = Cast<UKlawrBlueprint>(Blueprint))
-		{
-			FBlueprintCompiler Compiler(KlawrBlueprint, Results, CompileOptions, ObjLoaded);
-			Compiler.Compile();
-			check(Compiler.NewClass);
-			return FReply::Handled();
-		}
-		return FReply::Unhandled();
-	}
-
 	void RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action)
 	{
 		AssetTools.RegisterAssetTypeActions(Action);
@@ -180,9 +164,7 @@ public: // IModuleInterface interface
 		
 		// register Blueprint compiler
 		auto& CompilerModule = FModuleManager::LoadModuleChecked<IKismetCompilerInterface>("KismetCompiler");
-		FBlueprintCompileDelegate CompileDelegate;
-		CompileDelegate.BindRaw(this, &FEditorPlugin::CompileBlueprint);
-		CompilerModule.GetCompilers().Add(CompileDelegate);
+		CompilerModule.GetCompilers().Add(this);
 
 		FEditorDelegates::BeginPIE.AddRaw(this, &FEditorPlugin::OnBeginPIE);
 		FEditorDelegates::EndPIE.AddRaw(this, &FEditorPlugin::OnEndPIE);
@@ -214,6 +196,33 @@ public: // IModuleInterface interface
 		}
 
 		IKlawrRuntimePlugin::Get().DestroyPrimaryAppDomain();
+	}
+
+public: // IBlueprintCompiler
+
+	virtual void PreCompile(UBlueprint* Blueprint) override
+	{
+		// nothing to do
+	}
+
+	virtual bool CanCompile(const UBlueprint* Blueprint) override
+	{
+		return Cast<UKlawrBlueprint>(Blueprint) != nullptr;
+	}
+
+	virtual void Compile(UBlueprint* Blueprint, const FKismetCompilerOptions& CompileOptions, FCompilerResultsLog& Results, TArray<UObject*>* ObjLoaded) override
+	{
+		if (auto KlawrBlueprint = Cast<UKlawrBlueprint>(Blueprint))
+		{
+			FBlueprintCompiler Compiler(KlawrBlueprint, Results, CompileOptions, ObjLoaded);
+			Compiler.Compile();
+			check(Compiler.NewClass);
+		}
+	}
+
+	virtual void PostCompile(UBlueprint* Blueprint) override
+	{
+		// nothing to do
 	}
 };
 

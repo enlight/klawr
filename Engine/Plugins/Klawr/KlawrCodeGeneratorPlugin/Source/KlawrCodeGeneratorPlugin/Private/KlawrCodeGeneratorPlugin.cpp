@@ -51,7 +51,8 @@ public:	// IScriptGeneratorPlugin interface
 	}
 	
 	virtual bool ShouldExportClassesForModule(
-		const FString& ModuleName, EBuildModuleType::Type ModuleType
+		const FString& ModuleName, EBuildModuleType::Type ModuleType, 
+		const FString& ModuleGeneratedIncludeDirectory
 	) const
 	{
 		bool bCanExport = (ModuleType == EBuildModuleType::Runtime || ModuleType == EBuildModuleType::Game);

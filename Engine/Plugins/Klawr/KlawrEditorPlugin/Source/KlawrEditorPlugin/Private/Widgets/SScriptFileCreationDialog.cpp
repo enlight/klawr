@@ -34,7 +34,7 @@ namespace Klawr {
 void SScriptFileCreationDialog::Construct(const FArguments& InArgs)
 {
 	bUserConfirmed = false;
-	FString sourceFilename = InArgs._SourceFilename;
+	FString sourceFilename = InArgs._SourceFilename.ToString();
 	if (!sourceFilename.EndsWith(TEXT(".cs")))
 	{
 		sourceFilename.Append(FString(TEXT(".cs")));

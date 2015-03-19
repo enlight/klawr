@@ -24,8 +24,3 @@
 
 #include "KlawrRuntimePluginPrivatePCH.h"
 #include "KlawrBlueprintGeneratedClass.h"
-
-UKlawrBlueprintGeneratedClass::UKlawrBlueprintGeneratedClass(const FPostConstructInitializeProperties& PCIP)
-	: Super(PCIP)
-{
-}

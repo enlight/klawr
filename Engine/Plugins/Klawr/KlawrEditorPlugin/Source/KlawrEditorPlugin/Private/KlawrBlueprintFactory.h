@@ -31,7 +31,10 @@
 UCLASS()
 class UKlawrBlueprintFactory : public UFactory
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UKlawrBlueprintFactory(const FObjectInitializer& objectInitializer);
 
 public: // UFactory interface
 	virtual bool DoesSupportClass(UClass* Class) override;
