@@ -41,7 +41,7 @@ Now everything should be in the right place, from here on any paths are relative
 
 Disable Built-in Script Plugins
 -------------------------------
-The UE4 source contains some built-in Script plugins, these are mostly meant as a reference for plugin developers, but they get in the way because the Unreal Build Tool (UBT) wastes time building and running them. So, before building the Klawr plugins you'll need to make a couple of one-line changes to the UE4 source to get the built-in Script plugins out of the way, you can either make the changes by hand or apply the two patch files that I've provided (ScriptPluginPatch.diff and UnrealHeaderToolPatch.diff). If you're making the changes by hand comment out the following line in **Engine/Plugins/Script/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp**
+The UE4 source contains some built-in Script plugins, these are mostly meant as a reference for plugin developers, but they get in the way because the Unreal Build Tool (UBT) wastes time building and running them. So, before building the Klawr plugins you'll need to make a couple of one-line changes to the UE4 source to get the built-in Script plugins out of the way, you can either make the changes by hand or apply the two patch files that I've provided (ScriptPluginPatch.diff and UnrealHeaderToolPatch.diff). If you're making the changes by hand comment out the following line in **Engine/Plugins/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp**
 
 ``` cpp
 #include "GeneratedScriptLibraries.inl"
