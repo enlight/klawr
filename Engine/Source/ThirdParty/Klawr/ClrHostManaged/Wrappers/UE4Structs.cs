@@ -58,4 +58,12 @@ namespace Klawr.UnrealEngine
     {
         public float B, G, R, A;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FScriptName
+    {
+        public int ComparisonIndex;
+        public int DisplayIndex;
+        public uint Number;
+    }
 }

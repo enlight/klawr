@@ -621,9 +621,13 @@ FString FCSharpWrapperGenerator::GetPropertyInteropType(const UProperty* Propert
 	{
 		return TEXT("double");
 	}
-	else if (Property->IsA<UStrProperty>() || Property->IsA<UNameProperty>())
+	else if (Property->IsA<UStrProperty>())
 	{
 		return TEXT("string");
+	}
+	else if (Property->IsA<UNameProperty>())
+	{
+		return TEXT("FScriptName");
 	}
 	else
 	{

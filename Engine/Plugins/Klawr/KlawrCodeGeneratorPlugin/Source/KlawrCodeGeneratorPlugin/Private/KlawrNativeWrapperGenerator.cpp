@@ -118,9 +118,18 @@ void FNativeWrapperGenerator::GenerateFunctionWrapper(const UFunction* Function)
 		if (!param->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm) &&
 			param->HasAnyPropertyFlags(CPF_OutParm | CPF_ReferenceParm))
 		{
-			GeneratedGlue << FString::Printf(
-				TEXT("*%s = Params.%s;"), *param->GetName(), *param->GetName()
+			if (param->IsA<UNameProperty>())
+			{
+				GeneratedGlue << FString::Printf(
+					TEXT("*%s = NameToScriptName(Params.%s);"), *param->GetName(), *param->GetName()
 				);
+			}
+			else
+			{
+				GeneratedGlue << FString::Printf(
+					TEXT("*%s = Params.%s;"), *param->GetName(), *param->GetName()
+				);
+			}
 		}
 	}
 
@@ -167,15 +176,20 @@ FString FNativeWrapperGenerator::GetPropertyType(const UProperty* Property)
 	{
 		return TEXT("void*");
 	}
-	else if (Property->IsA(UBoolProperty::StaticClass()))
+	else if (Property->IsA<UBoolProperty>())
 	{
 		// the managed wrapper functions marshal C# bool to uint8, so for the sake of consistency
 		// use uint8 instead of C++ bool in the native wrapper functions
 		typeName = TEXT("uint8");
 	}
-	else if (Property->IsA(UStrProperty::StaticClass()) || Property->IsA(UNameProperty::StaticClass()))
+	else if (Property->IsA<UStrProperty>())
 	{
 		return TEXT("const TCHAR*");
+	}
+	else if (Property->IsA<UNameProperty>())
+	{
+		// FName arguments will get marshaled as FScriptName
+		typeName = TEXT("FScriptName");
 	}
 	else
 	{
@@ -237,7 +251,7 @@ FString FNativeWrapperGenerator::GetFunctionDispatchParamInitializer(const UProp
 				TEXT("static_cast<%s>(%s)"), *FCodeGenerator::GetPropertyCPPType(Param), *paramName
 			);
 		}
-		else if (Param->IsA<UStrProperty>() || Param->IsA<UNameProperty>())
+		else if (Param->IsA<UStrProperty>())
 		{
 			initializer = paramName;
 		}
@@ -250,7 +264,11 @@ FString FNativeWrapperGenerator::GetFunctionDispatchParamInitializer(const UProp
 				paramName = FString::Printf(TEXT("(*%s)"), *paramName);
 			}
 
-			if (Param->IsA<UIntProperty>() || Param->IsA<UFloatProperty>())
+			if (Param->IsA<UNameProperty>())
+			{
+				initializer = FString::Printf(TEXT("ScriptNameToName(%s)"), *paramName);
+			}
+			else if (Param->IsA<UIntProperty>() || Param->IsA<UFloatProperty>())
 			{
 				initializer = paramName;
 			}
@@ -258,7 +276,7 @@ FString FNativeWrapperGenerator::GetFunctionDispatchParamInitializer(const UProp
 			{
 				if (CastChecked<UBoolProperty>(Param)->IsNativeBool())
 				{
-					// explicitly convert uin8 to bool
+					// explicitly convert uint8 to bool
 					initializer = FString::Printf(TEXT("!!%s"), *paramName);
 				}
 				else
@@ -342,7 +360,7 @@ void FNativeWrapperGenerator::GenerateReturnValueHandler(
 		else if (ReturnValue->IsA<UNameProperty>())
 		{
 			GeneratedGlue << FString::Printf(
-				TEXT("return MakeStringCopyForCLR(*(%s.ToString()));"), *ReturnValueName
+				TEXT("return NameToScriptName(%s);"), *ReturnValueName
 			);
 		}
 		else if (ReturnValue->IsA<UStructProperty>())
