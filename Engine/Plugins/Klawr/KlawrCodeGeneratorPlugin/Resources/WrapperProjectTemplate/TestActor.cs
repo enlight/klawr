@@ -6,6 +6,7 @@ using Klawr.ClrHost.Managed.SafeHandles;
 
 namespace Klawr.UnrealEngine
 {
+    // NOTE: IScriptObject should probably be considered deprecated in favor of UKlawrScriptComponent
     public class TestActor : AActorScriptObject
     {
         public TestActor(long instanceID, UObjectHandle nativeObject) : base(instanceID, nativeObject)
@@ -16,6 +17,9 @@ namespace Klawr.UnrealEngine
         public override void BeginPlay()
         {
             Console.WriteLine("BeginPlay()");
+            // FIXME: AActor::K2_GetWorld() is no more, and AActor::GetWorld() is not exposed to
+            //        Blueprints at all... may need to expose UObject::GetWorld() manually. 
+            /*
 			var world = K2_GetWorld();
 			var worldClass = UWorld.StaticClass();
             bool isWorldClass = world.IsA(worldClass);
@@ -23,6 +27,7 @@ namespace Klawr.UnrealEngine
             bool isSameClass = worldClass == anotherWorldClass;
             bool isWorldClassDerivedFromObjectClass = worldClass.IsChildOf(UObject.StaticClass());
             world.Dispose();
+            */
         }
 
         public override void Tick(float deltaTime)
