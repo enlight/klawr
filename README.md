@@ -89,7 +89,12 @@ Plugins
 5. Set the **Solution Platform** to **Win64** (this is very important, Win32 builds are not supported yet).
 6. Select **Build Solution** to build everything.
 
-During the build you may see a bunch of console windows popup briefly, don't panic, this is just KlawrCodeGeneratorPlugin building the UE4 C# wrappers assembly.
+During the build you may see a bunch of console windows popup briefly, don't panic, this is just
+KlawrCodeGeneratorPlugin building the UE4 C# wrappers assembly. The wrappers assembly can be
+rebuilt manually by running `Engine\Intermediate\ProjectFiles\Klawr\Build.bat` from the console.
+
+In order to force **Unreal Header Tool** to regenerate all wrappers delete the
+`Engine\Intermediate\Build\Win64\Inc\Plugins\KlawrRuntimePlugin` directory.
 
 Using
 ====
