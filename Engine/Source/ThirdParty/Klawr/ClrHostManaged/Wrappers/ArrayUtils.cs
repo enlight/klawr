@@ -23,6 +23,7 @@
 //
 
 using Klawr.ClrHost.Managed.SafeHandles;
+using Klawr.UnrealEngine;
 using System;
 
 namespace Klawr.ClrHost.Managed
@@ -49,6 +50,11 @@ namespace Klawr.ClrHost.Managed
         public static string GetString(ArrayHandle arrayHandle, Int32 index)
         {
             return _proxy.GetString(arrayHandle, index);
+        }
+
+        public static FScriptName GetName(ArrayHandle arrayHandle, Int32 index)
+        {
+            return _proxy.GetName(arrayHandle, index);
         }
 
         public static UObjectHandle GetObject(ArrayHandle arrayHandle, Int32 index)
@@ -79,6 +85,11 @@ namespace Klawr.ClrHost.Managed
         public static void SetStringAt(ArrayHandle arrayHandle, Int32 index, string item)
         {
             _proxy.SetStringAt(arrayHandle, index, item);
+        }
+
+        public static void SetNameAt(ArrayHandle arrayHandle, Int32 index, FScriptName item)
+        {
+            _proxy.SetNameAt(arrayHandle, index, item);
         }
 
         public static void SetObjectAt(ArrayHandle arrayHandle, Int32 index, UObjectHandle item)
@@ -124,6 +135,11 @@ namespace Klawr.ClrHost.Managed
         public static Int32 FindString(ArrayHandle arrayHandle, string item)
         {
             return _proxy.FindString(arrayHandle, item);
+        }
+
+        public static Int32 FindName(ArrayHandle arrayHandle, FScriptName item)
+        {
+            return _proxy.FindName(arrayHandle, item);
         }
 
         public static Int32 FindObject(ArrayHandle arrayHandle, UObjectHandle item)

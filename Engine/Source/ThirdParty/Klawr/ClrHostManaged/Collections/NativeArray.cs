@@ -279,8 +279,8 @@ namespace Klawr.ClrHost.Managed.Collections
     }
 
     /// <summary>
-    /// A wrapper for a native UE <![CDATA[ TArray<FString> ]]> and <![CDATA[ TArray<FName> ]]> 
-    /// that is a member of a native UObject derived class.
+    /// A wrapper for a native UE <![CDATA[ TArray<FString> ]]> that is a member of a native
+    /// UObject derived class.
     /// </summary>
     public class StringArrayProperty : NativeArrayPropertyBase<string>
     {
@@ -302,6 +302,33 @@ namespace Klawr.ClrHost.Managed.Collections
         public override int Find(string item)
         {
             return ArrayUtils.FindString(NativeArrayHandle, item);
+        }
+    }
+
+    /// <summary>
+    /// A wrapper for a native UE <![CDATA[ TArray<FName> ]]> that is a member of a native UObject
+    /// derived class.
+    /// </summary>
+    public class NameArrayProperty : NativeArrayPropertyBase<FScriptName>
+    {
+        public NameArrayProperty(UObjectHandle objectHandle, ArrayHandle arrayHandle)
+            : base(objectHandle, arrayHandle)
+        {
+        }
+
+        protected override FScriptName GetValue(int index)
+        {
+            return ArrayUtils.GetName(NativeArrayHandle, index);
+        }
+
+        protected override void SetValue(int index, FScriptName item)
+        {
+            ArrayUtils.SetNameAt(NativeArrayHandle, index, item);
+        }
+
+        public override int Find(FScriptName item)
+        {
+            return ArrayUtils.FindName(NativeArrayHandle, item);
         }
     }
 

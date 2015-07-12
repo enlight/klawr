@@ -23,6 +23,7 @@
 //
 
 using Klawr.ClrHost.Managed.SafeHandles;
+using Klawr.UnrealEngine;
 using System;
 using System.Runtime.InteropServices;
 
@@ -48,6 +49,9 @@ namespace Klawr.ClrHost.Managed
         public delegate string GetStringFunc(ArrayHandle arrayHandle, Int32 index);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate FScriptName GetNameFunc(ArrayHandle arrayHandle, Int32 index);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate UObjectHandle GetObjectFunc(ArrayHandle arrayHandle, Int32 index);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -64,6 +68,9 @@ namespace Klawr.ClrHost.Managed
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
         public delegate void SetStringAtAction(ArrayHandle arrayHandle, Int32 index, string item);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void SetNameAtAction(ArrayHandle arrayHandle, Int32 index, FScriptName item);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void SetObjectAtAction(
@@ -95,6 +102,9 @@ namespace Klawr.ClrHost.Managed
         public delegate Int32 FindStringFunc(ArrayHandle arrayHandle, string item);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate Int32 FindNameFunc(ArrayHandle arrayHandle, FScriptName item);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate Int32 FindObjectFunc(ArrayHandle arrayHandle, UObjectHandle item);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -116,6 +126,9 @@ namespace Klawr.ClrHost.Managed
         public GetStringFunc GetString;
 
         [MarshalAs(UnmanagedType.FunctionPtr)]
+        public GetNameFunc GetName;
+
+        [MarshalAs(UnmanagedType.FunctionPtr)]
         public GetObjectFunc GetObject;
 
         [MarshalAs(UnmanagedType.FunctionPtr)]
@@ -132,6 +145,9 @@ namespace Klawr.ClrHost.Managed
 
         [MarshalAs(UnmanagedType.FunctionPtr)]
         public SetStringAtAction SetStringAt;
+
+        [MarshalAs(UnmanagedType.FunctionPtr)]
+        public SetNameAtAction SetNameAt;
 
         [MarshalAs(UnmanagedType.FunctionPtr)]
         public SetObjectAtAction SetObjectAt;
@@ -159,6 +175,9 @@ namespace Klawr.ClrHost.Managed
 
         [MarshalAs(UnmanagedType.FunctionPtr)]
         public FindStringFunc FindString;
+
+        [MarshalAs(UnmanagedType.FunctionPtr)]
+        public FindNameFunc FindName;
 
         [MarshalAs(UnmanagedType.FunctionPtr)]
         public FindObjectFunc FindObject;

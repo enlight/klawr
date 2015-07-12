@@ -718,9 +718,13 @@ FString FCSharpWrapperGenerator::GetDelegateName(const FString& FunctionName)
 FString FCSharpWrapperGenerator::GetArrayPropertyWrapperType(const UArrayProperty* arrayProperty)
 {
 	const UProperty* elementProperty = arrayProperty->Inner;
-	if (elementProperty->IsA<UStrProperty>() || elementProperty->IsA<UNameProperty>())
+	if (elementProperty->IsA<UStrProperty>())
 	{
 		return TEXT("StringArrayProperty");
+	}
+	else if (elementProperty->IsA<UNameProperty>())
+	{
+		return TEXT("NameArrayProperty");
 	}
 	else if (elementProperty->IsA<UObjectProperty>())
 	{

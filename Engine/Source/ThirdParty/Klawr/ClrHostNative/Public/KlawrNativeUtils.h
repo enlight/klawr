@@ -23,6 +23,8 @@
 //-------------------------------------------------------------------------------
 #pragma once
 
+struct FScriptName;
+
 namespace Klawr {
 
 /** 
@@ -97,12 +99,14 @@ struct ArrayUtilsProxy
 	int32 (*Num)(FArrayHelper* arrayHelper);
 	void* (*GetRawPtr)(FArrayHelper* arrayHelper, int32 index);
 	const TCHAR* (*GetString)(FArrayHelper* arrayHelper, int32 index);
+	FScriptName (*GetName)(FArrayHelper* arrayHelper, int32 index);
 	class UObject* (*GetObject)(FArrayHelper* arrayHelper, int32 index);
 	void (*SetUInt8At)(FArrayHelper* arrayHelper, int32 index, uint8 item);
 	void (*SetInt16At)(FArrayHelper* arrayHelper, int32 index, int16 item);
 	void (*SetInt32At)(FArrayHelper* arrayHelper, int32 index, int32 item);
 	void (*SetInt64At)(FArrayHelper* arrayHelper, int32 index, int64 item);
 	void (*SetStringAt)(FArrayHelper* arrayHelper, int32 index, const TCHAR* item);
+	void (*SetNameAt)(FArrayHelper* arrayHelper, int32 index, FScriptName item);
 	void (*SetObjectAt)(FArrayHelper* arrayHelper, int32 index, class UObject* item);
 	int32 (*Add)(FArrayHelper* arrayHelper);
 	void (*Reset)(FArrayHelper* arrayHelper, int32 newCapacity);
@@ -112,6 +116,7 @@ struct ArrayUtilsProxy
 	int32 (*FindInt32)(FArrayHelper* arrayHelper, int32 item);
 	int32 (*FindInt64)(FArrayHelper* arrayHelper, int64 item);
 	int32 (*FindString)(FArrayHelper* arrayHelper, const TCHAR* item);
+	int32 (*FindName)(FArrayHelper* arrayHelper, FScriptName item);
 	int32 (*FindObject)(FArrayHelper* arrayHelper, class UObject* item);
 	void (*Insert)(FArrayHelper* arrayHelper, int32 index);
 	void (*RemoveAt)(FArrayHelper* arrayHelper, int32 index);

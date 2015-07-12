@@ -84,6 +84,9 @@ namespace Klawr
 
 	/**
 	 * This class manipulates TArray directly.
+	 * 
+	 * This template class is used by the native code generator to expose native TArray(s) to
+	 * managed code.
 	 */
 	template <typename T>
 	class TArrayHelper : public FArrayHelper
@@ -156,27 +159,30 @@ namespace Klawr
 
 		const TCHAR* GetString(FArrayHelper* arrayHelper, int32 index)
 		{
-			// FString
+			auto prop = Cast<UStrProperty>(arrayHelper->GetElementProperty());
+			if (prop)
 			{
-				auto prop = Cast<UStrProperty>(arrayHelper->GetElementProperty());
-				if (prop)
-				{
-					auto& value = *reinterpret_cast<const FString*>(arrayHelper->GetRawPtr(index));
-					return MakeStringCopyForCLR(*value);
-				}
-			}
-			// FName
-			{
-				auto prop = Cast<UNameProperty>(arrayHelper->GetElementProperty());
-				if (prop)
-				{
-					auto& value = *reinterpret_cast<const FName*>(arrayHelper->GetRawPtr(index));
-					return MakeStringCopyForCLR(*(value.ToString()));
-				}
+				auto& value = *reinterpret_cast<const FString*>(arrayHelper->GetRawPtr(index));
+				return MakeStringCopyForCLR(*value);
 			}
 			// couldn't convert the string to the array element type
 			check(false);
 			return nullptr;
+		}
+
+		FScriptName GetName(FArrayHelper* arrayHelper, int32 index)
+		{
+			// FName is marshaled to FScriptName in managed code (because FScriptName is constant
+			// size for all build configurations, FName is not)
+			auto prop = Cast<UNameProperty>(arrayHelper->GetElementProperty());
+			if (prop)
+			{
+				auto& value = *reinterpret_cast<const FName*>(arrayHelper->GetRawPtr(index));
+				return NameToScriptName(value);
+			}
+			// couldn't convert the name to the array element type
+			check(false);
+			return NameToScriptName(NAME_None);
 		}
 
 		UObject* GetObject(FArrayHelper* arrayHelper, int32 index)
@@ -199,25 +205,25 @@ namespace Klawr
 		
 		void SetStringAt(FArrayHelper* arrayHelper, int32 index, const TCHAR* item)
 		{
-			// FString
+			auto prop = Cast<UStrProperty>(arrayHelper->GetElementProperty());
+			if (prop)
 			{
-				auto prop = Cast<UStrProperty>(arrayHelper->GetElementProperty());
-				if (prop)
-				{
-					prop->SetPropertyValue(arrayHelper->GetRawPtr(index), FString(item));
-					return;
-				}
-			}
-			// FName
-			{
-				auto prop = Cast<UNameProperty>(arrayHelper->GetElementProperty());
-				if (prop)
-				{
-					prop->SetPropertyValue(arrayHelper->GetRawPtr(index), FName(item));
-					return;
-				}
+				prop->SetPropertyValue(arrayHelper->GetRawPtr(index), FString(item));
+				return;
 			}
 			// couldn't convert the string to the array element type
+			check(false);
+		}
+
+		void SetNameAt(FArrayHelper* arrayHelper, int32 index, FScriptName item)
+		{
+			auto prop = Cast<UNameProperty>(arrayHelper->GetElementProperty());
+			if (prop)
+			{
+				prop->SetPropertyValue(arrayHelper->GetRawPtr(index), ScriptNameToName(item));
+				return;
+			}
+			// couldn't convert the name to the array element type
 			check(false);
 		}
 
@@ -275,13 +281,19 @@ namespace Klawr
 				FString strItem(item);
 				return arrayHelper->Find(&strItem);
 			}
-			// FName
+			// couldn't convert the string to the array element type
+			check(false);
+			return INDEX_NONE;
+		}
+
+		int32 FindName(FArrayHelper* arrayHelper, FScriptName item)
+		{
 			if (arrayHelper->GetElementProperty()->IsA<UNameProperty>())
 			{
-				FName nameItem(item);
+				FName nameItem = ScriptNameToName(item);
 				return arrayHelper->Find(&nameItem);
 			}
-			// couldn't convert the string to the array element type
+			// couldn't convert the name to the array element type
 			check(false);
 			return INDEX_NONE;
 		}
@@ -307,12 +319,14 @@ namespace Klawr
 		ArrayUtils::Num,
 		ArrayUtils::GetRawPtr,
 		ArrayUtils::GetString,
+		ArrayUtils::GetName,
 		ArrayUtils::GetObject,
 		ArrayUtils::SetValueAt<uint8>,
 		ArrayUtils::SetValueAt<int16>,
 		ArrayUtils::SetValueAt<int32>,
 		ArrayUtils::SetValueAt<int64>,
 		ArrayUtils::SetStringAt,
+		ArrayUtils::SetNameAt,
 		ArrayUtils::SetObjectAt,
 		ArrayUtils::Add,
 		ArrayUtils::Reset,
@@ -322,6 +336,7 @@ namespace Klawr
 		ArrayUtils::FindByValue<int32>,
 		ArrayUtils::FindByValue<int64>,
 		ArrayUtils::FindString,
+		ArrayUtils::FindName,
 		ArrayUtils::FindByPtr<UObject>,
 		ArrayUtils::Insert,
 		ArrayUtils::RemoveAt,
