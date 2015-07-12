@@ -80,6 +80,7 @@ Plugins
     ScriptExcludedModules=ScriptPlugin
     ScriptExcludedModules=ScriptEditorPlugin
     ScriptExcludedModules=ScriptGeneratorPlugin
+    ScriptExcludedModules=KlawrRuntimePlugin
     ```
 
 2. Run **GenerateProjectFiles.bat** in your UE4 source checkout.
