@@ -56,14 +56,11 @@ namespace UnrealBuildTool.Rules
 				}
 			);
 
-			if (!UnrealBuildTool.BuildingRocket())
+			var KlawrPath = Path.Combine(UEBuildConfiguration.UEThirdPartySourceDirectory, "Klawr");
+			if (Directory.Exists(KlawrPath))
 			{
-				var KlawrPath = Path.Combine(UEBuildConfiguration.UEThirdPartySourceDirectory, "Klawr");
-                if (Directory.Exists(KlawrPath))
-                {
-                    Definitions.Add("WITH_KLAWR=1");
-                    PrivateDependencyModuleNames.Add("KlawrClrHostNative");
-                }
+				Definitions.Add("WITH_KLAWR=1");
+				PrivateDependencyModuleNames.Add("KlawrClrHostNative");
 			}
 		}
 	}
