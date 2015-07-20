@@ -24,6 +24,7 @@
 
 #include "KlawrCodeGeneratorPluginPrivatePCH.h"
 #include "KlawrCodeGenerator.h"
+#include "Runtime/Core/Public/Features/IModularFeatures.h"
 
 DEFINE_LOG_CATEGORY(LogKlawrCodeGenerator);
 
@@ -37,11 +38,13 @@ private:
 public: // IModuleInterface interface
 	virtual void StartupModule() override
 	{
+		IModularFeatures::Get().RegisterModularFeature(TEXT("ScriptGenerator"), this);
 	}
 	
 	virtual void ShutdownModule() override
 	{
 		CodeGenerator.Reset();
+		IModularFeatures::Get().UnregisterModularFeature(TEXT("ScriptGenerator"), this);
 	}
 
 public:	// IScriptGeneratorPlugin interface
@@ -107,6 +110,11 @@ public:	// IScriptGeneratorPlugin interface
 	virtual void FinishExport() override
 	{
 		CodeGenerator->FinishExport();
+	}
+
+	virtual FString GetGeneratorName() const override
+	{
+		return TEXT("Klawr Code Generator Plugin");
 	}
 };
 
