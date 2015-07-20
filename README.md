@@ -41,13 +41,8 @@ Now everything should be in the right place, from here on any paths are relative
 
 Disable Built-in Script Plugins
 -------------------------------
-The UE4 source contains some built-in Script plugins, these are mostly meant as a reference for plugin developers, but they get in the way because the Unreal Build Tool (UBT) wastes time building and running them. So, before building the Klawr plugins you'll need to make a couple of one-line changes to the UE4 source to get the built-in Script plugins out of the way, you can either make the changes by hand or apply the two patch files that I've provided (ScriptPluginPatch.diff and UnrealHeaderToolPatch.diff). If you're making the changes by hand comment out the following line in **Engine/Plugins/ScriptPlugin/Source/ScriptPlugin/Private/ScriptPlugin.cpp**
-
-``` cpp
-#include "GeneratedScriptLibraries.inl"
-```
-
-and replace the following line in **Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs**
+The UE4 source contains some built-in Script plugins, these are mostly meant as a reference for plugin developers, but they get in the way because the Unreal Build Tool (UBT) wastes time building and running them. So, before building the Klawr plugins you'll need to make a couple of one-line changes to the UE4 source to get the built-in Script plugins out of the way, you can either make the changes by hand or apply the patch file that I've provided (`UnrealHeaderToolPatch.diff`). If you're making the changes by hand
+replace the following line in `Engine/Source/Programs/UnrealHeaderTool/UnrealHeaderTool.Target.cs`
 
 ``` cpp
 AdditionalPlugins.Add("ScriptGeneratorPlugin");
@@ -59,7 +54,7 @@ with
 AdditionalPlugins.Add("KlawrCodeGeneratorPlugin");
 ```
 
-Now UBT won't waste time building the ScriptGeneratorPlugin, the ScriptGeneratorPlugin won't waste time generating wrapper functions that aren't used by anything, and ScriptPlugin won't fail to build because ScriptGeneratorPlugin didn't produce **GeneratedScriptLibraries.inl**.
+Now UBT won't waste time building the ScriptGeneratorPlugin.
 
 Libraries
 ---------
