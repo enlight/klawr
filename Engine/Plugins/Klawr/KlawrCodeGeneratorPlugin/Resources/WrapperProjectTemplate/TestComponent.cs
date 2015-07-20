@@ -20,7 +20,7 @@ namespace Klawr.UnrealEngine
         public override void InitializeComponent()
         {
             var owner = base.GetOwner();
-            var ownerClass = owner.GetActorClass();
+            var ownerClass = (UClass)owner.GetType();
         }
     }
 }
