@@ -174,7 +174,16 @@ bool FCodeGenerator::IsPropertyTypeSupported(const UProperty* Property)
 	else if (Property->IsA<UArrayProperty>())
 	{
 		auto arrayProp = Cast<UArrayProperty>(Property);
-		bSupported = IsPropertyTypeSupported(arrayProp->Inner);
+		FString elementType = GetPropertyCPPType(arrayProp->Inner);
+		if (elementType.StartsWith("TSubclassOf<"))
+		{
+			// TArray<TSubclassOf<UWhatever>> is not currently supported
+			bSupported = false;
+		}
+		else
+		{
+			bSupported = IsPropertyTypeSupported(arrayProp->Inner);
+		}
 	}
 	else if (Property->IsA<UStructProperty>())
 	{
