@@ -134,7 +134,7 @@ FString SScriptTypeSelectionDialog::SelectScriptType(
 {
 	TSharedRef<Klawr::SScriptTypeSelectionDialog> dialog = 
 		SNew(Klawr::SScriptTypeSelectionDialog)
-		.DefaultSelection(InDefaultSelection);
+		.DefaultSelection(FText::FromString(InDefaultSelection));
 
 	if (dialog->ShowAsModalWindow(DialogTitle))
 	{

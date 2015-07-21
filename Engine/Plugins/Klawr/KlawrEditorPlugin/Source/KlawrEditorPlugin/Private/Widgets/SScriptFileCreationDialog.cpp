@@ -59,12 +59,12 @@ void SScriptFileCreationDialog::Construct(const FArguments& InArgs)
 			.VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text(LOCTEXT("SourceFilenameLabel", "Source Filename").ToString())
+				.Text(LOCTEXT("SourceFilenameLabel", "Source Filename"))
 				.ToolTipText(
 					LOCTEXT(
 						"SourceFilename_ToolTip", 
 						"Name for new source file (including extension)"
-					).ToString()
+					)
 				)
 			]
 			+ SGridPanel::Slot(1, 0)
@@ -86,12 +86,12 @@ void SScriptFileCreationDialog::Construct(const FArguments& InArgs)
 			.VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text(LOCTEXT("SourceLocationLabel", "Source Location").ToString())
+				.Text(LOCTEXT("SourceLocationLabel", "Source Location"))
 				.ToolTipText(
 					LOCTEXT(
 						"SourceLocation_ToolTip",
 						"Directory where new source file should be created"
-					).ToString()
+					)
 				)
 			]
 			+ SGridPanel::Slot(1, 1)
@@ -168,7 +168,7 @@ FString SScriptFileCreationDialog::CreateScriptFile(const FString& DefaultScript
 {
 	TSharedRef<SScriptFileCreationDialog> dialog =
 		SNew(SScriptFileCreationDialog)
-		.SourceFilename(DefaultScriptName);
+		.SourceFilename(FText::FromString(DefaultScriptName));
 
 	if (dialog->ShowAsModalWindow())
 	{

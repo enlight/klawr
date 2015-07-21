@@ -56,13 +56,12 @@ void FBlueprintCompiler::SpawnNewClass(const FString& NewClassName)
 	
 	if (Super::NewClass)
 	{
-		FBlueprintCompileReinstancer Reinstancer(Super::NewClass);
+		FBlueprintCompileReinstancer::Create(Super::NewClass);
 	}
 	else
 	{
-		Super::NewClass = ConstructObject<UKlawrBlueprintGeneratedClass>(
-			UKlawrBlueprintGeneratedClass::StaticClass(), Super::Blueprint->GetOutermost(),
-			FName(*NewClassName), RF_Public | RF_Transactional
+		Super::NewClass = NewObject<UKlawrBlueprintGeneratedClass>(
+			Super::Blueprint->GetOutermost(), FName(*NewClassName), RF_Public | RF_Transactional
 		);
 	}
 }

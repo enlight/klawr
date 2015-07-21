@@ -97,7 +97,7 @@ void SScriptTypeTree::Construct(const FArguments& InArgs)
 FScriptTypeTreeItemPtr SScriptTypeTree::FindOrAddNamespaceItem(const FString& typeNamespace)
 {
 	TArray<FString> namespaceComponents;
-	typeNamespace.ParseIntoArray(&namespaceComponents, TEXT("."), true);
+	typeNamespace.ParseIntoArray(namespaceComponents, TEXT("."), true);
 	FScriptTypeTreeItemPtr namespaceItem;
 	FScriptTypeTreeItemWeakPtr namespaceParent;
 	auto* namespaceItems = &RootNamespaces;
