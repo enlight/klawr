@@ -2,14 +2,21 @@ Klawr (Experimental WIP)
 ================
 A set of Unreal Engine 4 plugins that will allow users to write game-play code in C# (and eventually
 other CLI languages such as F#), in game projects targeting the Windows platform. If you're looking
-for a cross-platform alternative Xamarin has developed a [plugin](https://mono-ue.github.io/) that 
-provides Mono integration, however a commercial Mono license is not cheap. The primary aim of this 
-project is to make it possible to do anything that can currently be done in Blueprints in C# scripts,
-in order to eliminate the need for complex Blueprint spaghetti.
+for a cross-platform alternative Xamarin has developed a [plugin](https://mono-ue.github.io/) that
+provides Mono integration, however a commercial Mono license is not cheap, and it doesn't work in
+newer UE versions. The primary aim of this project is to make it possible to do anything that can
+currently be done in Blueprints in C# scripts, in order to eliminate the need for complex Blueprint
+spaghetti.
 
-The current development focus is on script components (see UKlawrScriptComponent), these are actor components whose functionality is implemented in a C# class. The C# class attached to a script component can access any Blueprint accessible property or function exposed by the actor it is attached to or any of its sibling components (this is still limited at present). Eventually the properties and methods defined in a C# script component will also be exposed to Blueprints.
+The current development focus is on script components (see UKlawrScriptComponent), these are actor
+components whose functionality is implemented in a C# class. The C# class attached to a script
+component can access any Blueprint accessible property or function exposed by the actor it is
+attached to or any of its sibling components (this is still limited at present since only a subset
+of all the possible property types is supported). Eventually the properties and methods defined in
+a C# script component will also be exposed to Blueprints.
 
-Some time was also spent developing script objects, which allow for "subclassing" in C# of almost any UObject-derived class, actors included, but that's currently on the back-burner.
+Some time was also spent developing script objects, which allow for "subclassing" in C# of almost
+any UObject-derived class, actors included, but that's currently on the back-burner.
 
 NOTE: This project is still highly experimental, and not very useful (though it's getting there).
 
@@ -17,7 +24,7 @@ Check the [Wiki](https://github.com/enlight/klawr/wiki) for additional details.
 
 Prerequisites
 ========
-- Unreal Engine 4.4.0 or later (you'll need the source from GitHub)
+- Unreal Engine 4.8.0 or later (you'll need the source from GitHub)
 - Visual Studio 2013
 - .NET Framework 4.5 or later
 
