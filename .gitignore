@@ -29,3 +29,4 @@ Engine/Source/ThirdParty/Klawr/ClrHostNative/Build/
 Engine/Source/ThirdParty/Klawr/ipch/
 Engine/Plugins/Klawr/KlawrRuntimePlugin/Intermediate/
 Engine/Plugins/Klawr/KlawrCodeGeneratorPlugin/Intermediate/
+Engine/Plugins/Klawr/KlawrEditorPlugin/Intermediate/
