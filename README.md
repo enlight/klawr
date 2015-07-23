@@ -78,6 +78,7 @@ Plugins
 1. Configure UHT to use the Klawr code generator plugin, to do so add/edit the `Plugins` section in
    `Engine\Programs\UnrealHeaderTool\Saved\Config\Windows\Engine.ini` (if the file doesn't exist,
    create it):
+   
     ```
     [Plugins]
     ProgramEnabledPlugins=KlawrCodeGeneratorPlugin
