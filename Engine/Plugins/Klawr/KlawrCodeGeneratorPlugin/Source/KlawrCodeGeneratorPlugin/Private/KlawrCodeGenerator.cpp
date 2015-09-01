@@ -146,6 +146,12 @@ bool FCodeGenerator::CanExportFunction(const UClass* Class, const UFunction* Fun
 		return false;
 	}
 
+	// don't expose functions that aren't directly accessible in a Blueprint graph
+	if (Function->GetBoolMetaData(TEXT("BlueprintInternalUseOnly")))
+	{
+		return false;
+	}
+
 	// check all parameter types for this function are supported
 	for (TFieldIterator<UProperty> ParamIt(Function); ParamIt; ++ParamIt)
 	{
