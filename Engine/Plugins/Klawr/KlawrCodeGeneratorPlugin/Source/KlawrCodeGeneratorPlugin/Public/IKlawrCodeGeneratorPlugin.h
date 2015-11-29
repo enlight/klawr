@@ -32,7 +32,7 @@ namespace Klawr {
  * that exposes part of the UE4 API (the part accessible via Blueprints) to any managed code 
  * executed on the MS CLR.
  *
- * The generated unmanaged glue code is built as part of the KlawrRuntimePlugin, the generated
+ * The generated unmanaged glue code is built as part of the ScriptPlugin, the generated
  * managed glue code is built separately.
  */
 class ICodeGeneratorPlugin : public IScriptGeneratorPluginInterface
