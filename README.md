@@ -25,9 +25,9 @@ Check the [Wiki](https://github.com/enlight/klawr/wiki) for additional details.
 Prerequisites
 =============
 - Windows 7 or later
-- Unreal Engine 4.8.0 or later (you'll need the source from GitHub)
-- Visual Studio 2013
-- .NET Framework 4.5 or later
+- Unreal Engine 4.10 or later (you'll need the source from GitHub)
+- Visual Studio 2015
+- .NET Framework 4.5.2 or later
 
 Overview
 ========
@@ -89,7 +89,7 @@ AdditionalPlugins.Add("KlawrCodeGeneratorPlugin");
 
 Libraries
 ---------
-1. Open `Engine\Source\ThirdParty\Klawr\Klawr.ClrHost.sln` in VS2013.
+1. Open `Engine\Source\ThirdParty\Klawr\Klawr.ClrHost.sln` in VS2015.
 2. Set the `Solution Configuration` to either `Release` or `Debug`.
 3. Set the `Solution Platform` to `x64` (this is very important, Win32 builds are not supported yet).
 4. Select `Build Solution` to build all the libraries.
@@ -113,7 +113,7 @@ Plugins
     ScriptSupportedModules=Engine
     ```
 2. Run `GenerateProjectFiles.bat` in your UE4 source checkout.
-3. Open `UE4.sln` in VS2013.
+3. Open `UE4.sln` in VS2015.
 4. Set the `Solution Configuration` to `Debug Editor` or `Development Editor`.
 5. Set the `Solution Platform` to `Win64` (this is very important, Win32 builds are not supported yet).
 6. Select `Build Solution` to build everything.
