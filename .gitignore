@@ -30,6 +30,9 @@ Engine/Source/ThirdParty/Klawr/ipch/
 Engine/Plugins/Klawr/KlawrRuntimePlugin/Intermediate/
 Engine/Plugins/Klawr/KlawrCodeGeneratorPlugin/Intermediate/
 Engine/Plugins/Klawr/KlawrEditorPlugin/Intermediate/
+Engine/Plugins/Klawr/KlawrEditorPlugin/Binaries/
+Engine/Plugins/Klawr/KlawrRuntimePlugin/Binaries/
+Engine/Plugins/Klawr/KlawrCodeGeneratorPlugin/Binaries/
 Engine/Source/ThirdParty/Klawr/ClrHostManaged/bin/
 Engine/Source/ThirdParty/Klawr/ClrHostNative/Klawr.ClrHost.Native.vcxproj.user
 Engine/Source/ThirdParty/Klawr/.vs/
