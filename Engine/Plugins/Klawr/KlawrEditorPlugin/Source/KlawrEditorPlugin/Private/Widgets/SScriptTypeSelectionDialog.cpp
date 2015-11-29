@@ -35,7 +35,7 @@ namespace Klawr {
 
 void SScriptTypeSelectionDialog::Construct(const FArguments& InArgs)
 {
-	DefaultSelection = InArgs._DefaultSelection.ToString();
+	DefaultSelection = FString("");
 
 	bUserConfirmed = false;
 
@@ -132,15 +132,24 @@ FString SScriptTypeSelectionDialog::SelectScriptType(
 	const FText& DialogTitle, const FString& InDefaultSelection
 )
 {
-	TSharedRef<Klawr::SScriptTypeSelectionDialog> dialog = 
-		SNew(Klawr::SScriptTypeSelectionDialog)
-		.DefaultSelection(FText::FromString(InDefaultSelection));
+	TSharedRef<Klawr::SScriptTypeSelectionDialog> dialog =
+		SNew(Klawr::SScriptTypeSelectionDialog);
 
 	if (dialog->ShowAsModalWindow(DialogTitle))
 	{
 		return dialog->SelectedScriptType;
 	}
 	return FString();
+}
+
+FString SScriptTypeSelectionDialog::GetDefaultSelection()
+{
+	return this->DefaultSelection;
+}
+
+void SScriptTypeSelectionDialog::SetDefaultSelection(FString & selection)
+{
+	this->DefaultSelection = selection;
 }
 
 bool SScriptTypeSelectionDialog::ShowAsModalWindow(const FText& WindowTitle)

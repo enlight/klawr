@@ -32,7 +32,7 @@ class SScriptTypeSelectionDialog : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SScriptTypeSelectionDialog) {}
-		SLATE_TEXT_ARGUMENT(DefaultSelection)
+		//SLATE_TEXT_ARGUMENT(DefaultSelection)
 	SLATE_END_ARGS()
 
 public:
@@ -46,6 +46,9 @@ public:
 	 *         the user didn't select any type (for whatever reason).
 	 */
 	static FString SelectScriptType(const FText& DialogTitle, const FString& InDefaultSelection);
+
+	FString GetDefaultSelection();
+	void	SetDefaultSelection(FString& selection);
 
 private:
 	bool ShowAsModalWindow(const FText& WindowTitle);

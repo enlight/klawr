@@ -119,7 +119,7 @@ public:
 	virtual int GetObjectAppDomainID(const UObject* Object) const override
 	{
 #if WITH_EDITOR
-		return Object->GetOutermost()->HasAnyPackageFlags(PKG_PlayInEditor) ?
+		return (Object->GetOutermost()->PackageFlags & PKG_PlayInEditor) ?
 			PIEAppDomainID : PrimaryEngineAppDomainID;
 #else
 		return PrimaryEngineAppDomainID;

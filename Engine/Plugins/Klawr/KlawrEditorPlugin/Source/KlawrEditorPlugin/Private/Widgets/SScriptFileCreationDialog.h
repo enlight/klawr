@@ -35,8 +35,7 @@ public:
 	SLATE_BEGIN_ARGS(SScriptFileCreationDialog) {}
 
 		/** Initial value for Source Filename text-box. */
-		SLATE_TEXT_ARGUMENT(SourceFilename)
-
+		//SLATE_TEXT_ARGUMENT(GetSourceFileName())
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -48,6 +47,7 @@ public:
 	 *         script file was created (for whatever reason).
 	 */
 	static FString CreateScriptFile(const FString& DefaultScriptName);
+	FString GetSourceFileName();
 
 private:
 	bool ShowAsModalWindow();
@@ -77,6 +77,7 @@ private:
 
 private:
 	FText SourceFilenameText;
+	FString SourceFileName;
 	FText SourceLocationText;
 	bool bUserConfirmed;
 	TWeakPtr<SWindow> Dialog;
