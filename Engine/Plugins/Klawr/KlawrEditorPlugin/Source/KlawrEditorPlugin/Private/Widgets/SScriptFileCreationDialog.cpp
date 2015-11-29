@@ -26,6 +26,7 @@
 #include "SScriptFileCreationDialog.h"
 #include "DesktopPlatformModule.h"
 #include "KlawrGameProjectBuilder.h"
+#include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"
 
 #define LOCTEXT_NAMESPACE "KlawrEditorPlugin.SScriptFileCreationDialog"
 
@@ -34,7 +35,7 @@ namespace Klawr {
 void SScriptFileCreationDialog::Construct(const FArguments& InArgs)
 {
 	bUserConfirmed = false;
-	FString sourceFilename = InArgs._SourceFilename.ToString();
+	FString sourceFilename = GetSourceFileName();
 	if (!sourceFilename.EndsWith(TEXT(".cs")))
 	{
 		sourceFilename.Append(FString(TEXT(".cs")));
@@ -167,8 +168,7 @@ bool SScriptFileCreationDialog::ShowAsModalWindow()
 FString SScriptFileCreationDialog::CreateScriptFile(const FString& DefaultScriptName)
 {
 	TSharedRef<SScriptFileCreationDialog> dialog =
-		SNew(SScriptFileCreationDialog)
-		.SourceFilename(FText::FromString(DefaultScriptName));
+		SNew(SScriptFileCreationDialog);
 
 	if (dialog->ShowAsModalWindow())
 	{
@@ -185,6 +185,11 @@ FString SScriptFileCreationDialog::CreateScriptFile(const FString& DefaultScript
 	}
 
 	return FString();
+}
+
+FString SScriptFileCreationDialog::GetSourceFileName()
+{
+	return this->SourceFileName;
 }
 
 const FString& SScriptFileCreationDialog::GetSourceFilename() const
